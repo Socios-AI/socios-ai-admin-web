@@ -85,4 +85,15 @@ curl -sS -X POST "$SUPABASE_URL/rest/v1/rpc/demote_from_super_admin" \
   -H "Content-Type: application/json" \
   -d "{\"p_user_id\":\"$USER_ID\",\"p_reason\":\"smoke cleanup\",\"p_actor_id\":null}" > /dev/null || true
 
+
+# Step 4: /users/new without cookie -> 307 to id login (same gate as other paths)
+echo "=== Step 4: /users/new without cookie ==="
+status=$(curl -s -o /dev/null -w "%{http_code}" "${ADMIN_URL}/users/new")
+if [ "$status" = "307" ]; then
+  echo "  OK: /users/new redirected (status $status)"
+else
+  echo "  FAIL: expected 307, got $status"
+  exit 1
+fi
+
 echo "==> smoke admin-gate: PASS"
