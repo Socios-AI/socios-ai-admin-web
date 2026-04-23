@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { createRemoteJWKSet, jwtVerify } from "jose";
+import { readSessionCookie, extractAccessToken } from "./lib/session-cookie";
 
 const ID_LOGIN_URL = "https://id.sociosai.com/login";
 
@@ -45,25 +46,11 @@ export async function middleware(req: NextRequest) {
   const cookieName = getCookieName();
   if (!cookieName) return NextResponse.next();
 
-  const cookieValue = req.cookies.get(cookieName)?.value;
+  const cookieValue = readSessionCookie(req.cookies, cookieName);
   if (!cookieValue) {
     return buildRedirectToId(req);
   }
-
-  // Cookie value from @supabase/ssr is JSON-stringified array; access_token is at index 0.
-  // For test simplicity, also accept a plain JWT string.
-  let token = cookieValue;
-  if (cookieValue.startsWith("[") || cookieValue.startsWith("base64-")) {
-    try {
-      const raw = cookieValue.startsWith("base64-")
-        ? Buffer.from(cookieValue.slice("base64-".length), "base64").toString("utf-8")
-        : cookieValue;
-      const parsed = JSON.parse(raw) as [string, ...unknown[]];
-      token = parsed[0] ?? cookieValue;
-    } catch {
-      // fall back to raw value
-    }
-  }
+  const token = extractAccessToken(cookieValue);
 
   const jwks = getJwks();
   if (!jwks) return NextResponse.next();
