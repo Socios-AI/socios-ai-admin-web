@@ -37,11 +37,11 @@ describe("middleware", () => {
     expect(loc).toContain("from=https%3A%2F%2Fadmin.sociosai.com%2Fusers");
   });
 
-  it("rewrites to /_403 when JWT lacks super_admin claim", async () => {
+  it("rewrites to /forbidden when JWT lacks super_admin claim", async () => {
     verifyMock.mockResolvedValue({ payload: { super_admin: false, sub: "u1" } });
     const res = await middleware(makeReq("/users", { cookieValue: "fake.jwt.token" }));
     // NextResponse.rewrite returns status 200 with x-middleware-rewrite header
-    expect(res.headers.get("x-middleware-rewrite") ?? "").toContain("/_403");
+    expect(res.headers.get("x-middleware-rewrite") ?? "").toContain("/forbidden");
   });
 
   it("redirects to id login when JWT verification fails", async () => {

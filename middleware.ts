@@ -21,7 +21,7 @@ function buildRedirectToId(req: NextRequest): NextResponse {
   return NextResponse.redirect(target, { status: 307 });
 }
 
-const STATIC_RE = /^\/_next\/static|^\/_next\/image|^\/favicon\.ico|^\/brand|^\/_403|\.svg$|\.png$/;
+const STATIC_RE = /^\/_next\/static|^\/_next\/image|^\/favicon\.ico|^\/brand|^\/forbidden|\.svg$|\.png$/;
 
 export async function middleware(req: NextRequest) {
   if (STATIC_RE.test(req.nextUrl.pathname)) return NextResponse.next();
@@ -60,7 +60,7 @@ export async function middleware(req: NextRequest) {
     }
     // Authenticated but not super-admin -> 403 page
     const url = req.nextUrl.clone();
-    url.pathname = "/_403";
+    url.pathname = "/forbidden";
     return NextResponse.rewrite(url);
   } catch {
     return buildRedirectToId(req);
@@ -69,6 +69,6 @@ export async function middleware(req: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|brand|_403|.*\\.svg$|.*\\.png$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|brand|forbidden|.*\\.svg$|.*\\.png$).*)",
   ],
 };
