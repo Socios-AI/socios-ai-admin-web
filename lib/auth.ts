@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 import { decodeJwtPayload } from "./jwt";
+import { readSessionCookie, extractAccessToken } from "./session-cookie";
 
 export type SuperAdminClaims = {
   sub: string;
@@ -14,23 +15,9 @@ export async function getCallerJwt(): Promise<string | null> {
   const projectRef = url.replace(/^https?:\/\//, "").split(".")[0];
   if (!projectRef) return null;
   const cookieStore = await cookies();
-  const cookieValue = cookieStore.get(`sb-${projectRef}-auth-token`)?.value;
+  const cookieValue = readSessionCookie(cookieStore, `sb-${projectRef}-auth-token`);
   if (!cookieValue) return null;
-
-  // Cookie format: array stringified, base64-prefixed JSON, or raw token
-  let token = cookieValue;
-  if (cookieValue.startsWith("[") || cookieValue.startsWith("base64-")) {
-    try {
-      const raw = cookieValue.startsWith("base64-")
-        ? Buffer.from(cookieValue.slice("base64-".length), "base64").toString("utf-8")
-        : cookieValue;
-      const parsed = JSON.parse(raw) as [string, ...unknown[]];
-      token = parsed[0] ?? cookieValue;
-    } catch {
-      // fall through with raw
-    }
-  }
-  return token;
+  return extractAccessToken(cookieValue);
 }
 
 export async function getCallerClaims(): Promise<SuperAdminClaims | null> {
