@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { AdminShell } from "@/components/AdminShell";
 import { UserListTable } from "@/components/UserListTable";
 import { getCallerJwt } from "@/lib/auth";
@@ -37,28 +38,36 @@ export default async function UsersPage(props: { searchParams: Promise<{ q?: str
 
   return (
     <AdminShell>
-      <header className="mb-6 flex items-center justify-between">
+      <header className="mb-6 flex items-center justify-between gap-4">
         <div>
           <h1 className="font-display font-semibold text-2xl">Usuários</h1>
           <p className="text-muted-foreground text-sm">
             {error ? "Erro ao carregar." : `${total} no total`}
           </p>
         </div>
-        <form action="/users" method="get" className="flex gap-2">
-          <input
-            type="search"
-            name="q"
-            defaultValue={q}
-            placeholder="Buscar por email..."
-            className="rounded-lg border border-input bg-background px-3 py-2 text-sm"
-          />
-          <button
-            type="submit"
-            className="rounded-lg bg-primary text-primary-foreground font-medium px-4 py-2 hover:opacity-90"
+        <div className="flex items-center gap-2">
+          <form action="/users" method="get" className="flex gap-2">
+            <input
+              type="search"
+              name="q"
+              defaultValue={q}
+              placeholder="Buscar por email..."
+              className="rounded-lg border border-input bg-background px-3 py-2 text-sm"
+            />
+            <button
+              type="submit"
+              className="rounded-lg bg-primary text-primary-foreground font-medium px-4 py-2 hover:opacity-90"
+            >
+              Buscar
+            </button>
+          </form>
+          <Link
+            href="/users/new"
+            className="rounded-lg bg-primary text-primary-foreground px-4 py-2 text-sm font-medium hover:opacity-90"
           >
-            Buscar
-          </button>
-        </form>
+            Convidar usuário
+          </Link>
+        </div>
       </header>
 
       {error ? (
