@@ -10,6 +10,7 @@ import "@fontsource/dm-mono/500.css";
 import "./globals.css";
 
 import type { Metadata, Viewport } from "next";
+import { ToastProvider } from "@/components/ToastProvider";
 
 export const metadata: Metadata = {
   title: "Sócios AI · Admin",
@@ -30,7 +31,10 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="pt-BR" suppressHydrationWarning>
-      <body className="min-h-screen bg-background text-foreground antialiased">{children}</body>
+      <body className="min-h-screen bg-background text-foreground antialiased">
+        {children}
+        <ToastProvider />
+      </body>
     </html>
   );
 }
