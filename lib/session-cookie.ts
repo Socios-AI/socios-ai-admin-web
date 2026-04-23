@@ -18,20 +18,36 @@ export function readSessionCookie(cookies: CookieReader, baseName: string): stri
   return cookies.get(baseName)?.value ?? null;
 }
 
-// Cookie value formats from @supabase/ssr:
-//   - JSON-stringified array `[access_token, refresh_token, ...]` (most common)
-//   - same array, base64-encoded with a `base64-` prefix
+// Cookie value formats from @supabase/ssr (varies by version):
+//   - JSON-stringified Session object `{access_token, refresh_token, user, ...}` (v0.5+)
+//   - JSON-stringified array `[access_token, refresh_token, ...]` (legacy)
+//   - either format base64(url)-encoded with a `base64-` prefix (default since v0.5)
 //   - bare access token (test/legacy)
 export function extractAccessToken(cookieValue: string): string {
-  if (!cookieValue.startsWith("[") && !cookieValue.startsWith("base64-")) {
+  if (
+    !cookieValue.startsWith("{") &&
+    !cookieValue.startsWith("[") &&
+    !cookieValue.startsWith("base64-")
+  ) {
     return cookieValue;
   }
   try {
     const raw = cookieValue.startsWith("base64-")
       ? Buffer.from(cookieValue.slice("base64-".length), "base64").toString("utf-8")
       : cookieValue;
-    const parsed = JSON.parse(raw) as [string, ...unknown[]];
-    return parsed[0] ?? cookieValue;
+    const parsed: unknown = JSON.parse(raw);
+    if (Array.isArray(parsed) && typeof parsed[0] === "string") {
+      return parsed[0];
+    }
+    if (
+      parsed &&
+      typeof parsed === "object" &&
+      "access_token" in parsed &&
+      typeof (parsed as { access_token: unknown }).access_token === "string"
+    ) {
+      return (parsed as { access_token: string }).access_token;
+    }
+    return cookieValue;
   } catch {
     return cookieValue;
   }
