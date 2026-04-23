@@ -1,17 +1,21 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { NextRequest } from "next/server";
 
-const { verifyMock } = vi.hoisted(() => ({ verifyMock: vi.fn() }));
+const { verifyMock, jwksMock } = vi.hoisted(() => ({
+  verifyMock: vi.fn(),
+  jwksMock: vi.fn(() => ({ kty: "EC" })),
+}));
 vi.mock("jose", () => ({
   jwtVerify: verifyMock,
+  createRemoteJWKSet: jwksMock,
 }));
 
 import { middleware } from "../middleware";
 
 beforeEach(() => {
   verifyMock.mockReset();
+  jwksMock.mockClear();
   process.env.NEXT_PUBLIC_SUPABASE_URL = "https://axyssxqttfnbtawanasf.supabase.co";
-  process.env.SUPABASE_JWT_SECRET = "test-jwt-secret-very-long-string-for-hs256";
 });
 
 function makeReq(pathname: string, opts: { cookieValue?: string } = {}): NextRequest {

@@ -1,8 +1,19 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { jwtVerify } from "jose";
+import { createRemoteJWKSet, jwtVerify } from "jose";
 
 const ID_LOGIN_URL = "https://id.sociosai.com/login";
+
+let cachedJwks: ReturnType<typeof createRemoteJWKSet> | null = null;
+function getJwks(): ReturnType<typeof createRemoteJWKSet> | null {
+  const url = process.env.SUPABASE_JWKS_URL ??
+    (process.env.NEXT_PUBLIC_SUPABASE_URL
+      ? `${process.env.NEXT_PUBLIC_SUPABASE_URL}/auth/v1/.well-known/jwks.json`
+      : null);
+  if (!url) return null;
+  if (!cachedJwks) cachedJwks = createRemoteJWKSet(new URL(url));
+  return cachedJwks;
+}
 
 function getProjectRef(): string | null {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -54,12 +65,11 @@ export async function middleware(req: NextRequest) {
     }
   }
 
-  const secret = process.env.SUPABASE_JWT_SECRET;
-  if (!secret) return NextResponse.next();
-  const key = new TextEncoder().encode(secret);
+  const jwks = getJwks();
+  if (!jwks) return NextResponse.next();
 
   try {
-    const { payload } = await jwtVerify(token, key);
+    const { payload } = await jwtVerify(token, jwks);
     if (payload["super_admin"] === true) {
       return NextResponse.next();
     }
