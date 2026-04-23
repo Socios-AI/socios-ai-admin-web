@@ -107,3 +107,15 @@ export async function getUser(args: { callerJwt: string; userId: string }): Prom
     recentAudit: (audit ?? []) as AuditEvent[],
   };
 }
+
+export type AppRow = { slug: string; name: string };
+
+export async function listApps(args: { callerJwt: string }): Promise<AppRow[]> {
+  const sb = getCallerClient({ callerJwt: args.callerJwt });
+  const { data, error } = await sb
+    .from("apps")
+    .select("slug, name")
+    .order("name", { ascending: true });
+  if (error) throw new Error(`listApps failed: ${error.message}`);
+  return (data ?? []) as AppRow[];
+}
