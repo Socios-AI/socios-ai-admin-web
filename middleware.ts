@@ -17,7 +17,12 @@ function getCookieName(): string | null {
 
 function buildRedirectToId(req: NextRequest): NextResponse {
   const target = new URL(ID_LOGIN_URL);
-  target.searchParams.set("from", req.nextUrl.toString());
+  // Reconstruct the public URL from forwarded headers (Nginx in front of the container).
+  // req.nextUrl.host is the internal container hostname, not the public domain.
+  const host = req.headers.get("x-forwarded-host") ?? req.headers.get("host") ?? "admin.sociosai.com";
+  const proto = req.headers.get("x-forwarded-proto") ?? "https";
+  const publicUrl = `${proto}://${host}${req.nextUrl.pathname}${req.nextUrl.search}`;
+  target.searchParams.set("from", publicUrl);
   return NextResponse.redirect(target, { status: 307 });
 }
 
