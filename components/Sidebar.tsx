@@ -37,7 +37,7 @@ export function Sidebar() {
           ),
         )}
       </nav>
-      <form action="/_signout" method="POST">
+      <form action="/signout" method="POST">
         <button
           type="submit"
           className="w-full flex items-center gap-2 px-3 py-2 rounded-md text-sm text-muted-foreground hover:bg-muted hover:text-foreground transition"

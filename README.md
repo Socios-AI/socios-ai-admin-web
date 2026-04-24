@@ -36,7 +36,7 @@ Push to `main` triggers `.github/workflows/deploy.yml`. Image is built and pushe
 | `/users` | List + search |
 | `/users/[id]` | User detail (read-only in v1) |
 | `/_403` | Forbidden page |
-| `/_signout` | POST handler: signs out + redirects to id login |
+| `/signout` | POST handler: signs out + redirects to id login |
 
 ## Status
 
