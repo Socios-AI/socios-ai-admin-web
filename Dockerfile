@@ -24,10 +24,17 @@ RUN npm run build
 
 FROM node:20-alpine AS runner
 WORKDIR /app
+ARG NEXT_PUBLIC_SUPABASE_URL
+ARG NEXT_PUBLIC_SUPABASE_ANON_KEY
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV PORT=3001
 ENV HOSTNAME=0.0.0.0
+# Mirror public Supabase config into non-prefixed env vars so that
+# @socios-ai/auth/admin/getCallerClient (which reads SUPABASE_URL /
+# SUPABASE_ANON_KEY) works at runtime in server components.
+ENV SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL
+ENV SUPABASE_ANON_KEY=$NEXT_PUBLIC_SUPABASE_ANON_KEY
 RUN addgroup -g 1001 -S nodejs && adduser -S nextjs -u 1001
 COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
