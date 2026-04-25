@@ -63,13 +63,6 @@ function buildSb(opts: {
 
   const auditInsert = vi.fn().mockResolvedValue({ error: null });
 
-  const planTableRouter = { select: vi.fn() };
-  let planSelectCalls = 0;
-  planTableRouter.select = vi.fn(() => {
-    planSelectCalls += 1;
-    return planSelectCalls === 1 ? { eq: planSelectEq } : { eq: existingSubEq1 };
-  });
-
   const from = vi.fn((table: string) => {
     if (table === "plans") return { select: planSelect };
     if (table === "subscriptions") {
