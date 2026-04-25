@@ -201,3 +201,104 @@ export async function getApp(args: { callerJwt: string; slug: string }): Promise
     updated_at: data.updated_at,
   };
 }
+
+// =============================================================
+// Plan G.3: catalog management for plans
+// =============================================================
+
+export type BillingPeriod = "monthly" | "yearly" | "one_time" | "custom";
+export type PlanCurrency = "usd" | "brl" | "eur";
+
+export type PlanDetail = {
+  id: string;
+  slug: string;
+  name: string;
+  description: string | null;
+  billing_period: BillingPeriod;
+  price_amount: number;
+  currency: PlanCurrency;
+  features: Record<string, unknown>;
+  is_active: boolean;
+  is_visible: boolean;
+  stripe_product_id: string | null;
+  stripe_price_id: string | null;
+  metadata: Record<string, unknown>;
+  app_slugs: string[];
+  created_at: string;
+  updated_at: string;
+};
+
+export type PlanCatalogRow = PlanDetail & {
+  subscriber_count: number;
+};
+
+type PlanRowFromDb = {
+  id: string;
+  slug: string;
+  name: string;
+  description: string | null;
+  billing_period: string;
+  price_amount: string | number;
+  currency: string;
+  features: Record<string, unknown> | null;
+  is_active: boolean;
+  is_visible: boolean;
+  stripe_product_id: string | null;
+  stripe_price_id: string | null;
+  metadata: Record<string, unknown> | null;
+  created_at: string;
+  updated_at: string;
+  plan_apps?: Array<{ app_slug: string }>;
+  subscriptions?: Array<{ count: number }>;
+};
+
+function normalizePlan(row: PlanRowFromDb): PlanDetail {
+  return {
+    id: row.id,
+    slug: row.slug,
+    name: row.name,
+    description: row.description ?? null,
+    billing_period: row.billing_period as BillingPeriod,
+    price_amount: typeof row.price_amount === "string" ? Number(row.price_amount) : row.price_amount,
+    currency: row.currency as PlanCurrency,
+    features: row.features ?? {},
+    is_active: row.is_active,
+    is_visible: row.is_visible,
+    stripe_product_id: row.stripe_product_id ?? null,
+    stripe_price_id: row.stripe_price_id ?? null,
+    metadata: row.metadata ?? {},
+    app_slugs: (row.plan_apps ?? []).map((p) => p.app_slug),
+    created_at: row.created_at,
+    updated_at: row.updated_at,
+  };
+}
+
+export async function listPlansCatalog(args: { callerJwt: string }): Promise<PlanCatalogRow[]> {
+  const sb = getCallerClient({ callerJwt: args.callerJwt });
+  const { data, error } = await sb
+    .from("plans")
+    .select(
+      "id, slug, name, description, billing_period, price_amount, currency, features, is_active, is_visible, stripe_product_id, stripe_price_id, metadata, created_at, updated_at, plan_apps:plan_apps(app_slug), subscriptions:subscriptions(count)",
+    )
+    .order("created_at", { ascending: false });
+  if (error) throw new Error(`listPlansCatalog failed: ${error.message}`);
+
+  return (data ?? []).map((row: PlanRowFromDb) => ({
+    ...normalizePlan(row),
+    subscriber_count: row.subscriptions?.[0]?.count ?? 0,
+  }));
+}
+
+export async function getPlan(args: { callerJwt: string; id: string }): Promise<PlanDetail | null> {
+  const sb = getCallerClient({ callerJwt: args.callerJwt });
+  const { data, error } = await sb
+    .from("plans")
+    .select(
+      "id, slug, name, description, billing_period, price_amount, currency, features, is_active, is_visible, stripe_product_id, stripe_price_id, metadata, created_at, updated_at, plan_apps:plan_apps(app_slug)",
+    )
+    .eq("id", args.id)
+    .maybeSingle();
+  if (error) throw new Error(`getPlan failed: ${error.message}`);
+  if (!data) return null;
+  return normalizePlan(data as PlanRowFromDb);
+}
