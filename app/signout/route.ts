@@ -24,5 +24,8 @@ export async function POST() {
       });
     }
   }
-  return NextResponse.redirect("https://id.sociosai.com/login?msg=logged_out", { status: 303 });
+  const target = new URL("https://id.sociosai.com/login");
+  target.searchParams.set("msg", "logged_out");
+  target.searchParams.set("from", "https://admin.sociosai.com/");
+  return NextResponse.redirect(target, { status: 303 });
 }
