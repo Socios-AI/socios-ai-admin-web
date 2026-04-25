@@ -35,7 +35,7 @@ describe("grantMembershipAction", () => {
       roleSlug: "end-user",
     });
 
-    expect(result).toEqual({ ok: true, membershipId: "m-1" });
+    expect(result).toEqual({ ok: true, membershipId: "m-1", suggestForceLogout: true });
     expect(grantMock).toHaveBeenCalledWith({
       userId: "33333333-3333-3333-3333-333333333333",
       appSlug: "case-predictor",

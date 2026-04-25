@@ -5,7 +5,7 @@ import { getCallerClaims, getCallerJwt } from "@/lib/auth";
 import { grantMembershipSchema } from "@/lib/validation";
 
 export type GrantMembershipResult =
-  | { ok: true; membershipId: string }
+  | { ok: true; membershipId: string; suggestForceLogout: true }
   | { ok: false; error: "FORBIDDEN" | "VALIDATION" | "API_ERROR"; message?: string };
 
 export async function grantMembershipAction(input: {
@@ -33,7 +33,7 @@ export async function grantMembershipAction(input: {
       orgId: parsed.data.orgId,
       callerJwt: jwt,
     });
-    return { ok: true, membershipId: result.membershipId };
+    return { ok: true, membershipId: result.membershipId, suggestForceLogout: true };
   } catch (err) {
     return {
       ok: false,
