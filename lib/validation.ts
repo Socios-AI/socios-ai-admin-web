@@ -66,3 +66,56 @@ export type DemoteUserInput = z.infer<typeof demoteUserSchema>;
 export type ForceLogoutInput = z.infer<typeof forceLogoutSchema>;
 export type GrantMembershipInput = z.infer<typeof grantMembershipSchema>;
 export type RevokeMembershipInput = z.infer<typeof revokeMembershipSchema>;
+
+// =============================================================
+// Plan G.2: app catalog management
+// =============================================================
+
+export const appSlugSchema = z
+  .string()
+  .trim()
+  .min(2, "Slug muito curto")
+  .max(40, "Slug muito longo")
+  .regex(/^[a-z0-9-]+$/, "Use apenas letras minúsculas, números e hífen");
+
+const httpsUrlSchema = z
+  .string()
+  .trim()
+  .url("URL inválida")
+  .refine((u) => u.startsWith("https://"), "URL deve começar com https://");
+
+const appStatusSchema = z.enum(["active", "beta", "sunset", "archived"]);
+
+export const createAppSchema = z.object({
+  slug: appSlugSchema,
+  name: z.string().trim().min(2, "Nome muito curto").max(80, "Nome muito longo"),
+  description: z.string().trim().max(500, "Descrição muito longa").optional().nullable(),
+  public_url: httpsUrlSchema.optional().nullable(),
+  icon_url: httpsUrlSchema.optional().nullable(),
+  status: appStatusSchema.default("active"),
+  responsible_user_id: z.string().uuid("ID inválido").optional().nullable(),
+  role_catalog: z
+    .record(z.string())
+    .default({ "tenant-admin": "Tenant Admin", member: "Member" }),
+});
+
+export const updateAppSchema = z.object({
+  slug: appSlugSchema,
+  name: z.string().trim().min(2).max(80),
+  description: z.string().trim().max(500).optional().nullable(),
+  public_url: httpsUrlSchema.optional().nullable(),
+  icon_url: httpsUrlSchema.optional().nullable(),
+  status: appStatusSchema,
+  responsible_user_id: z.string().uuid().optional().nullable(),
+});
+
+export const toggleAppFlagSchema = z.object({
+  slug: appSlugSchema,
+  flag: z.enum(["active", "accepts_new_subscriptions"]),
+  value: z.boolean(),
+  reason: z.string().trim().min(5, "Motivo precisa ter pelo menos 5 caracteres"),
+});
+
+export type CreateAppInput = z.infer<typeof createAppSchema>;
+export type UpdateAppInput = z.infer<typeof updateAppSchema>;
+export type ToggleAppFlagInput = z.infer<typeof toggleAppFlagSchema>;
