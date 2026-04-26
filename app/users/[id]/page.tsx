@@ -1,15 +1,44 @@
 import { notFound } from "next/navigation";
 import { AdminShell } from "@/components/AdminShell";
-import { MembershipsTable } from "@/components/MembershipsTable";
-import { AuditList } from "@/components/AuditList";
-import { UserActions } from "@/components/UserActions";
+import { GlobalUserActions } from "@/components/GlobalUserActions";
+import { TabNav, type TabItem } from "@/components/Tabs";
+import { AccessTab } from "@/components/AccessTab";
+import { PlansTab } from "@/components/PlansTab";
+import { AuditTab } from "@/components/AuditTab";
 import { getCallerJwt } from "@/lib/auth";
-import { getUser, listApps } from "@/lib/data";
+import {
+  getUser,
+  listApps,
+  listPlansCatalog,
+  listUserSubscriptions,
+} from "@/lib/data";
 
 export const dynamic = "force-dynamic";
 
-export default async function UserDetailPage(props: { params: Promise<{ id: string }> }) {
+const VALID_TABS = ["access", "plans", "audit"] as const;
+type ValidTab = (typeof VALID_TABS)[number];
+
+function resolveTab(raw: string | string[] | undefined): ValidTab {
+  const v = Array.isArray(raw) ? raw[0] : raw;
+  return (VALID_TABS as readonly string[]).includes(v ?? "")
+    ? (v as ValidTab)
+    : "access";
+}
+
+const TAB_ITEMS: TabItem[] = [
+  { key: "access", label: "Acesso" },
+  { key: "plans", label: "Planos" },
+  { key: "audit", label: "Auditoria" },
+];
+
+export default async function UserDetailPage(props: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ tab?: string | string[] }>;
+}) {
   const { id } = await props.params;
+  const { tab: tabParam } = await props.searchParams;
+  const activeTab = resolveTab(tabParam);
+
   const jwt = await getCallerJwt();
   if (!jwt) {
     return (
@@ -19,11 +48,23 @@ export default async function UserDetailPage(props: { params: Promise<{ id: stri
     );
   }
 
-  const [user, apps] = await Promise.all([
+  const [user, apps, plansCatalog, subscriptions] = await Promise.all([
     getUser({ callerJwt: jwt, userId: id }),
     listApps({ callerJwt: jwt }),
+    listPlansCatalog({ callerJwt: jwt }),
+    listUserSubscriptions({ callerJwt: jwt, userId: id }),
   ]);
   if (!user) notFound();
+
+  const availablePlans = plansCatalog.map((p) => ({
+    id: p.id,
+    slug: p.slug,
+    name: p.name,
+    billing_period: p.billing_period,
+    price_amount: p.price_amount,
+    currency: p.currency,
+    is_active: p.is_active,
+  }));
 
   return (
     <AdminShell>
@@ -31,29 +72,35 @@ export default async function UserDetailPage(props: { params: Promise<{ id: stri
         <h1 className="font-display font-semibold text-2xl">{user.email}</h1>
         <p className="text-muted-foreground text-sm">
           Criado em {new Date(user.created_at).toLocaleString("pt-BR")}
-          {user.is_super_admin && <span className="ml-2 text-primary">· super-admin</span>}
+          {user.is_super_admin && (
+            <span className="ml-2 text-primary">· super-admin</span>
+          )}
         </p>
       </header>
 
-      <section className="space-y-6">
-        <UserActions
+      <GlobalUserActions
+        userId={user.id}
+        email={user.email}
+        isSuperAdmin={user.is_super_admin}
+      />
+
+      <TabNav items={TAB_ITEMS} active={activeTab} />
+
+      <div role="tabpanel" hidden={activeTab !== "access"}>
+        <AccessTab userId={user.id} memberships={user.memberships} apps={apps} />
+      </div>
+
+      <div role="tabpanel" hidden={activeTab !== "plans"}>
+        <PlansTab
           userId={user.id}
-          email={user.email}
-          isSuperAdmin={user.is_super_admin}
-          memberships={user.memberships}
-          apps={apps}
+          subscriptions={subscriptions}
+          availablePlans={availablePlans}
         />
+      </div>
 
-        <div>
-          <h2 className="font-display text-lg mb-2">Memberships</h2>
-          <MembershipsTable memberships={user.memberships} />
-        </div>
-
-        <div>
-          <h2 className="font-display text-lg mb-2">Eventos recentes</h2>
-          <AuditList events={user.recentAudit} />
-        </div>
-      </section>
+      <div role="tabpanel" hidden={activeTab !== "audit"}>
+        <AuditTab userId={user.id} events={user.recentAudit} />
+      </div>
     </AdminShell>
   );
 }
