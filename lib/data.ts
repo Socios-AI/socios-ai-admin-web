@@ -380,3 +380,35 @@ export async function listUserSubscriptions(args: {
     };
   });
 }
+
+// =============================================================
+// Plan G.5: audit log read helpers
+// =============================================================
+
+export type SearchUserIdsResult =
+  | { ids: string[]; truncated: boolean }
+  | { error: "VALIDATION" };
+
+function escapeIlike(s: string): string {
+  return s.replace(/\\/g, "\\\\").replace(/%/g, "\\%").replace(/_/g, "\\_");
+}
+
+export async function searchUserIdsByEmail(args: {
+  callerJwt: string;
+  query: string;
+}): Promise<SearchUserIdsResult> {
+  const trimmed = args.query.trim();
+  if (trimmed.length < 3) return { error: "VALIDATION" };
+
+  const sb = getCallerClient({ callerJwt: args.callerJwt });
+  const { data, error } = await sb
+    .from("profiles")
+    .select("id")
+    .ilike("email", `%${escapeIlike(trimmed)}%`)
+    .limit(50);
+
+  if (error) throw new Error(`searchUserIdsByEmail failed: ${error.message}`);
+
+  const rows = (data ?? []) as Array<{ id: string }>;
+  return { ids: rows.map((r) => r.id), truncated: rows.length === 50 };
+}
