@@ -217,3 +217,44 @@ describe("listAuditEvents (without cursor)", () => {
     ).rejects.toThrow(/RLS denied/);
   });
 });
+
+describe("listAuditEvents (with cursor)", () => {
+  it("calls or() with keyset expression when cursor provided", async () => {
+    const sb = buildSb([]);
+    callerClientMock.mockReturnValue({ from: sb.from });
+
+    await listAuditEvents({
+      callerJwt: "jwt",
+      filters: {},
+      cursor: { created_at: "2026-04-26T10:30:00.000Z", id: 42 },
+    });
+
+    const orCall = sb.calls.find((c) => c.method === "or");
+    expect(orCall).toBeDefined();
+    expect(orCall!.args[0]).toBe(
+      "created_at.lt.2026-04-26T10:30:00.000Z,and(created_at.eq.2026-04-26T10:30:00.000Z,id.lt.42)",
+    );
+  });
+
+  it("cursor=null skips or()", async () => {
+    const sb = buildSb([]);
+    callerClientMock.mockReturnValue({ from: sb.from });
+
+    await listAuditEvents({ callerJwt: "jwt", filters: {}, cursor: null });
+    expect(sb.calls.find((c) => c.method === "or")).toBeUndefined();
+  });
+
+  it("cursor + filters: both eq and or are called", async () => {
+    const sb = buildSb([]);
+    callerClientMock.mockReturnValue({ from: sb.from });
+
+    await listAuditEvents({
+      callerJwt: "jwt",
+      filters: { event_type: "plan.updated" },
+      cursor: { created_at: "2026-04-26T10:30:00.000Z", id: 42 },
+    });
+
+    expect(sb.calls.some((c) => c.method === "eq")).toBe(true);
+    expect(sb.calls.some((c) => c.method === "or")).toBe(true);
+  });
+});
