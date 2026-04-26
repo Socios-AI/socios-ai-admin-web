@@ -7,7 +7,7 @@ const ITEMS = [
   { href: "/apps", label: "Apps", Icon: AppWindow },
   { href: "/plans", label: "Planos", Icon: Tag },
   { href: "/sessions", label: "Sessões (em breve)", Icon: Activity, disabled: true },
-  { href: "/audit", label: "Auditoria (em breve)", Icon: FileText, disabled: true },
+  { href: "/audit", label: "Auditoria", Icon: FileText },
 ];
 
 export function Sidebar() {
