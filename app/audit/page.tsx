@@ -157,10 +157,30 @@ export default async function AuditPage(props: { searchParams: Promise<SearchPar
           <div className="rounded-2xl border border-destructive bg-destructive/5 p-6">
             <p className="text-destructive font-medium">Erro ao carregar auditoria.</p>
             <p className="text-sm text-muted-foreground mt-1 font-mono">{pageError}</p>
+            <form action="/audit" method="get" className="mt-3">
+              {Object.entries(sp).map(([k, v]) =>
+                typeof v === "string" && v.length > 0 ? (
+                  <input key={k} type="hidden" name={k} value={v} />
+                ) : null,
+              )}
+              <button
+                type="submit"
+                className="rounded-lg border border-border bg-card px-3 py-2 text-sm hover:bg-muted"
+              >
+                Tentar novamente
+              </button>
+            </form>
           </div>
         ) : (
           <>
-            <AuditTable rows={rows} profileMap={profileMap} />
+            <AuditTable
+              rows={rows}
+              profileMap={profileMap}
+              filtersApplied={Boolean(
+                parsed.event_type || parsed.app_slug || parsed.from || parsed.to ||
+                parsed.actor || parsed.actor_id || parsed.target || parsed.target_id
+              )}
+            />
             <AuditPagination
               currentParams={{
                 event_type: parsed.event_type,

@@ -117,7 +117,7 @@ export function AuditFilters({ apps, initial }: AuditFiltersProps) {
         </label>
 
         <div className="block text-sm">
-          <span className="block mb-1 text-muted-foreground">Periodo</span>
+          <span className="block mb-1 text-muted-foreground">Período</span>
           <div className="flex flex-wrap gap-1">
             <button
               type="button"

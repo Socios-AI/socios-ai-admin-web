@@ -15,6 +15,18 @@
  *
  * Cleanup manual de execuções abortadas:
  *   delete from audit_log where metadata ? 'bench_id';
+ *
+ * IMPORTANTE - LIMITAÇÃO DA METODOLOGIA:
+ *   Toda query do bench inclui `eq("metadata->>bench_id", benchId)` para
+ *   isolar dados sintéticos de dados reais. Esse predicado JSONB não tem
+ *   índice e força o planner a combinar com os índices "reais" de forma
+ *   não representativa de prod. Use os números do bench para:
+ *     - COMPARAÇÃO RELATIVA entre filtros (qual é mais lento?)
+ *     - CONFIRMAR Index Scan availability nos filtros indexados via EXPLAIN
+ *   NÃO use os p99 absolutos como SLO — em prod, sem o filtro de metadata,
+ *   as mesmas queries serão mais rápidas. Para validação de SLO real,
+ *   rode EXPLAIN ANALYZE manualmente no Supabase SQL editor sem o filtro
+ *   bench_id.
  */
 import { createClient } from "@supabase/supabase-js";
 import { randomUUID } from "node:crypto";

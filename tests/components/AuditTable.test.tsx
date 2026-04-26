@@ -20,9 +20,16 @@ function makeRow(over: Partial<AuditLogEntry> = {}): AuditLogEntry {
 }
 
 describe("AuditTable", () => {
-  it("renders 'sem eventos' when rows is empty", () => {
+  it("renders 'sem eventos registrado' when rows is empty and no filters applied", () => {
     render(<AuditTable rows={[]} profileMap={new Map()} />);
-    expect(screen.getByText(/nenhum evento/i)).toBeTruthy();
+    expect(screen.getByText(/nenhum evento registrado/i)).toBeTruthy();
+  });
+
+  it("renders 'nenhum evento encontrado' + limpar filtros link when filtersApplied", () => {
+    render(<AuditTable rows={[]} profileMap={new Map()} filtersApplied />);
+    expect(screen.getByText(/nenhum evento encontrado/i)).toBeTruthy();
+    const link = screen.getByRole("link", { name: /limpar filtros/i }) as HTMLAnchorElement;
+    expect(link.getAttribute("href")).toBe("/audit");
   });
 
   it("renders email when actor is in profileMap", () => {

@@ -3,6 +3,7 @@ import type { AuditLogEntry } from "@/lib/data";
 export type AuditTableProps = {
   rows: AuditLogEntry[];
   profileMap: Map<string, { email: string }>;
+  filtersApplied?: boolean;
 };
 
 function truncateUuid(id: string): string {
@@ -19,11 +20,20 @@ function formatWhen(iso: string): string {
   return new Date(iso).toLocaleString("pt-BR");
 }
 
-export function AuditTable({ rows, profileMap }: AuditTableProps) {
+export function AuditTable({ rows, profileMap, filtersApplied }: AuditTableProps) {
   if (rows.length === 0) {
     return (
       <div className="rounded-2xl border border-border bg-card p-6 text-center">
-        <p className="text-sm text-muted-foreground">Nenhum evento encontrado para os filtros atuais.</p>
+        {filtersApplied ? (
+          <>
+            <p className="text-sm text-muted-foreground">Nenhum evento encontrado para os filtros atuais.</p>
+            <a href="/audit" className="text-sm text-primary hover:underline mt-2 inline-block">
+              Limpar filtros
+            </a>
+          </>
+        ) : (
+          <p className="text-sm text-muted-foreground">Nenhum evento registrado ainda.</p>
+        )}
       </div>
     );
   }
