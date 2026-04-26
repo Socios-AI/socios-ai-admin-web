@@ -37,6 +37,7 @@ const TOTAL = 10_000;
 const BATCH = 1_000;
 const EVENT_TYPES = [
   "app.created", "app.updated", "app.activated", "app.deactivated",
+  "app.subscriptions_opened", "app.subscriptions_closed",
   "plan.created", "plan.updated", "plan.deactivated", "plan.stripe_synced",
   "subscription.assigned_manually", "subscription.canceled",
   "membership.granted", "membership.revoked",
