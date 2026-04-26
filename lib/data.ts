@@ -412,3 +412,25 @@ export async function searchUserIdsByEmail(args: {
   const rows = (data ?? []) as Array<{ id: string }>;
   return { ids: rows.map((r) => r.id), truncated: rows.length === 50 };
 }
+
+export async function resolveProfilesByIds(args: {
+  callerJwt: string;
+  ids: string[];
+}): Promise<Map<string, { email: string }>> {
+  const unique = Array.from(new Set(args.ids));
+  if (unique.length === 0) return new Map();
+
+  const sb = getCallerClient({ callerJwt: args.callerJwt });
+  const { data, error } = await sb
+    .from("profiles")
+    .select("id, email")
+    .in("id", unique);
+
+  if (error) throw new Error(`resolveProfilesByIds failed: ${error.message}`);
+
+  const map = new Map<string, { email: string }>();
+  for (const row of (data ?? []) as Array<{ id: string; email: string }>) {
+    map.set(row.id, { email: row.email });
+  }
+  return map;
+}
