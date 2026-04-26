@@ -55,11 +55,35 @@ describe("middleware", () => {
     expect(res.headers.get("location")).toContain("https://id.sociosai.com/login");
   });
 
-  it("passes through when super_admin claim is true", async () => {
-    verifyMock.mockResolvedValue({ payload: { super_admin: true, sub: "u1" } });
+  it("passes through when super_admin AND mfa_enrolled AND aal=aal2", async () => {
+    verifyMock.mockResolvedValue({
+      payload: { super_admin: true, mfa_enrolled: true, aal: "aal2", sub: "u1" },
+    });
     const res = await middleware(makeReq("/users", { cookieValue: "valid" }));
     // NextResponse.next() returns 200 with no rewrite header
     expect(res.status).toBe(200);
     expect(res.headers.get("x-middleware-rewrite")).toBeNull();
+  });
+
+  it("redirects to id mfa-enroll when super_admin but mfa_enrolled=false", async () => {
+    verifyMock.mockResolvedValue({
+      payload: { super_admin: true, mfa_enrolled: false, aal: "aal1", sub: "u1" },
+    });
+    const res = await middleware(makeReq("/users", { cookieValue: "valid" }));
+    expect(res.status).toBe(307);
+    const loc = res.headers.get("location") ?? "";
+    expect(loc).toContain("https://id.sociosai.com/mfa-enroll");
+    expect(loc).toContain("from=https%3A%2F%2Fadmin.sociosai.com%2Fusers");
+  });
+
+  it("redirects to id mfa-challenge when mfa_enrolled=true but aal=aal1", async () => {
+    verifyMock.mockResolvedValue({
+      payload: { super_admin: true, mfa_enrolled: true, aal: "aal1", sub: "u1" },
+    });
+    const res = await middleware(makeReq("/users", { cookieValue: "valid" }));
+    expect(res.status).toBe(307);
+    const loc = res.headers.get("location") ?? "";
+    expect(loc).toContain("https://id.sociosai.com/mfa-challenge");
+    expect(loc).toContain("from=https%3A%2F%2Fadmin.sociosai.com%2Fusers");
   });
 });

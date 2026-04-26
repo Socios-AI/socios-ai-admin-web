@@ -38,6 +38,24 @@ function buildRedirectToId(req: NextRequest): NextResponse {
   return NextResponse.redirect(target, { status: 307 });
 }
 
+function buildRedirectToMfaEnroll(req: NextRequest): NextResponse {
+  const target = new URL("https://id.sociosai.com/mfa-enroll");
+  const host = req.headers.get("x-forwarded-host") ?? req.headers.get("host") ?? "admin.sociosai.com";
+  const proto = req.headers.get("x-forwarded-proto") ?? "https";
+  const publicUrl = `${proto}://${host}${req.nextUrl.pathname}${req.nextUrl.search}`;
+  target.searchParams.set("from", publicUrl);
+  return NextResponse.redirect(target, { status: 307 });
+}
+
+function buildRedirectToMfaChallenge(req: NextRequest): NextResponse {
+  const target = new URL("https://id.sociosai.com/mfa-challenge");
+  const host = req.headers.get("x-forwarded-host") ?? req.headers.get("host") ?? "admin.sociosai.com";
+  const proto = req.headers.get("x-forwarded-proto") ?? "https";
+  const publicUrl = `${proto}://${host}${req.nextUrl.pathname}${req.nextUrl.search}`;
+  target.searchParams.set("from", publicUrl);
+  return NextResponse.redirect(target, { status: 307 });
+}
+
 const STATIC_RE = /^\/_next\/static|^\/_next\/image|^\/favicon\.ico|^\/brand|^\/forbidden|\.svg$|\.png$/;
 
 export async function middleware(req: NextRequest) {
@@ -57,13 +75,25 @@ export async function middleware(req: NextRequest) {
 
   try {
     const { payload } = await jwtVerify(token, jwks);
-    if (payload["super_admin"] === true) {
-      return NextResponse.next();
+
+    // Non-admins always get /forbidden, regardless of MFA status.
+    if (payload["super_admin"] !== true) {
+      const url = req.nextUrl.clone();
+      url.pathname = "/forbidden";
+      return NextResponse.rewrite(url);
     }
-    // Authenticated but not super-admin -> 403 page
-    const url = req.nextUrl.clone();
-    url.pathname = "/forbidden";
-    return NextResponse.rewrite(url);
+
+    // Admin without MFA enrollment -> bounce to enroll on id.sociosai.com.
+    if (payload["mfa_enrolled"] !== true) {
+      return buildRedirectToMfaEnroll(req);
+    }
+
+    // Admin enrolled but session is aal1 -> bounce to challenge for AAL2.
+    if (payload["aal"] !== "aal2") {
+      return buildRedirectToMfaChallenge(req);
+    }
+
+    return NextResponse.next();
   } catch {
     return buildRedirectToId(req);
   }
