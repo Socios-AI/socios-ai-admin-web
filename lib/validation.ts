@@ -244,3 +244,26 @@ export function featuresObjectToArray(obj: Record<string, unknown> | null | unde
     })
     .map(([key, value]) => ({ key, value }));
 }
+
+// =============================================================
+// Plan G.4: subscriptions (manual assignment + cancel)
+// =============================================================
+
+export const subscriptionIdSchema = z.string().uuid("subscriptionId inválido");
+export const planIdSchema = z.string().uuid("planId inválido");
+
+export const assignManualSubscriptionSchema = z.object({
+  userId: userIdSchema,
+  planId: planIdSchema,
+  startedAt: z.string().datetime().optional(),
+  currentPeriodEnd: z.string().datetime().nullable(),
+  notes: z.string().trim().max(500, "Observação muito longa").optional(),
+});
+
+export const cancelSubscriptionSchema = z.object({
+  subscriptionId: subscriptionIdSchema,
+  reason: reasonSchema,
+});
+
+export type AssignManualSubscriptionInput = z.infer<typeof assignManualSubscriptionSchema>;
+export type CancelSubscriptionInput = z.infer<typeof cancelSubscriptionSchema>;
