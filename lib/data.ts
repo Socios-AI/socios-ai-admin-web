@@ -1,4 +1,5 @@
 import { getCallerClient } from "@socios-ai/auth/admin";
+import { encodeCursor, type AuditCursor } from "./audit-cursor";
 
 export type UserRow = {
   id: string;
@@ -433,4 +434,85 @@ export async function resolveProfilesByIds(args: {
     map.set(row.id, { email: row.email });
   }
   return map;
+}
+
+export type AuditLogEntry = {
+  id: number;
+  event_type: string;
+  actor_user_id: string | null;
+  target_user_id: string | null;
+  app_slug: string | null;
+  org_id: string | null;
+  metadata: Record<string, unknown>;
+  ip_address: string | null;
+  user_agent: string | null;
+  created_at: string;
+};
+
+export type AuditFilters = {
+  event_type?: string;
+  app_slug?: string;
+  from?: string;
+  to?: string;
+};
+
+export type ListAuditEventsArgs = {
+  callerJwt: string;
+  filters: AuditFilters;
+  actorIds?: string[];   // undefined = no actor filter; [] = "0 matches, return empty"
+  targetIds?: string[];  // same convention
+  cursor?: AuditCursor | null;
+};
+
+export type ListAuditEventsResult = {
+  rows: AuditLogEntry[];
+  hasMore: boolean;
+  nextCursor: string | null;
+};
+
+const PAGE_SIZE = 50;
+
+export async function listAuditEvents(args: ListAuditEventsArgs): Promise<ListAuditEventsResult> {
+  // Empty actor/target IDs short-circuit (means user search returned 0 matches).
+  if (args.actorIds !== undefined && args.actorIds.length === 0) {
+    return { rows: [], hasMore: false, nextCursor: null };
+  }
+  if (args.targetIds !== undefined && args.targetIds.length === 0) {
+    return { rows: [], hasMore: false, nextCursor: null };
+  }
+
+  const sb = getCallerClient({ callerJwt: args.callerJwt });
+  let q = sb
+    .from("audit_log")
+    .select("id, event_type, actor_user_id, target_user_id, app_slug, org_id, metadata, ip_address, user_agent, created_at");
+
+  if (args.filters.event_type) q = q.eq("event_type", args.filters.event_type);
+  if (args.filters.app_slug)   q = q.eq("app_slug", args.filters.app_slug);
+  if (args.actorIds && args.actorIds.length > 0)   q = q.in("actor_user_id", args.actorIds);
+  if (args.targetIds && args.targetIds.length > 0) q = q.in("target_user_id", args.targetIds);
+  if (args.filters.from) q = q.gte("created_at", args.filters.from);
+  if (args.filters.to)   q = q.lte("created_at", args.filters.to);
+
+  if (args.cursor) {
+    q = q.or(
+      `created_at.lt.${args.cursor.created_at},and(created_at.eq.${args.cursor.created_at},id.lt.${args.cursor.id})`,
+    );
+  }
+
+  const { data, error } = await q
+    .order("created_at", { ascending: false })
+    .order("id", { ascending: false })
+    .limit(PAGE_SIZE + 1);
+
+  if (error) throw new Error(`listAuditEvents failed: ${error.message}`);
+
+  const all = (data ?? []) as AuditLogEntry[];
+  const hasMore = all.length > PAGE_SIZE;
+  const rows = all.slice(0, PAGE_SIZE);
+  const last = rows[rows.length - 1];
+  const nextCursor = hasMore && last
+    ? encodeCursor({ created_at: last.created_at, id: last.id })
+    : null;
+
+  return { rows, hasMore, nextCursor };
 }
