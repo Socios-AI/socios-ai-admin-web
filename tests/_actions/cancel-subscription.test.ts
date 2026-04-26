@@ -130,7 +130,7 @@ describe("cancelSubscriptionAction", () => {
         canceled_at: expect.any(String),
       }),
     );
-    const updatePayload = sb.subUpdate.mock.calls[0][0];
+    const updatePayload = (sb.subUpdate.mock.calls[0] as unknown as unknown[])[0];
     expect(updatePayload).not.toHaveProperty("current_period_end");
 
     // Audit
