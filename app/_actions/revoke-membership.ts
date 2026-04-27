@@ -5,7 +5,7 @@ import { getCallerClaims, getCallerJwt } from "@/lib/auth";
 import { revokeMembershipSchema } from "@/lib/validation";
 
 export type RevokeMembershipResult =
-  | { ok: true; revokedAt: string }
+  | { ok: true; revokedAt: string; suggestForceLogout: true }
   | { ok: false; error: "FORBIDDEN" | "VALIDATION" | "API_ERROR"; message?: string };
 
 export async function revokeMembershipAction(input: {
@@ -29,7 +29,7 @@ export async function revokeMembershipAction(input: {
       reason: parsed.data.reason,
       callerJwt: jwt,
     });
-    return { ok: true, revokedAt: result.revokedAt };
+    return { ok: true, revokedAt: result.revokedAt, suggestForceLogout: true };
   } catch (err) {
     return {
       ok: false,

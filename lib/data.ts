@@ -302,3 +302,81 @@ export async function getPlan(args: { callerJwt: string; id: string }): Promise<
   if (!data) return null;
   return normalizePlan(data as PlanRowFromDb);
 }
+
+// =============================================================
+// Plan G.4: subscriptions read helper for /users/[id] Planos tab
+// =============================================================
+
+export type SubscriptionStatus =
+  | "active"
+  | "trialing"
+  | "past_due"
+  | "canceled"
+  | "manual"
+  | "expired";
+
+export type UserSubscription = {
+  id: string;
+  status: SubscriptionStatus;
+  started_at: string;
+  current_period_end: string | null;
+  canceled_at: string | null;
+  notes: string | null;
+  external_ref: string | null;
+  plan: {
+    id: string;
+    slug: string;
+    name: string;
+    billing_period: BillingPeriod;
+    price_amount: number;
+    currency: PlanCurrency;
+    app_slugs: string[];
+  };
+};
+
+export async function listUserSubscriptions(args: {
+  callerJwt: string;
+  userId: string;
+}): Promise<UserSubscription[]> {
+  const sb = getCallerClient({ callerJwt: args.callerJwt });
+  const { data, error } = await sb
+    .from("subscriptions")
+    .select(
+      "id, status, started_at, current_period_end, canceled_at, external_ref, metadata, plans:plans(id, slug, name, billing_period, price_amount, currency, plan_apps:plan_apps(app_slug))",
+    )
+    .eq("user_id", args.userId)
+    .order("created_at", { ascending: false });
+
+  if (error) throw new Error(`listUserSubscriptions failed: ${error.message}`);
+
+  return (data ?? []).map((row: Record<string, unknown>) => {
+    const metadata = (row.metadata ?? {}) as { notes?: string };
+    const plan = row.plans as {
+      id: string;
+      slug: string;
+      name: string;
+      billing_period: BillingPeriod;
+      price_amount: number;
+      currency: PlanCurrency;
+      plan_apps?: Array<{ app_slug: string }>;
+    };
+    return {
+      id: row.id as string,
+      status: row.status as SubscriptionStatus,
+      started_at: row.started_at as string,
+      current_period_end: (row.current_period_end as string | null) ?? null,
+      canceled_at: (row.canceled_at as string | null) ?? null,
+      notes: metadata.notes ?? null,
+      external_ref: (row.external_ref as string | null) ?? null,
+      plan: {
+        id: plan.id,
+        slug: plan.slug,
+        name: plan.name,
+        billing_period: plan.billing_period,
+        price_amount: plan.price_amount,
+        currency: plan.currency,
+        app_slugs: (plan.plan_apps ?? []).map((p) => p.app_slug),
+      },
+    };
+  });
+}

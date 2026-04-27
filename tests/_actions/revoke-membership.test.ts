@@ -34,7 +34,11 @@ describe("revokeMembershipAction", () => {
       reason: "no longer needs access",
     });
 
-    expect(result).toEqual({ ok: true, revokedAt: "2026-04-23T00:00:00Z" });
+    expect(result).toEqual({
+      ok: true,
+      revokedAt: "2026-04-23T00:00:00Z",
+      suggestForceLogout: true,
+    });
     expect(revokeMock).toHaveBeenCalledWith({
       membershipId: "44444444-4444-4444-4444-444444444444",
       reason: "no longer needs access",
