@@ -425,6 +425,66 @@ export async function listUserSubscriptions(args: {
 }
 
 // =============================================================
+// Plan H: org listing helper
+// =============================================================
+
+export type OrgListing = {
+  orgId: string;
+  appSlug: string;
+  activeMembers: number;
+  firstSeen: string;
+  lastActivity: string;
+};
+
+export async function listOrgs(args: {
+  callerJwt: string;
+  app?: string;
+}): Promise<OrgListing[]> {
+  const sb = getCallerClient({ callerJwt: args.callerJwt });
+
+  let q = sb
+    .from("app_memberships")
+    .select("org_id, app_slug, revoked_at, created_at")
+    .not("org_id", "is", null);
+  if (args.app) q = q.eq("app_slug", args.app);
+
+  const { data, error } = await q;
+  if (error) throw new Error(`listOrgs failed: ${error.message}`);
+
+  const rows = (data ?? []) as Array<{
+    org_id: string;
+    app_slug: string;
+    revoked_at: string | null;
+    created_at: string;
+  }>;
+
+  const groups = new Map<string, OrgListing>();
+  for (const r of rows) {
+    const key = `${r.org_id}|${r.app_slug}`;
+    const existing = groups.get(key);
+    const isActive = r.revoked_at === null;
+    if (!existing) {
+      groups.set(key, {
+        orgId: r.org_id,
+        appSlug: r.app_slug,
+        activeMembers: isActive ? 1 : 0,
+        firstSeen: r.created_at,
+        lastActivity: r.created_at,
+      });
+      continue;
+    }
+    if (isActive) existing.activeMembers += 1;
+    if (r.created_at < existing.firstSeen) existing.firstSeen = r.created_at;
+    if (r.created_at > existing.lastActivity) existing.lastActivity = r.created_at;
+  }
+
+  return [...groups.values()]
+    .filter((g) => g.activeMembers > 0)
+    .sort((a, b) => (a.lastActivity < b.lastActivity ? 1 : -1))
+    .slice(0, 100);
+}
+
+// =============================================================
 // Plan G.5: audit log read helpers
 // =============================================================
 
