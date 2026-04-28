@@ -156,7 +156,7 @@ export function PlansTab({ userId, subscriptions, availablePlans }: Props) {
               href={orgHref}
               className="text-xs text-muted-foreground hover:underline"
             >
-              Cancelar via organizacao
+              Cancelar via organização
             </Link>
           )}
         </td>

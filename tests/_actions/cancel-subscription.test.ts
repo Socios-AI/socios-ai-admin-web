@@ -34,6 +34,7 @@ function buildSb(opts: {
   sub?: { user_id: string | null; org_id?: string | null; status: string; plan_id: string } | null;
   subError?: { message: string } | null;
   updateError?: { message: string } | null;
+  plan?: { slug: string; name: string } | null;
 }) {
   const subSelectSingle = vi.fn().mockResolvedValue({
     data: opts.sub ?? {
@@ -52,13 +53,24 @@ function buildSb(opts: {
 
   const auditInsert = vi.fn().mockResolvedValue({ error: null });
 
+  const planSelectSingle = vi.fn().mockResolvedValue({
+    data: opts.plan ?? {
+      slug: "case-pro",
+      name: "Case Pro",
+    },
+    error: null,
+  });
+  const planSelectEq = vi.fn(() => ({ single: planSelectSingle }));
+  const planSelect = vi.fn(() => ({ eq: planSelectEq }));
+
   const from = vi.fn((table: string) => {
     if (table === "subscriptions") return { select: subSelect, update: subUpdate };
+    if (table === "plans") return { select: planSelect };
     if (table === "audit_log") return { insert: auditInsert };
     throw new Error(`unexpected table ${table}`);
   });
 
-  return { from, subSelect, subUpdate, updateEq, auditInsert };
+  return { from, subSelect, subUpdate, updateEq, auditInsert, planSelect, planSelectEq };
 }
 
 beforeEach(() => {
@@ -150,6 +162,8 @@ describe("cancelSubscriptionAction", () => {
           reason: validInput.reason,
           user_id: "11111111-1111-1111-1111-111111111111",
           plan_id: "22222222-2222-2222-2222-222222222222",
+          plan_slug: "case-pro",
+          plan_name: "Case Pro",
         }),
       }),
     );
@@ -181,6 +195,10 @@ describe("cancelSubscriptionAction · org branch", () => {
         status: "manual",
         plan_id: "22222222-2222-2222-2222-222222222222",
       },
+      plan: {
+        slug: "team",
+        name: "Team",
+      },
     });
     adminClientMock.mockReturnValue({ from: sb.from });
 
@@ -195,6 +213,8 @@ describe("cancelSubscriptionAction · org branch", () => {
       subject_type: "org",
       subject_id: "33333333-3333-3333-3333-333333333333",
       org_id: "33333333-3333-3333-3333-333333333333",
+      plan_slug: "team",
+      plan_name: "Team",
     });
     expect(auditCall.metadata.user_id).toBeUndefined();
     expect(revalidatePath).toHaveBeenCalledWith(

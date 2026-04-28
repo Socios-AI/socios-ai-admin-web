@@ -48,6 +48,13 @@ export async function cancelSubscriptionAction(
     };
   }
 
+  // Fetch plan details for audit enrichment
+  const { data: plan } = await sb
+    .from("plans")
+    .select("slug, name")
+    .eq("id", sub.plan_id)
+    .single();
+
   // 2. Update status + canceled_at (current_period_end preserved as history)
   const { error: updateError } = await sb
     .from("subscriptions")
@@ -68,6 +75,8 @@ export async function cancelSubscriptionAction(
   const auditMetadata: Record<string, unknown> = {
     subscription_id: data.subscriptionId,
     plan_id: sub.plan_id,
+    plan_slug: plan?.slug ?? null,
+    plan_name: plan?.name ?? null,
     subject_type: isOrg ? "org" : "user",
     subject_id: subjectId,
     reason: data.reason,
