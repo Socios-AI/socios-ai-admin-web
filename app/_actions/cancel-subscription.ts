@@ -30,10 +30,10 @@ export async function cancelSubscriptionAction(
 
   const sb = getSupabaseAdminClient();
 
-  // 1. Read subscription to get user_id (revalidatePath) and validate status
+  // 1. Read subscription to get user_id/org_id (revalidatePath) and validate status
   const { data: sub, error: subError } = await sb
     .from("subscriptions")
-    .select("user_id, status, plan_id")
+    .select("user_id, org_id, status, plan_id")
     .eq("id", data.subscriptionId)
     .single();
 
@@ -47,6 +47,13 @@ export async function cancelSubscriptionAction(
       message: `Subscription já está ${sub.status === "canceled" ? "cancelada" : "expirada"}.`,
     };
   }
+
+  // Fetch plan details for audit enrichment
+  const { data: plan } = await sb
+    .from("plans")
+    .select("slug, name")
+    .eq("id", sub.plan_id)
+    .single();
 
   // 2. Update status + canceled_at (current_period_end preserved as history)
   const { error: updateError } = await sb
@@ -62,17 +69,34 @@ export async function cancelSubscriptionAction(
   }
 
   // 3. Audit
+  const isOrg = sub.org_id !== null && sub.org_id !== undefined;
+  const subjectId = isOrg ? sub.org_id : sub.user_id;
+
+  const auditMetadata: Record<string, unknown> = {
+    subscription_id: data.subscriptionId,
+    plan_id: sub.plan_id,
+    plan_slug: plan?.slug ?? null,
+    plan_name: plan?.name ?? null,
+    subject_type: isOrg ? "org" : "user",
+    subject_id: subjectId,
+    reason: data.reason,
+  };
+  if (isOrg) {
+    auditMetadata.org_id = sub.org_id;
+  } else {
+    auditMetadata.user_id = sub.user_id;
+  }
+
   await sb.from("audit_log").insert({
     event_type: "subscription.canceled",
     actor_user_id: adminId,
-    metadata: {
-      subscription_id: data.subscriptionId,
-      user_id: sub.user_id,
-      plan_id: sub.plan_id,
-      reason: data.reason,
-    },
+    metadata: auditMetadata,
   });
 
-  revalidatePath(`/users/${sub.user_id}`);
+  if (isOrg) {
+    revalidatePath(`/orgs/${sub.org_id!}`);
+  } else {
+    revalidatePath(`/users/${sub.user_id}`);
+  }
   return { ok: true };
 }

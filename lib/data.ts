@@ -333,6 +333,9 @@ export type UserSubscription = {
     currency: PlanCurrency;
     app_slugs: string[];
   };
+  via: "user" | "org";
+  via_org_id: string | null;
+  via_app_slug: string | null;
 };
 
 export async function listUserSubscriptions(args: {
@@ -340,17 +343,41 @@ export async function listUserSubscriptions(args: {
   userId: string;
 }): Promise<UserSubscription[]> {
   const sb = getCallerClient({ callerJwt: args.callerJwt });
-  const { data, error } = await sb
+
+  const { data: userRows, error: userErr } = await sb
     .from("subscriptions")
     .select(
       "id, status, started_at, current_period_end, canceled_at, external_ref, metadata, plans:plans(id, slug, name, billing_period, price_amount, currency, plan_apps:plan_apps(app_slug))",
     )
     .eq("user_id", args.userId)
-    .order("created_at", { ascending: false });
+    .order("started_at", { ascending: false });
+  if (userErr) throw new Error(`listUserSubscriptions (user) failed: ${userErr.message}`);
 
-  if (error) throw new Error(`listUserSubscriptions failed: ${error.message}`);
+  const { data: memberships, error: memErr } = await sb
+    .from("app_memberships")
+    .select("org_id, app_slug")
+    .eq("user_id", args.userId)
+    .is("revoked_at", null)
+    .not("org_id", "is", null);
+  if (memErr) throw new Error(`listUserSubscriptions (memberships) failed: ${memErr.message}`);
 
-  return (data ?? []).map((row: Record<string, unknown>) => {
+  const orgKeys = (memberships ?? []) as Array<{ org_id: string; app_slug: string }>;
+  const orgIds = Array.from(new Set(orgKeys.map((m) => m.org_id)));
+
+  let orgRows: Record<string, unknown>[] = [];
+  if (orgIds.length > 0) {
+    const { data, error: orgErr } = await sb
+      .from("subscriptions")
+      .select(
+        "id, org_id, status, started_at, current_period_end, canceled_at, external_ref, metadata, plans:plans(id, slug, name, billing_period, price_amount, currency, plan_apps:plan_apps(app_slug))",
+      )
+      .in("org_id", orgIds)
+      .order("started_at", { ascending: false });
+    if (orgErr) throw new Error(`listUserSubscriptions (org) failed: ${orgErr.message}`);
+    orgRows = data ?? [];
+  }
+
+  function shape(row: Record<string, unknown>, via: "user" | "org"): UserSubscription {
     const metadata = (row.metadata ?? {}) as { notes?: string };
     const plan = row.plans as {
       id: string;
@@ -361,6 +388,14 @@ export async function listUserSubscriptions(args: {
       currency: PlanCurrency;
       plan_apps?: Array<{ app_slug: string }>;
     };
+    let via_org_id: string | null = null;
+    let via_app_slug: string | null = null;
+    if (via === "org") {
+      const orgId = row.org_id as string;
+      via_org_id = orgId;
+      const match = orgKeys.find((m) => m.org_id === orgId);
+      via_app_slug = match?.app_slug ?? null;
+    }
     return {
       id: row.id as string,
       status: row.status as SubscriptionStatus,
@@ -378,8 +413,191 @@ export async function listUserSubscriptions(args: {
         currency: plan.currency,
         app_slugs: (plan.plan_apps ?? []).map((p) => p.app_slug),
       },
+      via,
+      via_org_id,
+      via_app_slug,
+    };
+  }
+
+  const userShaped = (userRows ?? []).map((r) => shape(r as Record<string, unknown>, "user"));
+  const orgShaped = orgRows.map((r) => shape(r, "org"));
+  return [...userShaped, ...orgShaped];
+}
+
+// =============================================================
+// Plan H: org listing helper
+// =============================================================
+
+export type OrgListing = {
+  orgId: string;
+  appSlug: string;
+  activeMembers: number;
+  firstSeen: string;
+  lastActivity: string;
+};
+
+export async function listOrgs(args: {
+  callerJwt: string;
+  app?: string;
+}): Promise<OrgListing[]> {
+  const sb = getCallerClient({ callerJwt: args.callerJwt });
+
+  let q = sb
+    .from("app_memberships")
+    .select("org_id, app_slug, revoked_at, created_at")
+    .not("org_id", "is", null);
+  if (args.app) q = q.eq("app_slug", args.app);
+
+  const { data, error } = await q;
+  if (error) throw new Error(`listOrgs failed: ${error.message}`);
+
+  const rows = (data ?? []) as Array<{
+    org_id: string;
+    app_slug: string;
+    revoked_at: string | null;
+    created_at: string;
+  }>;
+
+  const groups = new Map<string, OrgListing>();
+  for (const r of rows) {
+    const key = `${r.org_id}|${r.app_slug}`;
+    const existing = groups.get(key);
+    const isActive = r.revoked_at === null;
+    if (!existing) {
+      groups.set(key, {
+        orgId: r.org_id,
+        appSlug: r.app_slug,
+        activeMembers: isActive ? 1 : 0,
+        firstSeen: r.created_at,
+        lastActivity: r.created_at,
+      });
+      continue;
+    }
+    if (isActive) existing.activeMembers += 1;
+    if (r.created_at < existing.firstSeen) existing.firstSeen = r.created_at;
+    if (r.created_at > existing.lastActivity) existing.lastActivity = r.created_at;
+  }
+
+  return [...groups.values()]
+    .filter((g) => g.activeMembers > 0)
+    .sort((a, b) => (a.lastActivity < b.lastActivity ? 1 : -1))
+    .slice(0, 100);
+}
+
+// =============================================================
+// Plan H: loadOrg - members + subscriptions for (org, app)
+// =============================================================
+
+export type OrgMember = {
+  membershipId: string;
+  userId: string;
+  email: string | null;
+  roleSlug: string;
+  createdAt: string;
+};
+
+export type OrgSubscription = {
+  id: string;
+  status: string;
+  started_at: string;
+  current_period_end: string | null;
+  canceled_at: string | null;
+  external_ref: string | null;
+  notes: string | null;
+  plan: {
+    id: string;
+    slug: string;
+    name: string;
+    billing_period: BillingPeriod;
+    price_amount: number;
+    currency: PlanCurrency;
+    apps: string[];
+  };
+};
+
+export type OrgDetail = {
+  orgId: string;
+  appSlug: string;
+  members: OrgMember[];
+  subscriptions: OrgSubscription[];
+};
+
+export async function loadOrg(args: {
+  callerJwt: string;
+  orgId: string;
+  appSlug: string;
+}): Promise<OrgDetail | null> {
+  const sb = getCallerClient({ callerJwt: args.callerJwt });
+
+  const { data: memberRows, error: memErr } = await sb
+    .from("app_memberships")
+    .select("id, user_id, role_slug, created_at, profiles:profiles(id, email)")
+    .eq("org_id", args.orgId)
+    .eq("app_slug", args.appSlug)
+    .is("revoked_at", null);
+  if (memErr) throw new Error(`loadOrg (members) failed: ${memErr.message}`);
+
+  const members = (memberRows ?? []) as unknown as Array<{
+    id: string;
+    user_id: string;
+    role_slug: string;
+    created_at: string;
+    profiles: { id: string; email: string | null } | null;
+  }>;
+  if (members.length === 0) return null;
+
+  const { data: subRows, error: subErr } = await sb
+    .from("subscriptions")
+    .select(
+      "id, status, started_at, current_period_end, canceled_at, external_ref, metadata, plans:plans(id, slug, name, billing_period, price_amount, currency, plan_apps:plan_apps(app_slug))",
+    )
+    .eq("org_id", args.orgId)
+    .order("started_at", { ascending: false });
+  if (subErr) throw new Error(`loadOrg (subs) failed: ${subErr.message}`);
+
+  const subscriptions: OrgSubscription[] = (subRows ?? []).map((row: Record<string, unknown>) => {
+    const metadata = (row.metadata ?? {}) as { notes?: string };
+    const plan = row.plans as {
+      id: string;
+      slug: string;
+      name: string;
+      billing_period: BillingPeriod;
+      price_amount: number;
+      currency: PlanCurrency;
+      plan_apps?: Array<{ app_slug: string }>;
+    };
+    return {
+      id: row.id as string,
+      status: row.status as string,
+      started_at: row.started_at as string,
+      current_period_end: (row.current_period_end as string | null) ?? null,
+      canceled_at: (row.canceled_at as string | null) ?? null,
+      external_ref: (row.external_ref as string | null) ?? null,
+      notes: metadata.notes ?? null,
+      plan: {
+        id: plan.id,
+        slug: plan.slug,
+        name: plan.name,
+        billing_period: plan.billing_period,
+        price_amount: plan.price_amount,
+        currency: plan.currency,
+        apps: (plan.plan_apps ?? []).map((a) => a.app_slug),
+      },
     };
   });
+
+  return {
+    orgId: args.orgId,
+    appSlug: args.appSlug,
+    members: members.map((m) => ({
+      membershipId: m.id,
+      userId: m.user_id,
+      email: m.profiles?.email ?? null,
+      roleSlug: m.role_slug,
+      createdAt: m.created_at,
+    })),
+    subscriptions,
+  };
 }
 
 // =============================================================

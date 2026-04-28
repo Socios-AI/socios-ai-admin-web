@@ -18,20 +18,28 @@ vi.mock("next/cache", () => ({
 }));
 
 import { cancelSubscriptionAction } from "../../app/_actions/cancel-subscription";
+import { revalidatePath } from "next/cache";
 
 const validInput = {
   subscriptionId: "33333333-3333-3333-3333-333333333333",
   reason: "Cliente solicitou cancelamento",
 };
 
+const SUPER_ADMIN_CLAIMS = {
+  sub: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+  super_admin: true,
+};
+
 function buildSb(opts: {
-  sub?: { user_id: string; status: string; plan_id: string } | null;
+  sub?: { user_id: string | null; org_id?: string | null; status: string; plan_id: string } | null;
   subError?: { message: string } | null;
   updateError?: { message: string } | null;
+  plan?: { slug: string; name: string } | null;
 }) {
   const subSelectSingle = vi.fn().mockResolvedValue({
     data: opts.sub ?? {
       user_id: "11111111-1111-1111-1111-111111111111",
+      org_id: null,
       status: "manual",
       plan_id: "22222222-2222-2222-2222-222222222222",
     },
@@ -45,13 +53,24 @@ function buildSb(opts: {
 
   const auditInsert = vi.fn().mockResolvedValue({ error: null });
 
+  const planSelectSingle = vi.fn().mockResolvedValue({
+    data: opts.plan ?? {
+      slug: "case-pro",
+      name: "Case Pro",
+    },
+    error: null,
+  });
+  const planSelectEq = vi.fn(() => ({ single: planSelectSingle }));
+  const planSelect = vi.fn(() => ({ eq: planSelectEq }));
+
   const from = vi.fn((table: string) => {
     if (table === "subscriptions") return { select: subSelect, update: subUpdate };
+    if (table === "plans") return { select: planSelect };
     if (table === "audit_log") return { insert: auditInsert };
     throw new Error(`unexpected table ${table}`);
   });
 
-  return { from, subSelect, subUpdate, updateEq, auditInsert };
+  return { from, subSelect, subUpdate, updateEq, auditInsert, planSelect, planSelectEq };
 }
 
 beforeEach(() => {
@@ -143,12 +162,63 @@ describe("cancelSubscriptionAction", () => {
           reason: validInput.reason,
           user_id: "11111111-1111-1111-1111-111111111111",
           plan_id: "22222222-2222-2222-2222-222222222222",
+          plan_slug: "case-pro",
+          plan_name: "Case Pro",
         }),
       }),
     );
 
+    const auditCall = sb.auditInsert.mock.calls[0]?.[0];
+    expect(auditCall.metadata).toMatchObject({
+      subject_type: "user",
+      subject_id: "11111111-1111-1111-1111-111111111111",
+      user_id: "11111111-1111-1111-1111-111111111111",
+    });
+    expect(auditCall.metadata.org_id).toBeUndefined();
+
     // Revalidate
-    const { revalidatePath } = await import("next/cache");
     expect(revalidatePath).toHaveBeenCalledWith("/users/11111111-1111-1111-1111-111111111111");
+  });
+});
+
+describe("cancelSubscriptionAction · org branch", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    claimsMock.mockResolvedValue(SUPER_ADMIN_CLAIMS);
+  });
+
+  it("cancels org sub and writes subject_type=org metadata", async () => {
+    const sb = buildSb({
+      sub: {
+        user_id: null,
+        org_id: "33333333-3333-3333-3333-333333333333",
+        status: "manual",
+        plan_id: "22222222-2222-2222-2222-222222222222",
+      },
+      plan: {
+        slug: "team",
+        name: "Team",
+      },
+    });
+    adminClientMock.mockReturnValue({ from: sb.from });
+
+    const res = await cancelSubscriptionAction({
+      subscriptionId: "44444444-4444-4444-4444-444444444444",
+      reason: "Plano org cancelado a pedido do tenant-admin",
+    });
+
+    expect(res).toEqual({ ok: true });
+    const auditCall = sb.auditInsert.mock.calls[0]?.[0];
+    expect(auditCall.metadata).toMatchObject({
+      subject_type: "org",
+      subject_id: "33333333-3333-3333-3333-333333333333",
+      org_id: "33333333-3333-3333-3333-333333333333",
+      plan_slug: "team",
+      plan_name: "Team",
+    });
+    expect(auditCall.metadata.user_id).toBeUndefined();
+    expect(revalidatePath).toHaveBeenCalledWith(
+      "/orgs/33333333-3333-3333-3333-333333333333",
+    );
   });
 });

@@ -252,13 +252,24 @@ export function featuresObjectToArray(obj: Record<string, unknown> | null | unde
 export const subscriptionIdSchema = z.string().uuid("subscriptionId inválido");
 export const planIdSchema = z.string().uuid("planId inválido");
 
-export const assignManualSubscriptionSchema = z.object({
-  userId: userIdSchema,
-  planId: planIdSchema,
-  startedAt: z.string().datetime().optional(),
-  currentPeriodEnd: z.string().datetime().nullable(),
-  notes: z.string().trim().max(500, "Observação muito longa").optional(),
-});
+export const assignManualSubscriptionSchema = z
+  .object({
+    userId: userIdSchema.optional(),
+    orgId: z.string().uuid("orgId inválido").optional(),
+    appSlug: z.string().trim().min(1, "appSlug obrigatório").optional(),
+    planId: planIdSchema,
+    startedAt: z.string().datetime().optional(),
+    currentPeriodEnd: z.string().datetime().nullable(),
+    notes: z.string().trim().max(500, "Observação muito longa").optional(),
+  })
+  .refine((d) => !!d.userId !== !!d.orgId, {
+    message: "Exatamente um de userId ou orgId é obrigatório",
+    path: ["userId"],
+  })
+  .refine((d) => !d.orgId || !!d.appSlug, {
+    message: "appSlug é obrigatório quando orgId está presente",
+    path: ["appSlug"],
+  });
 
 export const cancelSubscriptionSchema = z.object({
   subscriptionId: subscriptionIdSchema,

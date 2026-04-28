@@ -1,9 +1,10 @@
 import Link from "next/link";
-import { LayoutDashboard, Users, AppWindow, Tag, Activity, FileText, LogOut } from "lucide-react";
+import { LayoutDashboard, Users, Building2, AppWindow, Tag, Activity, FileText, LogOut } from "lucide-react";
 
 const ITEMS = [
   { href: "/", label: "Dashboard", Icon: LayoutDashboard },
   { href: "/users", label: "Usuários", Icon: Users },
+  { href: "/orgs", label: "Organizações", Icon: Building2 },
   { href: "/apps", label: "Apps", Icon: AppWindow },
   { href: "/plans", label: "Planos", Icon: Tag },
   { href: "/sessions", label: "Sessões (em breve)", Icon: Activity, disabled: true },

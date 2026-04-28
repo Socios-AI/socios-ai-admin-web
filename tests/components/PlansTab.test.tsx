@@ -49,6 +49,9 @@ const activeSub = {
   notes: "Cortesia 1 mês",
   external_ref: null,
   plan: monthlyPlan,
+  via: "user" as const,
+  via_org_id: null,
+  via_app_slug: null,
 };
 
 const canceledSub = {
@@ -60,6 +63,31 @@ const canceledSub = {
   notes: null,
   external_ref: null,
   plan: monthlyPlan,
+  via: "user" as const,
+  via_org_id: null,
+  via_app_slug: null,
+};
+
+const viaOrgSub = {
+  id: "sub-org-1",
+  status: "active" as const,
+  started_at: "2026-03-01T00:00:00.000Z",
+  current_period_end: "2026-12-31T00:00:00.000Z",
+  canceled_at: null,
+  external_ref: null,
+  notes: null,
+  plan: {
+    id: "plan-team",
+    slug: "team",
+    name: "Team",
+    billing_period: "yearly" as const,
+    price_amount: 50000,
+    currency: "brl" as const,
+    app_slugs: ["case-predictor"],
+  },
+  via: "org" as const,
+  via_org_id: "33333333-3333-3333-3333-333333333333",
+  via_app_slug: "case-predictor",
 };
 
 const availablePlan = {
@@ -167,5 +195,33 @@ describe("PlansTab", () => {
         planId: "p-yearly",
       }),
     );
+  });
+
+  it("renders via-org row with link to org page", () => {
+    render(
+      <PlansTab
+        userId="11111111-1111-1111-1111-111111111111"
+        subscriptions={[viaOrgSub]}
+        availablePlans={[]}
+      />,
+    );
+    expect(screen.getByText("Team")).toBeInTheDocument();
+    const links = screen.getAllByRole("link", { name: /Via org/i });
+    const orgLink = links[0];
+    expect(orgLink).toHaveAttribute(
+      "href",
+      "/orgs/33333333-3333-3333-3333-333333333333?app=case-predictor",
+    );
+  });
+
+  it("hides cancel button on via-org rows", () => {
+    render(
+      <PlansTab
+        userId="11111111-1111-1111-1111-111111111111"
+        subscriptions={[viaOrgSub]}
+        availablePlans={[]}
+      />,
+    );
+    expect(screen.queryByRole("button", { name: "Cancelar" })).toBeNull();
   });
 });

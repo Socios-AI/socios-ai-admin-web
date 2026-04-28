@@ -48,6 +48,62 @@ describe("assignManualSubscriptionSchema", () => {
     });
     expect(result.success).toBe(false);
   });
+
+  const validUserInput = {
+    userId: "11111111-1111-1111-1111-111111111111",
+    planId: "22222222-2222-2222-2222-222222222222",
+    currentPeriodEnd: "2026-12-31T23:59:59.000Z",
+  };
+
+  const validOrgInput = {
+    orgId: "33333333-3333-3333-3333-333333333333",
+    appSlug: "case-predictor",
+    planId: "22222222-2222-2222-2222-222222222222",
+    currentPeriodEnd: "2026-12-31T23:59:59.000Z",
+  };
+
+  it("accepts user-only input", () => {
+    expect(assignManualSubscriptionSchema.safeParse(validUserInput).success).toBe(true);
+  });
+
+  it("accepts org-only input with appSlug", () => {
+    expect(assignManualSubscriptionSchema.safeParse(validOrgInput).success).toBe(true);
+  });
+
+  it("rejects when both userId and orgId present", () => {
+    const result = assignManualSubscriptionSchema.safeParse({
+      ...validUserInput,
+      orgId: "33333333-3333-3333-3333-333333333333",
+      appSlug: "case-predictor",
+    });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues[0]?.message).toMatch(/Exatamente um de userId ou orgId/);
+    }
+  });
+
+  it("rejects when neither userId nor orgId present", () => {
+    const result = assignManualSubscriptionSchema.safeParse({
+      planId: "22222222-2222-2222-2222-222222222222",
+      currentPeriodEnd: "2026-12-31T23:59:59.000Z",
+    });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues[0]?.message).toMatch(/Exatamente um de userId ou orgId/);
+    }
+  });
+
+  it("rejects orgId without appSlug", () => {
+    const result = assignManualSubscriptionSchema.safeParse({
+      orgId: "33333333-3333-3333-3333-333333333333",
+      planId: "22222222-2222-2222-2222-222222222222",
+      currentPeriodEnd: "2026-12-31T23:59:59.000Z",
+    });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues[0]?.message).toMatch(/appSlug é obrigatório quando orgId está presente/);
+    }
+  });
 });
 
 describe("cancelSubscriptionSchema", () => {
