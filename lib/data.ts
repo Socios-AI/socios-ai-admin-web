@@ -485,6 +485,122 @@ export async function listOrgs(args: {
 }
 
 // =============================================================
+// Plan H: loadOrg - members + subscriptions for (org, app)
+// =============================================================
+
+export type OrgMember = {
+  membershipId: string;
+  userId: string;
+  email: string | null;
+  roleSlug: string;
+  createdAt: string;
+};
+
+export type OrgSubscription = {
+  id: string;
+  status: string;
+  started_at: string;
+  current_period_end: string | null;
+  canceled_at: string | null;
+  external_ref: string | null;
+  notes: string | null;
+  plan: {
+    id: string;
+    slug: string;
+    name: string;
+    billing_period: BillingPeriod;
+    price_amount: number;
+    currency: PlanCurrency;
+    apps: string[];
+  };
+};
+
+export type OrgDetail = {
+  orgId: string;
+  appSlug: string;
+  members: OrgMember[];
+  subscriptions: OrgSubscription[];
+};
+
+export async function loadOrg(args: {
+  callerJwt: string;
+  orgId: string;
+  appSlug: string;
+}): Promise<OrgDetail | null> {
+  const sb = getCallerClient({ callerJwt: args.callerJwt });
+
+  const { data: memberRows, error: memErr } = await sb
+    .from("app_memberships")
+    .select("id, user_id, role_slug, created_at, profiles:profiles(id, email)")
+    .eq("org_id", args.orgId)
+    .eq("app_slug", args.appSlug)
+    .is("revoked_at", null);
+  if (memErr) throw new Error(`loadOrg (members) failed: ${memErr.message}`);
+
+  const members = (memberRows ?? []) as unknown as Array<{
+    id: string;
+    user_id: string;
+    role_slug: string;
+    created_at: string;
+    profiles: { id: string; email: string | null } | null;
+  }>;
+  if (members.length === 0) return null;
+
+  const { data: subRows, error: subErr } = await sb
+    .from("subscriptions")
+    .select(
+      "id, status, started_at, current_period_end, canceled_at, external_ref, metadata, plans:plans(id, slug, name, billing_period, price_amount, currency, plan_apps:plan_apps(app_slug))",
+    )
+    .eq("org_id", args.orgId)
+    .order("started_at", { ascending: false });
+  if (subErr) throw new Error(`loadOrg (subs) failed: ${subErr.message}`);
+
+  const subscriptions: OrgSubscription[] = (subRows ?? []).map((row: Record<string, unknown>) => {
+    const metadata = (row.metadata ?? {}) as { notes?: string };
+    const plan = row.plans as {
+      id: string;
+      slug: string;
+      name: string;
+      billing_period: BillingPeriod;
+      price_amount: number;
+      currency: PlanCurrency;
+      plan_apps?: Array<{ app_slug: string }>;
+    };
+    return {
+      id: row.id as string,
+      status: row.status as string,
+      started_at: row.started_at as string,
+      current_period_end: (row.current_period_end as string | null) ?? null,
+      canceled_at: (row.canceled_at as string | null) ?? null,
+      external_ref: (row.external_ref as string | null) ?? null,
+      notes: metadata.notes ?? null,
+      plan: {
+        id: plan.id,
+        slug: plan.slug,
+        name: plan.name,
+        billing_period: plan.billing_period,
+        price_amount: plan.price_amount,
+        currency: plan.currency,
+        apps: (plan.plan_apps ?? []).map((a) => a.app_slug),
+      },
+    };
+  });
+
+  return {
+    orgId: args.orgId,
+    appSlug: args.appSlug,
+    members: members.map((m) => ({
+      membershipId: m.id,
+      userId: m.user_id,
+      email: m.profiles?.email ?? null,
+      roleSlug: m.role_slug,
+      createdAt: m.created_at,
+    })),
+    subscriptions,
+  };
+}
+
+// =============================================================
 // Plan G.5: audit log read helpers
 // =============================================================
 
