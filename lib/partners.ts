@@ -1,4 +1,16 @@
 // Plan K.1 · Partner domain helpers (pure, no I/O).
+//
+// NOTE on the state ladder:
+// In K.1, a `partners` row only exists from `pending_kyc` onward (the row is
+// created when `checkout.session.completed` fires AND a matching auth.users row
+// exists). The earlier states `pending_contract` and `pending_payment` live on
+// `partner_invitations.status` instead, not on `partners.status`.
+//
+// As a result, `nextStatusOnContractSigned` and `nextStatusOnLicensePaid`
+// are reserved for K.2+ flows where the partners-web panel may need to drive
+// partner-row transitions before payment (e.g. partner self-cancels mid-onboarding).
+// In K.1 they are exercised only by unit tests; production paths use
+// `nextStatusOnKycCompleted` exclusively (via stripe-connect/route.ts).
 
 export type PartnerStatus =
   | "pending_contract"

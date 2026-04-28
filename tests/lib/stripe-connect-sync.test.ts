@@ -48,6 +48,7 @@ describe("stripe-connect-sync (mock mode)", () => {
     });
     expect(r.mocked).toBe(true);
     expect(r.url).toContain("mock-stripe.local/connect");
+    expect(r.accountId).toMatch(/^acct_mock_22222222-2222-2222-2222-222222222222$/);
   });
 
   it("verifyStripeWebhookSignature accepts MOCK_SIGNATURE in mock mode", () => {

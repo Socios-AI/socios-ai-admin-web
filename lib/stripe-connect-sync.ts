@@ -63,7 +63,7 @@ export async function createConnectAccountLink(
   if (!isStripeConnectEnabled()) {
     return {
       url: `https://mock-stripe.local/connect/${input.partnerId}?return=${encodeURIComponent(input.returnUrl)}`,
-      accountId: null,
+      accountId: `acct_mock_${input.partnerId}`,
       mocked: true,
     };
   }

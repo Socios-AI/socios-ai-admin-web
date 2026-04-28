@@ -1,12 +1,16 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-const { adminClientMock, verifyMock } = vi.hoisted(() => ({
+const { adminClientMock, verifyMock, createConnectAccountLinkMock } = vi.hoisted(() => ({
   adminClientMock: vi.fn(),
   verifyMock: vi.fn(),
+  createConnectAccountLinkMock: vi.fn(),
 }));
 
 vi.mock("@socios-ai/auth/admin", () => ({ getSupabaseAdminClient: adminClientMock }));
-vi.mock("../../../lib/stripe-connect-sync", () => ({ verifyStripeWebhookSignature: verifyMock }));
+vi.mock("../../../lib/stripe-connect-sync", () => ({
+  verifyStripeWebhookSignature: verifyMock,
+  createConnectAccountLink: createConnectAccountLinkMock,
+}));
 
 import { POST } from "../../../app/api/webhooks/stripe-connect/route";
 
@@ -30,8 +34,37 @@ type SbOpts = {
 
 function buildSb(opts: SbOpts = {}) {
   const invitationUpdate = vi.fn().mockResolvedValue({ error: null });
-  const partnerInsert = vi.fn().mockResolvedValue({ error: null });
-  const partnerUpdate = vi.fn().mockResolvedValue({ error: null });
+
+  // Insert chain: .insert(payload).select("id").single() -> { data: { id }, error }
+  // We expose `partnerInsert` as the mock that records the payload so existing
+  // assertions on `partnerInsert.mock.calls[0][0]` keep working.
+  const partnerInsertSingle = vi
+    .fn()
+    .mockResolvedValue({ data: { id: "p-1" }, error: null });
+  const partnerInsert = vi.fn((_payload: Record<string, unknown>) => ({
+    select: () => ({ single: partnerInsertSingle }),
+  }));
+
+  // `partners.update(payload)` is called by two flows:
+  //   - account.updated (activate): .update(payload).eq("id", id).eq("status", "pending_kyc")
+  //   - checkout.session.completed (link account): .update(payload).eq("id", id)
+  // We record the payload on `partnerUpdate` and return a chain object whose
+  // first .eq() is awaitable (resolves the link-account path) and whose second
+  // .eq() resolves the activate path.
+  const partnerUpdate = vi.fn((_payload: Record<string, unknown>) => {
+    const firstEq = vi.fn((_col: string, _val: unknown) => {
+      const thenable: PromiseLike<{ error: null }> & {
+        eq: (...args: unknown[]) => Promise<{ error: null }>;
+      } = {
+        eq: vi.fn().mockResolvedValue({ error: null }),
+        then: (onfulfilled, onrejected) =>
+          Promise.resolve({ error: null }).then(onfulfilled, onrejected),
+      };
+      return thenable;
+    });
+    return { eq: firstEq };
+  });
+
   const audit = vi.fn().mockResolvedValue({ error: null });
   const listUsers = vi.fn().mockResolvedValue({
     data: { users: opts.authUser ? [opts.authUser] : [] },
@@ -60,12 +93,13 @@ function buildSb(opts: SbOpts = {}) {
         return {
           insert: partnerInsert,
           select: () => ({ eq: () => ({ maybeSingle: partnerMaybeSingle }) }),
-          update: () => ({ eq: () => ({ eq: partnerUpdate }) }),
+          update: partnerUpdate,
         };
       return {};
     }),
     __invitationUpdate: invitationUpdate,
     __partnerInsert: partnerInsert,
+    __partnerInsertSingle: partnerInsertSingle,
     __partnerUpdate: partnerUpdate,
     __audit: audit,
     __listUsers: listUsers,
@@ -97,6 +131,16 @@ describe("POST /api/webhooks/stripe-connect", () => {
   beforeEach(() => {
     adminClientMock.mockReset();
     verifyMock.mockReset();
+    createConnectAccountLinkMock.mockReset();
+    // Default mock: deterministic acct id derived from partnerId, matching
+    // the production mock branch in lib/stripe-connect-sync.ts.
+    createConnectAccountLinkMock.mockImplementation(
+      async (input: { partnerId: string }) => ({
+        url: `https://mock-stripe.local/connect/${input.partnerId}`,
+        accountId: `acct_mock_${input.partnerId}`,
+        mocked: true,
+      }),
+    );
   });
 
   it("rejects missing signature with 401", async () => {
@@ -183,7 +227,13 @@ describe("POST /api/webhooks/stripe-connect", () => {
     expect(partnerArg.status).toBe("pending_kyc");
     expect(partnerArg.license_amount_paid_usd).toBe(10000);
     expect(partnerArg.license_payment_intent_id).toBe("pi_test_1");
-    expect(partnerArg.metadata.source_invitation_id).toBe("inv-1");
+    expect((partnerArg.metadata as { source_invitation_id: string }).source_invitation_id).toBe(
+      "inv-1",
+    );
+    // Connect account id was provisioned and persisted on the new partner row.
+    expect(sb.__partnerUpdate).toHaveBeenCalledTimes(1);
+    const updateArg = sb.__partnerUpdate.mock.calls[0][0];
+    expect(updateArg.stripe_connect_account_id).toBe("acct_mock_p-1");
     expect(sb.__audit).toHaveBeenCalledTimes(1);
     const auditArg = sb.__audit.mock.calls[0][0];
     expect(auditArg.event_type).toBe("partner.created_from_invitation");

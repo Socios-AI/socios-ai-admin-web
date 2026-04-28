@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdminClient } from "@socios-ai/auth/admin";
-import { verifyStripeWebhookSignature } from "@/lib/stripe-connect-sync";
+import {
+  createConnectAccountLink,
+  verifyStripeWebhookSignature,
+} from "@/lib/stripe-connect-sync";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -72,19 +75,50 @@ async function handleCheckoutSessionCompleted(
     return NextResponse.json({ ok: true, partner_created: false });
   }
 
-  const { error: insertError } = await sb.from("partners").insert({
-    user_id: matched.id,
-    status: "pending_kyc",
-    introduced_by_partner_id: inv.introduced_by_partner_id,
-    custom_commission_pct: inv.custom_commission_pct,
-    license_paid_at: new Date().toISOString(),
-    license_payment_intent_id: session.payment_intent ?? null,
-    license_amount_paid_usd: inv.license_amount_usd,
-    contract_envelope_id: null,
-    metadata: { source_invitation_id: invitationId },
-  });
+  const { data: insertedPartner, error: insertError } = await sb
+    .from("partners")
+    .insert({
+      user_id: matched.id,
+      status: "pending_kyc",
+      introduced_by_partner_id: inv.introduced_by_partner_id,
+      custom_commission_pct: inv.custom_commission_pct,
+      license_paid_at: new Date().toISOString(),
+      license_payment_intent_id: session.payment_intent ?? null,
+      license_amount_paid_usd: inv.license_amount_usd,
+      contract_envelope_id: null,
+      metadata: { source_invitation_id: invitationId },
+    })
+    .select("id")
+    .single();
   if (insertError) {
     return NextResponse.json({ error: "db_error", message: insertError.message }, { status: 500 });
+  }
+
+  // Provision a Stripe Connect Express account and persist its id so the
+  // `account.updated` webhook can locate this partner later (pending_kyc -> active).
+  const insertedPartnerId = insertedPartner?.id as string | undefined;
+  if (insertedPartnerId) {
+    const adminBase = (process.env.ADMIN_WEB_BASE_URL ?? "https://admin.sociosai.com").replace(
+      /\/$/,
+      "",
+    );
+    const connectLink = await createConnectAccountLink({
+      partnerId: insertedPartnerId,
+      returnUrl: `${adminBase}/partners/${insertedPartnerId}`,
+      refreshUrl: `${adminBase}/partners/${insertedPartnerId}`,
+    });
+    if (connectLink.accountId) {
+      const { error: linkError } = await sb
+        .from("partners")
+        .update({ stripe_connect_account_id: connectLink.accountId })
+        .eq("id", insertedPartnerId);
+      if (linkError) {
+        return NextResponse.json(
+          { error: "db_error", message: linkError.message },
+          { status: 500 },
+        );
+      }
+    }
   }
 
   await sb.from("audit_log").insert({
