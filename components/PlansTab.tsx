@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { toast } from "sonner";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { AssignPlanDialog } from "./AssignPlanDialog";
@@ -55,6 +56,11 @@ export function PlansTab({ userId, subscriptions, availablePlans }: Props) {
   const active = subscriptions.filter((s) => !TERMINAL.has(s.status));
   const ended = subscriptions.filter((s) => TERMINAL.has(s.status));
 
+  const activeSorted = [...active].sort((a, b) => {
+    if (a.via !== b.via) return a.via === "user" ? -1 : 1;
+    return a.started_at < b.started_at ? 1 : -1;
+  });
+
   const eligiblePlans = availablePlans.filter((p) => p.is_active);
 
   function handleAssign(input: {
@@ -89,6 +95,11 @@ export function PlansTab({ userId, subscriptions, availablePlans }: Props) {
   }
 
   function renderRow(s: UserSubscription, withCancel: boolean) {
+    const orgHref =
+      s.via === "org" && s.via_org_id
+        ? `/orgs/${s.via_org_id}?app=${encodeURIComponent(s.via_app_slug ?? "")}`
+        : null;
+
     return (
       <tr key={s.id}>
         <td className="px-4 py-2">
@@ -118,8 +129,20 @@ export function PlansTab({ userId, subscriptions, availablePlans }: Props) {
         <td className="px-4 py-2 text-sm text-muted-foreground">
           {formatDate(s.current_period_end)}
         </td>
+        <td className="px-4 py-2">
+          {s.via === "org" && orgHref ? (
+            <Link
+              href={orgHref}
+              className="text-xs text-primary hover:underline"
+            >
+              Via org {s.via_org_id?.slice(0, 8)} · {s.via_app_slug}
+            </Link>
+          ) : (
+            <span className="text-xs text-muted-foreground">Direto</span>
+          )}
+        </td>
         <td className="px-4 py-2 text-right">
-          {withCancel && (
+          {withCancel && s.via === "user" && (
             <button
               type="button"
               onClick={() => setMode({ kind: "cancel", subscriptionId: s.id })}
@@ -127,6 +150,14 @@ export function PlansTab({ userId, subscriptions, availablePlans }: Props) {
             >
               Cancelar
             </button>
+          )}
+          {withCancel && s.via === "org" && orgHref && (
+            <Link
+              href={orgHref}
+              className="text-xs text-muted-foreground hover:underline"
+            >
+              Cancelar via organizacao
+            </Link>
           )}
         </td>
       </tr>
@@ -163,10 +194,11 @@ export function PlansTab({ userId, subscriptions, availablePlans }: Props) {
                       <th className="px-4 py-2 font-medium">Status</th>
                       <th className="px-4 py-2 font-medium">Preço</th>
                       <th className="px-4 py-2 font-medium">Período até</th>
+                      <th className="px-4 py-2 font-medium">Origem</th>
                       <th className="px-4 py-2 font-medium text-right">Ações</th>
                     </tr>
                   </thead>
-                  <tbody>{active.map((s) => renderRow(s, true))}</tbody>
+                  <tbody>{activeSorted.map((s) => renderRow(s, true))}</tbody>
                 </table>
               </div>
             </div>
@@ -185,6 +217,7 @@ export function PlansTab({ userId, subscriptions, availablePlans }: Props) {
                       <th className="px-4 py-2 font-medium">Status</th>
                       <th className="px-4 py-2 font-medium">Preço</th>
                       <th className="px-4 py-2 font-medium">Período até</th>
+                      <th className="px-4 py-2 font-medium">Origem</th>
                       <th className="px-4 py-2 font-medium" />
                     </tr>
                   </thead>
