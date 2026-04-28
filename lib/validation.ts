@@ -278,3 +278,57 @@ export const cancelSubscriptionSchema = z.object({
 
 export type AssignManualSubscriptionInput = z.infer<typeof assignManualSubscriptionSchema>;
 export type CancelSubscriptionInput = z.infer<typeof cancelSubscriptionSchema>;
+
+// =============================================================
+// Plan K.1 · Partner schemas
+// =============================================================
+
+export const createPartnerInvitationSchema = z.object({
+  email: z.string().trim().email("Email inválido"),
+  fullName: z.string().trim().min(2, "Nome muito curto"),
+  introducedByPartnerId: z.string().uuid("Indicador inválido").optional(),
+  licenseAmountUsd: z
+    .number({ invalid_type_error: "Valor inválido" })
+    .positive("Valor deve ser positivo")
+    .max(1_000_000, "Valor excessivo"),
+  installments: z.number().int().min(1).max(12).default(1),
+  customCommissionPct: z
+    .number()
+    .min(0)
+    .max(1, "Use formato decimal (0.5 = 50%)")
+    .optional(),
+  expiresInDays: z.number().int().min(1).max(60).default(30),
+});
+
+export const cancelPartnerInvitationSchema = z.object({
+  invitationId: z.string().uuid("invitationId inválido"),
+  reason: reasonSchema,
+});
+
+export const partnerIdSchema = z.string().uuid("partnerId inválido");
+
+export const suspendPartnerSchema = z.object({
+  partnerId: partnerIdSchema,
+  reason: reasonSchema,
+});
+
+export const terminatePartnerSchema = z.object({
+  partnerId: partnerIdSchema,
+  reason: reasonSchema,
+});
+
+export const updatePartnerCommissionSchema = z.object({
+  partnerId: partnerIdSchema,
+  customCommissionPct: z
+    .number()
+    .min(0)
+    .max(1, "Use formato decimal (0.5 = 50%)")
+    .nullable(),
+  reason: reasonSchema,
+});
+
+export type CreatePartnerInvitationInput = z.infer<typeof createPartnerInvitationSchema>;
+export type CancelPartnerInvitationInput = z.infer<typeof cancelPartnerInvitationSchema>;
+export type SuspendPartnerInput = z.infer<typeof suspendPartnerSchema>;
+export type TerminatePartnerInput = z.infer<typeof terminatePartnerSchema>;
+export type UpdatePartnerCommissionInput = z.infer<typeof updatePartnerCommissionSchema>;
