@@ -20,7 +20,25 @@ export const AUDIT_EVENTS: readonly AuditEventCatalogEntry[] = [
   { value: "plan.deactivated",               label: "Plano desativado",       group: "Planos" },
   { value: "plan.stripe_synced",             label: "Plano sync Stripe",      group: "Planos" },
   // Subscriptions
+  // metadata: {
+  //   subscription_id: uuid,
+  //   plan_id: uuid, plan_slug, plan_name,
+  //   subject_type: "user" | "org", subject_id: uuid,
+  //   user_id?: uuid    (when subject_type=user, kept for back-compat),
+  //   org_id?: uuid     (when subject_type=org),
+  //   app_slug?: string (when subject_type=org),
+  //   current_period_end?, notes?
+  // }
   { value: "subscription.assigned_manually", label: "Subscription manual",    group: "Subscriptions" },
+  // metadata: {
+  //   subscription_id: uuid,
+  //   plan_id: uuid, plan_slug, plan_name,
+  //   subject_type: "user" | "org", subject_id: uuid,
+  //   user_id?: uuid    (when subject_type=user, kept for back-compat),
+  //   org_id?: uuid     (when subject_type=org),
+  //   app_slug?: string (when subject_type=org),
+  //   reason
+  // }
   { value: "subscription.canceled",          label: "Subscription cancelada", group: "Subscriptions" },
   // Memberships
   { value: "membership.granted",             label: "Acesso concedido",       group: "Memberships" },
