@@ -333,6 +333,9 @@ export type UserSubscription = {
     currency: PlanCurrency;
     app_slugs: string[];
   };
+  via: "user" | "org";
+  via_org_id: string | null;
+  via_app_slug: string | null;
 };
 
 export async function listUserSubscriptions(args: {
@@ -340,17 +343,41 @@ export async function listUserSubscriptions(args: {
   userId: string;
 }): Promise<UserSubscription[]> {
   const sb = getCallerClient({ callerJwt: args.callerJwt });
-  const { data, error } = await sb
+
+  const { data: userRows, error: userErr } = await sb
     .from("subscriptions")
     .select(
       "id, status, started_at, current_period_end, canceled_at, external_ref, metadata, plans:plans(id, slug, name, billing_period, price_amount, currency, plan_apps:plan_apps(app_slug))",
     )
     .eq("user_id", args.userId)
-    .order("created_at", { ascending: false });
+    .order("started_at", { ascending: false });
+  if (userErr) throw new Error(`listUserSubscriptions (user) failed: ${userErr.message}`);
 
-  if (error) throw new Error(`listUserSubscriptions failed: ${error.message}`);
+  const { data: memberships, error: memErr } = await sb
+    .from("app_memberships")
+    .select("org_id, app_slug")
+    .eq("user_id", args.userId)
+    .is("revoked_at", null)
+    .not("org_id", "is", null);
+  if (memErr) throw new Error(`listUserSubscriptions (memberships) failed: ${memErr.message}`);
 
-  return (data ?? []).map((row: Record<string, unknown>) => {
+  const orgKeys = (memberships ?? []) as Array<{ org_id: string; app_slug: string }>;
+  const orgIds = Array.from(new Set(orgKeys.map((m) => m.org_id)));
+
+  let orgRows: Record<string, unknown>[] = [];
+  if (orgIds.length > 0) {
+    const { data, error: orgErr } = await sb
+      .from("subscriptions")
+      .select(
+        "id, org_id, status, started_at, current_period_end, canceled_at, external_ref, metadata, plans:plans(id, slug, name, billing_period, price_amount, currency, plan_apps:plan_apps(app_slug))",
+      )
+      .in("org_id", orgIds)
+      .order("started_at", { ascending: false });
+    if (orgErr) throw new Error(`listUserSubscriptions (org) failed: ${orgErr.message}`);
+    orgRows = data ?? [];
+  }
+
+  function shape(row: Record<string, unknown>, via: "user" | "org"): UserSubscription {
     const metadata = (row.metadata ?? {}) as { notes?: string };
     const plan = row.plans as {
       id: string;
@@ -361,6 +388,14 @@ export async function listUserSubscriptions(args: {
       currency: PlanCurrency;
       plan_apps?: Array<{ app_slug: string }>;
     };
+    let via_org_id: string | null = null;
+    let via_app_slug: string | null = null;
+    if (via === "org") {
+      const orgId = row.org_id as string;
+      via_org_id = orgId;
+      const match = orgKeys.find((m) => m.org_id === orgId);
+      via_app_slug = match?.app_slug ?? null;
+    }
     return {
       id: row.id as string,
       status: row.status as SubscriptionStatus,
@@ -378,8 +413,15 @@ export async function listUserSubscriptions(args: {
         currency: plan.currency,
         app_slugs: (plan.plan_apps ?? []).map((p) => p.app_slug),
       },
+      via,
+      via_org_id,
+      via_app_slug,
     };
-  });
+  }
+
+  const userShaped = (userRows ?? []).map((r) => shape(r as Record<string, unknown>, "user"));
+  const orgShaped = orgRows.map((r) => shape(r, "org"));
+  return [...userShaped, ...orgShaped];
 }
 
 // =============================================================

@@ -90,6 +90,7 @@ describe("PlansTab", () => {
     render(
       <PlansTab
         userId={userId}
+        // @ts-expect-error Task 11 will wire via fields
         subscriptions={[activeSub, canceledSub]}
         availablePlans={[availablePlan]}
       />,
@@ -102,6 +103,7 @@ describe("PlansTab", () => {
     render(
       <PlansTab
         userId={userId}
+        // @ts-expect-error Task 11 will wire via fields
         subscriptions={[canceledSub]}
         availablePlans={[availablePlan]}
       />,
@@ -115,6 +117,7 @@ describe("PlansTab", () => {
     render(
       <PlansTab
         userId={userId}
+        // @ts-expect-error Task 11 will wire via fields
         subscriptions={[activeSub]}
         availablePlans={[availablePlan]}
       />,
