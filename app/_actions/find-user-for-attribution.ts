@@ -1,0 +1,33 @@
+"use server";
+
+import { findUserByEmail, type FindUserResult } from "@/lib/data";
+import { getCallerClaims, getCallerJwt } from "@/lib/auth";
+
+export type FindUserForAttributionResult =
+  | { ok: true; result: FindUserResult | null }
+  | { ok: false; error: "FORBIDDEN" | "VALIDATION" | "API_ERROR"; message?: string };
+
+export async function findUserForAttributionAction(
+  email: string,
+): Promise<FindUserForAttributionResult> {
+  const claims = await getCallerClaims();
+  if (!claims?.super_admin) return { ok: false, error: "FORBIDDEN" };
+
+  if (typeof email !== "string" || email.trim().length < 3) {
+    return { ok: false, error: "VALIDATION", message: "Email inválido" };
+  }
+
+  const jwt = await getCallerJwt();
+  if (!jwt) return { ok: false, error: "FORBIDDEN" };
+
+  try {
+    const result = await findUserByEmail({ callerJwt: jwt, email });
+    return { ok: true, result };
+  } catch (err) {
+    return {
+      ok: false,
+      error: "API_ERROR",
+      message: err instanceof Error ? err.message : String(err),
+    };
+  }
+}
