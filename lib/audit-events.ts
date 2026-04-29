@@ -1,4 +1,10 @@
-export type AuditEventGroup = "Apps" | "Planos" | "Subscriptions" | "Memberships" | "Sistema";
+export type AuditEventGroup =
+  | "Apps"
+  | "Planos"
+  | "Subscriptions"
+  | "Memberships"
+  | "Sistema"
+  | "Licenciados";
 
 export type AuditEventCatalogEntry = {
   value: string;
@@ -43,11 +49,15 @@ export const AUDIT_EVENTS: readonly AuditEventCatalogEntry[] = [
   // Memberships
   { value: "membership.granted",             label: "Acesso concedido",       group: "Memberships" },
   { value: "membership.revoked",             label: "Acesso revogado",        group: "Memberships" },
+  // Licenciados (Plan K.3 · referral attribution)
+  { value: "referral.created",               label: "Indicação criada",       group: "Licenciados" },
+  { value: "referral.revoked",               label: "Indicação revogada",     group: "Licenciados" },
+  { value: "referral.transferred",           label: "Indicação transferida",  group: "Licenciados" },
 ];
 
 export function groupedAuditEvents(): Record<AuditEventGroup, AuditEventCatalogEntry[]> {
   const out: Record<AuditEventGroup, AuditEventCatalogEntry[]> = {
-    Apps: [], Planos: [], Subscriptions: [], Memberships: [], Sistema: [],
+    Apps: [], Planos: [], Subscriptions: [], Memberships: [], Sistema: [], Licenciados: [],
   };
   for (const e of AUDIT_EVENTS) out[e.group].push(e);
   return out;
