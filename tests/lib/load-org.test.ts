@@ -78,7 +78,7 @@ describe("loadOrg", () => {
             id: "m1",
             user_id: "u1",
             role_slug: "tenant-admin",
-            created_at: "2026-04-01T00:00:00.000Z",
+            granted_at: "2026-04-01T00:00:00.000Z",
             profiles: { id: "u1", email: "alice@acme.com" },
           },
         ],
