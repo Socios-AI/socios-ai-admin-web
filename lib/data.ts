@@ -825,3 +825,125 @@ export async function getPartnerInvitation(args: {
   if (error) throw new Error(`getPartnerInvitation failed: ${error.message}`);
   return (data ?? null) as PartnerInvitationRow | null;
 }
+
+// =============================================================
+// Plan K.3 · Referral attribution
+// =============================================================
+
+export type ReferralRow = {
+  referralId: string;
+  customerUserId: string;
+  customerEmail: string | null;
+  attributionSource: "affiliate_link" | "manual" | "partner_panel_signup" | "admin_assignment";
+  attributedAt: string;
+  currentSub: { planId: string; status: string } | null;
+};
+
+export async function listReferralsForPartner(args: {
+  callerJwt: string;
+  partnerId: string;
+}): Promise<ReferralRow[]> {
+  const sb = getCallerClient({ callerJwt: args.callerJwt });
+
+  const { data: refs, error: refsErr } = await sb
+    .from("referrals")
+    .select("id, source_partner_id, customer_user_id, attribution_source, attributed_at")
+    .eq("source_partner_id", args.partnerId)
+    .order("attributed_at", { ascending: false });
+  if (refsErr) throw new Error(`listReferralsForPartner refs failed: ${refsErr.message}`);
+  if (!refs?.length) return [];
+
+  const userIds = refs.map((r) => r.customer_user_id);
+
+  const { data: profiles, error: profErr } = await sb
+    .from("profiles")
+    .select("id, email")
+    .in("id", userIds);
+  if (profErr) throw new Error(`listReferralsForPartner profiles failed: ${profErr.message}`);
+  const emailById = new Map<string, string>((profiles ?? []).map((p) => [p.id, p.email]));
+
+  const { data: subs, error: subErr } = await sb
+    .from("subscriptions")
+    .select("user_id, plan_id, status")
+    .in("user_id", userIds)
+    .eq("status", "active");
+  if (subErr) throw new Error(`listReferralsForPartner subs failed: ${subErr.message}`);
+  const subByUser = new Map<string, { plan_id: string; status: string }>(
+    (subs ?? [])
+      .filter((s): s is { user_id: string; plan_id: string; status: string } => s.user_id !== null)
+      .map((s) => [s.user_id, { plan_id: s.plan_id, status: s.status }]),
+  );
+
+  return refs.map((r) => {
+    const sub = subByUser.get(r.customer_user_id);
+    return {
+      referralId: r.id,
+      customerUserId: r.customer_user_id,
+      customerEmail: emailById.get(r.customer_user_id) ?? null,
+      attributionSource: r.attribution_source,
+      attributedAt: r.attributed_at,
+      currentSub: sub ? { planId: sub.plan_id, status: sub.status } : null,
+    };
+  });
+}
+
+export type FindUserResult = {
+  userId: string;
+  email: string;
+  hasReferral: boolean;
+  currentReferral: { partnerId: string; partnerLabel: string } | null;
+};
+
+export async function findUserByEmail(args: {
+  callerJwt: string;
+  email: string;
+}): Promise<FindUserResult | null> {
+  const sb = getCallerClient({ callerJwt: args.callerJwt });
+  const normalizedEmail = args.email.trim().toLowerCase();
+
+  const { data: profile, error: profErr } = await sb
+    .from("profiles")
+    .select("id, email")
+    .ilike("email", normalizedEmail)
+    .maybeSingle();
+  if (profErr) throw new Error(`findUserByEmail profile failed: ${profErr.message}`);
+  if (!profile) return null;
+
+  const { data: referral, error: refErr } = await sb
+    .from("referrals")
+    .select("source_partner_id")
+    .eq("customer_user_id", profile.id)
+    .maybeSingle();
+  if (refErr) throw new Error(`findUserByEmail referral failed: ${refErr.message}`);
+
+  if (!referral) {
+    return {
+      userId: profile.id,
+      email: profile.email.toLowerCase(),
+      hasReferral: false,
+      currentReferral: null,
+    };
+  }
+
+  let label = referral.source_partner_id.slice(0, 8);
+  const { data: partner } = await sb
+    .from("partners")
+    .select("id, user_id")
+    .eq("id", referral.source_partner_id)
+    .maybeSingle();
+  if (partner?.user_id) {
+    const { data: partnerProfile } = await sb
+      .from("profiles")
+      .select("email")
+      .eq("id", partner.user_id)
+      .maybeSingle();
+    if (partnerProfile?.email) label = partnerProfile.email;
+  }
+
+  return {
+    userId: profile.id,
+    email: profile.email.toLowerCase(),
+    hasReferral: true,
+    currentReferral: { partnerId: referral.source_partner_id, partnerLabel: label },
+  };
+}
