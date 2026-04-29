@@ -52,7 +52,7 @@ const baseRow = (overrides: Partial<Record<string, unknown>>) => ({
   org_id: "org-A",
   app_slug: "case-predictor",
   revoked_at: null,
-  created_at: "2026-04-01T00:00:00.000Z",
+  granted_at: "2026-04-01T00:00:00.000Z",
   ...overrides,
 });
 
@@ -60,9 +60,9 @@ describe("listOrgs", () => {
   it("aggregates app_memberships into (org_id, app_slug) rows with active count", async () => {
     const sb = buildSb([
       baseRow({}),
-      baseRow({ created_at: "2026-04-10T00:00:00.000Z" }),
-      baseRow({ revoked_at: "2026-04-15T00:00:00.000Z", created_at: "2026-04-05T00:00:00.000Z" }),
-      baseRow({ org_id: "org-B", app_slug: "admin", created_at: "2026-04-20T00:00:00.000Z" }),
+      baseRow({ granted_at: "2026-04-10T00:00:00.000Z" }),
+      baseRow({ revoked_at: "2026-04-15T00:00:00.000Z", granted_at: "2026-04-05T00:00:00.000Z" }),
+      baseRow({ org_id: "org-B", app_slug: "admin", granted_at: "2026-04-20T00:00:00.000Z" }),
     ]);
     callerClientMock.mockReturnValue({ from: sb.from });
 
@@ -80,7 +80,7 @@ describe("listOrgs", () => {
     const sb = buildSb(
       [
         baseRow({}),
-        baseRow({ org_id: "org-B", app_slug: "admin", created_at: "2026-04-20T00:00:00.000Z" }),
+        baseRow({ org_id: "org-B", app_slug: "admin", granted_at: "2026-04-20T00:00:00.000Z" }),
       ],
       // filtered: only case-predictor rows
       [baseRow({})],
@@ -95,8 +95,8 @@ describe("listOrgs", () => {
 
   it("hides orgs whose memberships are all revoked", async () => {
     const sb = buildSb([
-      baseRow({ revoked_at: "2026-04-15T00:00:00.000Z", created_at: "2026-04-01T00:00:00.000Z" }),
-      baseRow({ revoked_at: "2026-04-16T00:00:00.000Z", created_at: "2026-04-10T00:00:00.000Z" }),
+      baseRow({ revoked_at: "2026-04-15T00:00:00.000Z", granted_at: "2026-04-01T00:00:00.000Z" }),
+      baseRow({ revoked_at: "2026-04-16T00:00:00.000Z", granted_at: "2026-04-10T00:00:00.000Z" }),
     ]);
     callerClientMock.mockReturnValue({ from: sb.from });
 
@@ -106,9 +106,9 @@ describe("listOrgs", () => {
 
   it("tracks firstSeen and lastActivity correctly", async () => {
     const sb = buildSb([
-      baseRow({ created_at: "2026-04-10T00:00:00.000Z" }),
-      baseRow({ created_at: "2026-04-01T00:00:00.000Z" }),
-      baseRow({ created_at: "2026-04-20T00:00:00.000Z" }),
+      baseRow({ granted_at: "2026-04-10T00:00:00.000Z" }),
+      baseRow({ granted_at: "2026-04-01T00:00:00.000Z" }),
+      baseRow({ granted_at: "2026-04-20T00:00:00.000Z" }),
     ]);
     callerClientMock.mockReturnValue({ from: sb.from });
 
@@ -131,8 +131,8 @@ describe("listOrgs", () => {
 
   it("sorts results by lastActivity descending", async () => {
     const sb = buildSb([
-      baseRow({ org_id: "org-A", app_slug: "case-predictor", created_at: "2026-04-01T00:00:00.000Z" }),
-      baseRow({ org_id: "org-B", app_slug: "admin", created_at: "2026-04-20T00:00:00.000Z" }),
+      baseRow({ org_id: "org-A", app_slug: "case-predictor", granted_at: "2026-04-01T00:00:00.000Z" }),
+      baseRow({ org_id: "org-B", app_slug: "admin", granted_at: "2026-04-20T00:00:00.000Z" }),
     ]);
     callerClientMock.mockReturnValue({ from: sb.from });
 

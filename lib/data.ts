@@ -14,7 +14,7 @@ export type Membership = {
   app_slug: string;
   org_id: string | null;
   role_slug: string;
-  created_at: string;
+  granted_at: string;
   revoked_at: string | null;
 };
 
@@ -86,9 +86,9 @@ export async function getUser(args: { callerJwt: string; userId: string }): Prom
 
   const { data: memberships, error: mErr } = await sb
     .from("app_memberships")
-    .select("id, app_slug, org_id, role_slug, created_at, revoked_at")
+    .select("id, app_slug, org_id, role_slug, granted_at, revoked_at")
     .eq("user_id", args.userId)
-    .order("created_at", { ascending: false });
+    .order("granted_at", { ascending: false });
   if (mErr) throw new Error(`getUser memberships failed: ${mErr.message}`);
 
   const { data: audit, error: aErr } = await sb
@@ -444,7 +444,7 @@ export async function listOrgs(args: {
 
   let q = sb
     .from("app_memberships")
-    .select("org_id, app_slug, revoked_at, created_at")
+    .select("org_id, app_slug, revoked_at, granted_at")
     .not("org_id", "is", null);
   if (args.app) q = q.eq("app_slug", args.app);
 
@@ -455,7 +455,7 @@ export async function listOrgs(args: {
     org_id: string;
     app_slug: string;
     revoked_at: string | null;
-    created_at: string;
+    granted_at: string;
   }>;
 
   const groups = new Map<string, OrgListing>();
@@ -468,14 +468,14 @@ export async function listOrgs(args: {
         orgId: r.org_id,
         appSlug: r.app_slug,
         activeMembers: isActive ? 1 : 0,
-        firstSeen: r.created_at,
-        lastActivity: r.created_at,
+        firstSeen: r.granted_at,
+        lastActivity: r.granted_at,
       });
       continue;
     }
     if (isActive) existing.activeMembers += 1;
-    if (r.created_at < existing.firstSeen) existing.firstSeen = r.created_at;
-    if (r.created_at > existing.lastActivity) existing.lastActivity = r.created_at;
+    if (r.granted_at < existing.firstSeen) existing.firstSeen = r.granted_at;
+    if (r.granted_at > existing.lastActivity) existing.lastActivity = r.granted_at;
   }
 
   return [...groups.values()]
@@ -531,7 +531,7 @@ export async function loadOrg(args: {
 
   const { data: memberRows, error: memErr } = await sb
     .from("app_memberships")
-    .select("id, user_id, role_slug, created_at, profiles:profiles(id, email)")
+    .select("id, user_id, role_slug, granted_at, profiles:profiles(id, email)")
     .eq("org_id", args.orgId)
     .eq("app_slug", args.appSlug)
     .is("revoked_at", null);
@@ -541,7 +541,7 @@ export async function loadOrg(args: {
     id: string;
     user_id: string;
     role_slug: string;
-    created_at: string;
+    granted_at: string;
     profiles: { id: string; email: string | null } | null;
   }>;
   if (members.length === 0) return null;
@@ -594,7 +594,7 @@ export async function loadOrg(args: {
       userId: m.user_id,
       email: m.profiles?.email ?? null,
       roleSlug: m.role_slug,
-      createdAt: m.created_at,
+      createdAt: m.granted_at,
     })),
     subscriptions,
   };
