@@ -734,3 +734,94 @@ export async function listAuditEvents(args: ListAuditEventsArgs): Promise<ListAu
 
   return { rows, hasMore, nextCursor };
 }
+
+// === Plan K.1 · Partners ===
+
+export type PartnerRow = {
+  id: string;
+  user_id: string;
+  status: "pending_contract" | "pending_payment" | "pending_kyc" | "active" | "suspended" | "terminated";
+  introduced_by_partner_id: string | null;
+  custom_commission_pct: number | null;
+  stripe_connect_account_id: string | null;
+  contract_signed_at: string | null;
+  contract_envelope_id: string | null;
+  license_paid_at: string | null;
+  license_amount_paid_usd: number | null;
+  kyc_completed_at: string | null;
+  activated_at: string | null;
+  suspended_at: string | null;
+  termination_reason: string | null;
+  metadata: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+};
+
+export type PartnerInvitationRow = {
+  id: string;
+  email: string;
+  full_name: string;
+  introduced_by_partner_id: string | null;
+  invite_token: string;
+  contract_envelope_id: string | null;
+  payment_link_url: string | null;
+  custom_commission_pct: number | null;
+  license_amount_usd: number;
+  installments: number;
+  expires_at: string;
+  consumed_at: string | null;
+  status: "sent" | "contract_signed" | "paid" | "kyc_completed" | "converted" | "expired" | "revoked";
+  created_at: string;
+};
+
+export async function listPartners(args: {
+  callerJwt: string;
+  status?: PartnerRow["status"];
+}): Promise<PartnerRow[]> {
+  const sb = getCallerClient({ callerJwt: args.callerJwt });
+  let q = sb.from("partners").select("*");
+  if (args.status) q = q.eq("status", args.status);
+  const { data, error } = await q.order("created_at", { ascending: false });
+  if (error) throw new Error(`listPartners failed: ${error.message}`);
+  return (data ?? []) as PartnerRow[];
+}
+
+export async function getPartner(args: {
+  callerJwt: string;
+  partnerId: string;
+}): Promise<PartnerRow | null> {
+  const sb = getCallerClient({ callerJwt: args.callerJwt });
+  const { data, error } = await sb
+    .from("partners")
+    .select("*")
+    .eq("id", args.partnerId)
+    .maybeSingle();
+  if (error) throw new Error(`getPartner failed: ${error.message}`);
+  return (data ?? null) as PartnerRow | null;
+}
+
+export async function listPartnerInvitations(args: {
+  callerJwt: string;
+  status?: PartnerInvitationRow["status"];
+}): Promise<PartnerInvitationRow[]> {
+  const sb = getCallerClient({ callerJwt: args.callerJwt });
+  let q = sb.from("partner_invitations").select("*");
+  if (args.status) q = q.eq("status", args.status);
+  const { data, error } = await q.order("created_at", { ascending: false });
+  if (error) throw new Error(`listPartnerInvitations failed: ${error.message}`);
+  return (data ?? []) as PartnerInvitationRow[];
+}
+
+export async function getPartnerInvitation(args: {
+  callerJwt: string;
+  invitationId: string;
+}): Promise<PartnerInvitationRow | null> {
+  const sb = getCallerClient({ callerJwt: args.callerJwt });
+  const { data, error } = await sb
+    .from("partner_invitations")
+    .select("*")
+    .eq("id", args.invitationId)
+    .maybeSingle();
+  if (error) throw new Error(`getPartnerInvitation failed: ${error.message}`);
+  return (data ?? null) as PartnerInvitationRow | null;
+}
