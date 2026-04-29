@@ -5,6 +5,8 @@ import { TabNav } from "@/components/Tabs";
 import { PartnerStatusBadge } from "@/components/PartnerStatusBadge";
 import { PartnerActionsMenu } from "@/components/PartnerActionsMenu";
 import { PartnerCommissionDialog } from "@/components/PartnerCommissionDialog";
+import { PartnerReferralsTab } from "@/components/PartnerReferralsTab";
+import { AttributeUserDialog } from "@/components/AttributeUserDialog";
 import { AuditList } from "@/components/AuditList";
 import { getCallerJwt } from "@/lib/auth";
 import {
@@ -181,6 +183,14 @@ export default async function PartnerDetailPage({
               </ul>
             )}
           </div>
+
+          <section className="pt-6 border-t">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="font-semibold">Clientes indicados</h2>
+              <AttributeUserDialog partnerId={partner.id} />
+            </div>
+            <PartnerReferralsTab partnerId={partner.id} callerJwt={jwt} />
+          </section>
         </div>
       )}
 
