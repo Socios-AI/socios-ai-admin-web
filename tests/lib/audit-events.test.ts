@@ -7,9 +7,10 @@ const EXPECTED_VALUES = [
   "plan.created", "plan.updated", "plan.deactivated", "plan.stripe_synced",
   "subscription.assigned_manually", "subscription.canceled",
   "membership.granted", "membership.revoked",
+  "referral.created", "referral.revoked", "referral.transferred",
 ];
 
-const VALID_GROUPS: AuditEventGroup[] = ["Apps", "Planos", "Subscriptions", "Memberships", "Sistema"];
+const VALID_GROUPS: AuditEventGroup[] = ["Apps", "Planos", "Subscriptions", "Memberships", "Sistema", "Licenciados"];
 
 describe("AUDIT_EVENTS catalog", () => {
   it("contains exactly the known event_types emitted by admin-web actions", () => {
