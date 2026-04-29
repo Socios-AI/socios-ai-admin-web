@@ -332,3 +332,28 @@ export type CancelPartnerInvitationInput = z.infer<typeof cancelPartnerInvitatio
 export type SuspendPartnerInput = z.infer<typeof suspendPartnerSchema>;
 export type TerminatePartnerInput = z.infer<typeof terminatePartnerSchema>;
 export type UpdatePartnerCommissionInput = z.infer<typeof updatePartnerCommissionSchema>;
+
+// =============================================================
+// Plan K.3 · Referral attribution schemas
+// =============================================================
+
+const referralUuidSchema = z.string().uuid();
+
+export const attributeReferralSchema = z.object({
+  customerUserId: referralUuidSchema,
+  sourcePartnerId: referralUuidSchema,
+  attributionSource: z.enum(["manual", "admin_assignment"]).default("admin_assignment"),
+});
+
+export const revokeReferralSchema = z.object({
+  referralId: referralUuidSchema,
+});
+
+export const transferReferralSchema = z.object({
+  referralId: referralUuidSchema,
+  toPartnerId: referralUuidSchema,
+});
+
+export type AttributeReferralInput = z.infer<typeof attributeReferralSchema>;
+export type RevokeReferralInput = z.infer<typeof revokeReferralSchema>;
+export type TransferReferralInput = z.infer<typeof transferReferralSchema>;
