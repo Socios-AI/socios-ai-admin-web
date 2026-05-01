@@ -209,6 +209,20 @@ export function AuditFilters({ apps, initial }: AuditFiltersProps) {
           <span />
         )}
         <div className="flex gap-2">
+          <a
+            href={`/api/audit/export?${serializeAuditUrlParams({
+              event_type: eventType || undefined,
+              app_slug: appSlug || undefined,
+              actor: actor || undefined,
+              target: target || undefined,
+              from: from || undefined,
+              to: to || undefined,
+            })}`}
+            className="rounded-lg border border-border px-3 py-2 text-sm hover:bg-muted"
+            title="Baixa CSV com os filtros atuais (cap 50k linhas)"
+          >
+            Exportar CSV
+          </a>
           <button
             type="button"
             onClick={handleClear}
