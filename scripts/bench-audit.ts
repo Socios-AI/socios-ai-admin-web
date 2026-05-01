@@ -57,11 +57,20 @@ const EVENT_TYPES = [
 const APP_SLUGS = ["case-predictor", "lead-pro", "admin", "id", "billing"];
 const fakeUuid = () => randomUUID();
 
+// audit_log is partitioned by month. Synthetic rows must land in a
+// partition that already exists, so we clamp the date offset to "now back
+// to the start of the current month". Older rows would error with
+// `no partition of relation "audit_log" found for row` unless someone
+// pre-creates partitions for the trailing months.
+const NOW = Date.now();
+const START_OF_MONTH = new Date(new Date().getFullYear(), new Date().getMonth(), 1).getTime();
+const MAX_OFFSET_MS = NOW - START_OF_MONTH;
+
 function generateBatch(start: number, count: number, actors: string[], targets: string[]) {
   const rows = [];
   for (let i = 0; i < count; i++) {
-    const offsetDays = Math.floor(Math.random() * 90);
-    const created = new Date(Date.now() - offsetDays * 86400_000 - Math.floor(Math.random() * 86400_000));
+    const offsetMs = Math.floor(Math.random() * MAX_OFFSET_MS);
+    const created = new Date(NOW - offsetMs);
     rows.push({
       event_type: EVENT_TYPES[(start + i) % EVENT_TYPES.length],
       actor_user_id: actors[Math.floor(Math.random() * actors.length)],
