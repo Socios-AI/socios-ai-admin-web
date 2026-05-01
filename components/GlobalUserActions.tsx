@@ -7,6 +7,7 @@ import { ConfirmDialog } from "./ConfirmDialog";
 import { promoteUserAction } from "@/app/_actions/promote-user";
 import { demoteUserAction } from "@/app/_actions/demote-user";
 import { forceLogoutAction } from "@/app/_actions/force-logout";
+import { deleteUserAction } from "@/app/_actions/delete-user";
 
 type Props = {
   userId: string;
@@ -18,7 +19,8 @@ type Mode =
   | { kind: "none" }
   | { kind: "promote" }
   | { kind: "demote" }
-  | { kind: "force-logout" };
+  | { kind: "force-logout" }
+  | { kind: "delete" };
 
 export function GlobalUserActions({ userId, email, isSuperAdmin }: Props) {
   const router = useRouter();
@@ -72,6 +74,13 @@ export function GlobalUserActions({ userId, email, isSuperAdmin }: Props) {
         >
           Forçar logout
         </button>
+        <button
+          type="button"
+          onClick={() => setMode({ kind: "delete" })}
+          className="rounded-lg border border-destructive text-destructive px-3 py-1.5 text-sm font-medium hover:bg-destructive/10"
+        >
+          Remover usuário
+        </button>
       </div>
 
       <ConfirmDialog
@@ -109,6 +118,19 @@ export function GlobalUserActions({ userId, email, isSuperAdmin }: Props) {
         onCancel={close}
         onConfirm={(reason) =>
           handle(forceLogoutAction({ userId, reason }), "Sessões revogadas")
+        }
+      />
+
+      <ConfirmDialog
+        open={mode.kind === "delete"}
+        title={`Remover ${email} permanentemente`}
+        description="Ação IRREVERSÍVEL. Conta, sessões, memberships, subscriptions e profile serão apagados. Histórico de auditoria, partner record e referências em outras tabelas serão preservados com o user_id nulificado. Requer MFA recente."
+        confirmLabel="Remover permanentemente"
+        destructive
+        requireReason
+        onCancel={close}
+        onConfirm={(reason) =>
+          handle(deleteUserAction({ userId, reason }), "Usuário removido")
         }
       />
     </div>
