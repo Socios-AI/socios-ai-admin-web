@@ -40,6 +40,7 @@ export const membershipIdSchema = z.string().uuid("membershipId inválido");
 export const promoteUserSchema = z.object({ userId: userIdSchema, reason: reasonSchema });
 export const demoteUserSchema = z.object({ userId: userIdSchema, reason: reasonSchema });
 export const forceLogoutSchema = z.object({ userId: userIdSchema, reason: reasonSchema });
+export const deleteUserSchema = z.object({ userId: userIdSchema, reason: reasonSchema });
 
 export const grantMembershipSchema = z
   .object({
@@ -64,6 +65,7 @@ export type InviteUserInput = z.infer<typeof inviteUserSchema>;
 export type PromoteUserInput = z.infer<typeof promoteUserSchema>;
 export type DemoteUserInput = z.infer<typeof demoteUserSchema>;
 export type ForceLogoutInput = z.infer<typeof forceLogoutSchema>;
+export type DeleteUserInput = z.infer<typeof deleteUserSchema>;
 export type GrantMembershipInput = z.infer<typeof grantMembershipSchema>;
 export type RevokeMembershipInput = z.infer<typeof revokeMembershipSchema>;
 
