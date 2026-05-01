@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
+    "verify:deps": "bash scripts/verify-auth-pin.sh",
     "e2e": "playwright test",
     "bench:audit": "tsx scripts/bench-audit.ts"
   },
