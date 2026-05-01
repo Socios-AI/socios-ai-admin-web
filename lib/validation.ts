@@ -41,6 +41,7 @@ export const promoteUserSchema = z.object({ userId: userIdSchema, reason: reason
 export const demoteUserSchema = z.object({ userId: userIdSchema, reason: reasonSchema });
 export const forceLogoutSchema = z.object({ userId: userIdSchema, reason: reasonSchema });
 export const deleteUserSchema = z.object({ userId: userIdSchema, reason: reasonSchema });
+export const resetUserMfaSchema = z.object({ userId: userIdSchema, reason: reasonSchema });
 
 export const grantMembershipSchema = z
   .object({
@@ -66,6 +67,7 @@ export type PromoteUserInput = z.infer<typeof promoteUserSchema>;
 export type DemoteUserInput = z.infer<typeof demoteUserSchema>;
 export type ForceLogoutInput = z.infer<typeof forceLogoutSchema>;
 export type DeleteUserInput = z.infer<typeof deleteUserSchema>;
+export type ResetUserMfaInput = z.infer<typeof resetUserMfaSchema>;
 export type GrantMembershipInput = z.infer<typeof grantMembershipSchema>;
 export type RevokeMembershipInput = z.infer<typeof revokeMembershipSchema>;
 

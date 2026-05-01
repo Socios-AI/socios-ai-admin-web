@@ -8,6 +8,7 @@ import { promoteUserAction } from "@/app/_actions/promote-user";
 import { demoteUserAction } from "@/app/_actions/demote-user";
 import { forceLogoutAction } from "@/app/_actions/force-logout";
 import { deleteUserAction } from "@/app/_actions/delete-user";
+import { resetUserMfaAction } from "@/app/_actions/reset-user-mfa";
 
 type Props = {
   userId: string;
@@ -20,12 +21,16 @@ type Mode =
   | { kind: "promote" }
   | { kind: "demote" }
   | { kind: "force-logout" }
-  | { kind: "delete" };
+  | { kind: "delete" }
+  | { kind: "reset-mfa" };
 
 export function GlobalUserActions({ userId, email, isSuperAdmin }: Props) {
   const router = useRouter();
   const [mode, setMode] = useState<Mode>({ kind: "none" });
   const [, startTransition] = useTransition();
+  // startTransition is used both by `handle` and by the inline reset-mfa
+  // handler that needs to surface the dynamic count in the success toast.
+
 
   const close = () => setMode({ kind: "none" });
 
@@ -73,6 +78,13 @@ export function GlobalUserActions({ userId, email, isSuperAdmin }: Props) {
           className="rounded-lg bg-destructive text-destructive-foreground px-3 py-1.5 text-sm font-medium hover:opacity-90"
         >
           Forçar logout
+        </button>
+        <button
+          type="button"
+          onClick={() => setMode({ kind: "reset-mfa" })}
+          className="rounded-lg border border-border px-3 py-1.5 text-sm font-medium hover:bg-accent"
+        >
+          Resetar MFA
         </button>
         <button
           type="button"
@@ -132,6 +144,29 @@ export function GlobalUserActions({ userId, email, isSuperAdmin }: Props) {
         onConfirm={(reason) =>
           handle(deleteUserAction({ userId, reason }), "Usuário removido")
         }
+      />
+
+      <ConfirmDialog
+        open={mode.kind === "reset-mfa"}
+        title={`Resetar MFA de ${email}`}
+        description="Todos os fatores TOTP do usuário serão apagados. Ele precisará re-cadastrar um autenticador no próximo login. Use isso só em pedido de suporte (autenticador perdido). Requer MFA recente do operador."
+        confirmLabel="Resetar MFA"
+        requireReason
+        onCancel={close}
+        onConfirm={(reason) => {
+          // Custom handler so the success toast can include the actual
+          // factor count returned by the RPC.
+          startTransition(async () => {
+            const res = await resetUserMfaAction({ userId, reason });
+            if (!res.ok) {
+              toast.error(res.message ?? `Falha (${res.error})`);
+              return;
+            }
+            toast.success(`MFA resetado · ${res.factorsDeleted} fator(es) apagado(s)`);
+            close();
+            router.refresh();
+          });
+        }}
       />
     </div>
   );
