@@ -37,4 +37,8 @@ describe("<PartnerListTable>", () => {
     const link = screen.getByRole("link", { name: /detalhes/i });
     expect(link).toHaveAttribute("href", "/partners/p1");
   });
+  it("renders 'user removido' when user_id is null (FK SET NULL)", () => {
+    render(<PartnerListTable partners={[{ ...ROW, user_id: null }]} />);
+    expect(screen.getByText(/user removido/i)).toBeInTheDocument();
+  });
 });
