@@ -8,6 +8,7 @@ import { AuditTab } from "@/components/AuditTab";
 import { getCallerJwt } from "@/lib/auth";
 import {
   getUser,
+  getUserTier,
   listApps,
   listPlansCatalog,
   listUserSubscriptions,
@@ -48,11 +49,12 @@ export default async function UserDetailPage(props: {
     );
   }
 
-  const [user, apps, plansCatalog, subscriptions] = await Promise.all([
+  const [user, apps, plansCatalog, subscriptions, tier] = await Promise.all([
     getUser({ callerJwt: jwt, userId: id }),
     listApps({ callerJwt: jwt }),
     listPlansCatalog({ callerJwt: jwt }),
     listUserSubscriptions({ callerJwt: jwt, userId: id }),
+    getUserTier({ callerJwt: jwt, userId: id }),
   ]);
   if (!user) notFound();
 
@@ -82,6 +84,7 @@ export default async function UserDetailPage(props: {
         userId={user.id}
         email={user.email}
         isSuperAdmin={user.is_super_admin}
+        tier={tier}
       />
 
       <TabNav items={TAB_ITEMS} active={activeTab} />

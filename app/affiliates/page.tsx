@@ -1,6 +1,8 @@
+import Link from "next/link";
 import { AdminShell } from "@/components/AdminShell";
 import { AffiliateInvitationForm } from "@/components/AffiliateInvitationForm";
 import { AffiliateActivateButton } from "@/components/AffiliateActivateButton";
+import { AffiliateRevokeButton } from "@/components/AffiliateRevokeButton";
 import { getCallerJwt } from "@/lib/auth";
 import {
   listAffiliateInvitations,
@@ -58,6 +60,7 @@ export default async function AffiliatesPage() {
                       <th className="px-4 py-2 text-left">Email</th>
                       <th className="px-4 py-2 text-left">Nome</th>
                       <th className="px-4 py-2 text-left">Expira</th>
+                      <th className="px-4 py-2 text-right">Ação</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -67,6 +70,9 @@ export default async function AffiliatesPage() {
                         <td className="px-4 py-2">{i.display_name}</td>
                         <td className="px-4 py-2 text-xs text-muted-foreground">
                           {new Date(i.expires_at).toLocaleString("pt-BR")}
+                        </td>
+                        <td className="px-4 py-2 text-right">
+                          <AffiliateRevokeButton invitationId={i.id} email={i.email} />
                         </td>
                       </tr>
                     ))}
@@ -99,7 +105,14 @@ export default async function AffiliatesPage() {
                   <tbody>
                     {profiles.map((p) => (
                       <tr key={p.user_id} className="border-t border-border">
-                        <td className="px-4 py-2">{p.display_name}</td>
+                        <td className="px-4 py-2">
+                          <Link
+                            href={`/affiliates/${p.user_id}`}
+                            className="text-primary hover:underline"
+                          >
+                            {p.display_name}
+                          </Link>
+                        </td>
                         <td className="px-4 py-2 font-mono text-xs">{p.affiliate_code}</td>
                         <td className="px-4 py-2">
                           {p.is_active ? (
