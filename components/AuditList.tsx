@@ -11,10 +11,10 @@ export function AuditList({ events }: { events: AuditEvent[] }) {
           <p className="font-mono text-xs text-muted-foreground">
             {new Date(e.created_at).toLocaleString("pt-BR")}
           </p>
-          <p>
+          <p className="break-words">
             <span className="font-medium">{e.event_type}</span>
             {e.metadata && Object.keys(e.metadata).length > 0 && (
-              <span className="text-muted-foreground"> · {JSON.stringify(e.metadata)}</span>
+              <span className="text-muted-foreground break-all"> · {JSON.stringify(e.metadata)}</span>
             )}
           </p>
         </li>

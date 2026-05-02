@@ -5,8 +5,6 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import type { PlatformTier } from "@/lib/data";
 import { ConfirmDialog } from "./ConfirmDialog";
-import { promoteUserAction } from "@/app/_actions/promote-user";
-import { demoteUserAction } from "@/app/_actions/demote-user";
 import { forceLogoutAction } from "@/app/_actions/force-logout";
 import { deleteUserAction } from "@/app/_actions/delete-user";
 import { resetUserMfaAction } from "@/app/_actions/reset-user-mfa";
@@ -18,14 +16,11 @@ import { demoteAdminAction } from "@/app/_actions/demote-admin";
 type Props = {
   userId: string;
   email: string;
-  isSuperAdmin: boolean;
   tier: PlatformTier | null;
 };
 
 type Mode =
   | { kind: "none" }
-  | { kind: "promote" }
-  | { kind: "demote" }
   | { kind: "force-logout" }
   | { kind: "delete" }
   | { kind: "reset-mfa" }
@@ -40,7 +35,11 @@ const TIER_LABEL: Record<PlatformTier, string> = {
   affiliate: "Afiliado",
 };
 
-export function GlobalUserActions({ userId, email, isSuperAdmin, tier }: Props) {
+function tierLabelOrFallback(tier: PlatformTier | null): string {
+  return tier ? TIER_LABEL[tier] : "Sem tier";
+}
+
+export function GlobalUserActions({ userId, email, tier }: Props) {
   const router = useRouter();
   const [mode, setMode] = useState<Mode>({ kind: "none" });
   const [, startTransition] = useTransition();
@@ -70,11 +69,15 @@ export function GlobalUserActions({ userId, email, isSuperAdmin, tier }: Props) 
     <div className="rounded-2xl border border-border bg-card p-5 space-y-4 mb-6">
       <div className="flex items-center justify-between">
         <h2 className="font-display font-semibold text-lg">Ações</h2>
-        {tier && (
-          <span className="rounded-full bg-primary/10 text-primary px-2.5 py-0.5 text-xs font-medium">
-            Tier: {TIER_LABEL[tier]}
-          </span>
-        )}
+        <span
+          className={
+            tier
+              ? "rounded-full bg-primary/10 text-primary px-2.5 py-0.5 text-xs font-medium"
+              : "rounded-full bg-muted text-muted-foreground px-2.5 py-0.5 text-xs font-medium"
+          }
+        >
+          Tier: {tierLabelOrFallback(tier)}
+        </span>
       </div>
 
       {/* Tier management (Plano M.2) · botões condicionais por tier atual */}
@@ -122,26 +125,7 @@ export function GlobalUserActions({ userId, email, isSuperAdmin, tier }: Props) 
         </div>
       </div>
 
-      {/* Legacy super_admin (mantido durante transição cleanup #1 → #2) */}
       <div className="flex flex-wrap gap-2 pt-2 border-t border-border">
-        {!isSuperAdmin && (
-          <button
-            type="button"
-            onClick={() => setMode({ kind: "promote" })}
-            className="rounded-lg bg-primary text-primary-foreground px-3 py-1.5 text-sm font-medium hover:opacity-90"
-          >
-            Promover a super-admin (legacy)
-          </button>
-        )}
-        {isSuperAdmin && (
-          <button
-            type="button"
-            onClick={() => setMode({ kind: "demote" })}
-            className="rounded-lg bg-destructive text-destructive-foreground px-3 py-1.5 text-sm font-medium hover:opacity-90"
-          >
-            Rebaixar (legacy)
-          </button>
-        )}
         <button
           type="button"
           onClick={() => setMode({ kind: "force-logout" })}
@@ -164,31 +148,6 @@ export function GlobalUserActions({ userId, email, isSuperAdmin, tier }: Props) 
           Remover usuário
         </button>
       </div>
-
-      <ConfirmDialog
-        open={mode.kind === "promote"}
-        title={`Promover ${email}`}
-        description="Esta conta passará a ter acesso total como super-admin."
-        confirmLabel="Promover"
-        requireReason
-        onCancel={close}
-        onConfirm={(reason) =>
-          handle(promoteUserAction({ userId, reason }), "Promovido com sucesso")
-        }
-      />
-
-      <ConfirmDialog
-        open={mode.kind === "demote"}
-        title={`Rebaixar ${email}`}
-        description="Esta conta perderá privilégios de super-admin imediatamente."
-        confirmLabel="Rebaixar"
-        destructive
-        requireReason
-        onCancel={close}
-        onConfirm={(reason) =>
-          handle(demoteUserAction({ userId, reason }), "Rebaixado com sucesso")
-        }
-      />
 
       <ConfirmDialog
         open={mode.kind === "force-logout"}
@@ -242,7 +201,7 @@ export function GlobalUserActions({ userId, email, isSuperAdmin, tier }: Props) 
       <ConfirmDialog
         open={mode.kind === "promote-owner"}
         title={`Promover ${email} a Owner`}
-        description="Owner é o tier mais alto da plataforma. Pode promover/demover outros owners e admins. Cenário A estrito (M.2): só outro owner pode chegar aqui."
+        description="Owner é o nível mais alto da plataforma. Pode promover e demover outros owners e admins. Apenas owners podem promover novos owners."
         confirmLabel="Promover a Owner"
         requireReason
         onCancel={close}
@@ -254,7 +213,7 @@ export function GlobalUserActions({ userId, email, isSuperAdmin, tier }: Props) 
       <ConfirmDialog
         open={mode.kind === "promote-admin"}
         title={`Promover ${email} a Admin`}
-        description="Admin pode operar a plataforma (ler/escrever em quase tudo). Cenário A estrito (M.2): só owner pode promover admin."
+        description="Admin pode operar quase tudo na plataforma (ler e escrever na maioria das áreas). Apenas owners podem promover novos admins."
         confirmLabel="Promover a Admin"
         requireReason
         onCancel={close}
@@ -266,7 +225,7 @@ export function GlobalUserActions({ userId, email, isSuperAdmin, tier }: Props) 
       <ConfirmDialog
         open={mode.kind === "demote-owner"}
         title={`Demover Owner ${email}`}
-        description="Esta conta perderá tier=owner. Last-owner guard: se este for o único owner ativo, a operação é bloqueada pelo backend."
+        description="Esta conta deixará de ser owner. Se ela for o único owner ativo, a operação será bloqueada para evitar lockout da plataforma."
         confirmLabel="Demover Owner"
         destructive
         requireReason
@@ -279,7 +238,7 @@ export function GlobalUserActions({ userId, email, isSuperAdmin, tier }: Props) 
       <ConfirmDialog
         open={mode.kind === "demote-admin"}
         title={`Demover Admin ${email}`}
-        description="Esta conta perderá tier=admin imediatamente."
+        description="Esta conta deixará de ser admin imediatamente."
         confirmLabel="Demover Admin"
         destructive
         requireReason

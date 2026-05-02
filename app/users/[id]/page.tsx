@@ -70,20 +70,27 @@ export default async function UserDetailPage(props: {
 
   return (
     <AdminShell>
-      <header className="mb-6">
-        <h1 className="font-display font-semibold text-2xl">{user.email}</h1>
-        <p className="text-muted-foreground text-sm">
-          Criado em {new Date(user.created_at).toLocaleString("pt-BR")}
-          {user.is_super_admin && (
-            <span className="ml-2 text-primary">· super-admin</span>
-          )}
-        </p>
+      <header className="mb-6 flex items-start justify-between gap-4">
+        <div>
+          <h1 className="font-display font-semibold text-2xl">{user.email}</h1>
+          <p className="text-muted-foreground text-sm">
+            Criado em {new Date(user.created_at).toLocaleString("pt-BR")}
+          </p>
+        </div>
+        <span
+          className={
+            tier
+              ? "rounded-full bg-primary/10 text-primary px-3 py-1 text-sm font-medium whitespace-nowrap"
+              : "rounded-full bg-muted text-muted-foreground px-3 py-1 text-sm font-medium whitespace-nowrap"
+          }
+        >
+          {tier === "owner" ? "Owner" : tier === "admin" ? "Admin" : tier === "affiliate" ? "Afiliado" : "Sem tier"}
+        </span>
       </header>
 
       <GlobalUserActions
         userId={user.id}
         email={user.email}
-        isSuperAdmin={user.is_super_admin}
         tier={tier}
       />
 
