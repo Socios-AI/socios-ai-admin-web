@@ -46,3 +46,45 @@ export async function listAffiliateProfiles(args: {
   if (error) throw new Error(`listAffiliateProfiles failed: ${error.message}`);
   return (data ?? []) as AffiliateProfileRow[];
 }
+
+export async function getAffiliateProfile(args: {
+  callerJwt: string;
+  userId: string;
+}): Promise<AffiliateProfileRow | null> {
+  const sb = getCallerClient({ callerJwt: args.callerJwt });
+  const { data, error } = await sb
+    .from("affiliate_profiles")
+    .select("*")
+    .eq("user_id", args.userId)
+    .maybeSingle();
+  if (error) throw new Error(`getAffiliateProfile failed: ${error.message}`);
+  return (data ?? null) as AffiliateProfileRow | null;
+}
+
+export type AffiliateAttributionRow = {
+  id: string;
+  customer_user_id: string;
+  source_user_id: string | null;
+  source_tier: string;
+  source_code: string | null;
+  kind: string;
+  attribution_method: string | null;
+  attributed_at: string;
+};
+
+// Lista as attributions onde este afiliado foi a fonte. Cobre tanto
+// signup_capture (handle_new_user trigger) quanto checkout_snapshot
+// (M.6 server-side em Plan J quando vier).
+export async function listAffiliateAttributions(args: {
+  callerJwt: string;
+  sourceUserId: string;
+}): Promise<AffiliateAttributionRow[]> {
+  const sb = getCallerClient({ callerJwt: args.callerJwt });
+  const { data, error } = await sb
+    .from("attributions")
+    .select("*")
+    .eq("source_user_id", args.sourceUserId)
+    .order("attributed_at", { ascending: false });
+  if (error) throw new Error(`listAffiliateAttributions failed: ${error.message}`);
+  return (data ?? []) as AffiliateAttributionRow[];
+}

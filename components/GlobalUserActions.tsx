@@ -3,17 +3,23 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import type { PlatformTier } from "@/lib/data";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { promoteUserAction } from "@/app/_actions/promote-user";
 import { demoteUserAction } from "@/app/_actions/demote-user";
 import { forceLogoutAction } from "@/app/_actions/force-logout";
 import { deleteUserAction } from "@/app/_actions/delete-user";
 import { resetUserMfaAction } from "@/app/_actions/reset-user-mfa";
+import { promoteToOwnerAction } from "@/app/_actions/promote-to-owner";
+import { promoteToAdminAction } from "@/app/_actions/promote-to-admin";
+import { demoteOwnerAction } from "@/app/_actions/demote-owner";
+import { demoteAdminAction } from "@/app/_actions/demote-admin";
 
 type Props = {
   userId: string;
   email: string;
   isSuperAdmin: boolean;
+  tier: PlatformTier | null;
 };
 
 type Mode =
@@ -22,9 +28,19 @@ type Mode =
   | { kind: "demote" }
   | { kind: "force-logout" }
   | { kind: "delete" }
-  | { kind: "reset-mfa" };
+  | { kind: "reset-mfa" }
+  | { kind: "promote-owner" }
+  | { kind: "promote-admin" }
+  | { kind: "demote-owner" }
+  | { kind: "demote-admin" };
 
-export function GlobalUserActions({ userId, email, isSuperAdmin }: Props) {
+const TIER_LABEL: Record<PlatformTier, string> = {
+  owner: "Owner",
+  admin: "Admin",
+  affiliate: "Afiliado",
+};
+
+export function GlobalUserActions({ userId, email, isSuperAdmin, tier }: Props) {
   const router = useRouter();
   const [mode, setMode] = useState<Mode>({ kind: "none" });
   const [, startTransition] = useTransition();
@@ -52,15 +68,69 @@ export function GlobalUserActions({ userId, email, isSuperAdmin }: Props) {
 
   return (
     <div className="rounded-2xl border border-border bg-card p-5 space-y-4 mb-6">
-      <h2 className="font-display font-semibold text-lg">Ações</h2>
-      <div className="flex flex-wrap gap-2">
+      <div className="flex items-center justify-between">
+        <h2 className="font-display font-semibold text-lg">Ações</h2>
+        {tier && (
+          <span className="rounded-full bg-primary/10 text-primary px-2.5 py-0.5 text-xs font-medium">
+            Tier: {TIER_LABEL[tier]}
+          </span>
+        )}
+      </div>
+
+      {/* Tier management (Plano M.2) · botões condicionais por tier atual */}
+      <div className="space-y-1">
+        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          Tier de plataforma
+        </p>
+        <div className="flex flex-wrap gap-2">
+          {tier !== "owner" && (
+            <button
+              type="button"
+              onClick={() => setMode({ kind: "promote-owner" })}
+              className="rounded-lg bg-primary text-primary-foreground px-3 py-1.5 text-sm font-medium hover:opacity-90"
+            >
+              Promover a Owner
+            </button>
+          )}
+          {tier === null && (
+            <button
+              type="button"
+              onClick={() => setMode({ kind: "promote-admin" })}
+              className="rounded-lg bg-primary text-primary-foreground px-3 py-1.5 text-sm font-medium hover:opacity-90"
+            >
+              Promover a Admin
+            </button>
+          )}
+          {tier === "owner" && (
+            <button
+              type="button"
+              onClick={() => setMode({ kind: "demote-owner" })}
+              className="rounded-lg bg-destructive text-destructive-foreground px-3 py-1.5 text-sm font-medium hover:opacity-90"
+            >
+              Demover Owner
+            </button>
+          )}
+          {tier === "admin" && (
+            <button
+              type="button"
+              onClick={() => setMode({ kind: "demote-admin" })}
+              className="rounded-lg bg-destructive text-destructive-foreground px-3 py-1.5 text-sm font-medium hover:opacity-90"
+            >
+              Demover Admin
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Legacy super_admin (mantido durante transição cleanup #1 → #2) */}
+      <div className="flex flex-wrap gap-2 pt-2 border-t border-border">
         {!isSuperAdmin && (
           <button
             type="button"
             onClick={() => setMode({ kind: "promote" })}
             className="rounded-lg bg-primary text-primary-foreground px-3 py-1.5 text-sm font-medium hover:opacity-90"
           >
-            Promover a super-admin
+            Promover a super-admin (legacy)
           </button>
         )}
         {isSuperAdmin && (
@@ -69,7 +139,7 @@ export function GlobalUserActions({ userId, email, isSuperAdmin }: Props) {
             onClick={() => setMode({ kind: "demote" })}
             className="rounded-lg bg-destructive text-destructive-foreground px-3 py-1.5 text-sm font-medium hover:opacity-90"
           >
-            Rebaixar
+            Rebaixar (legacy)
           </button>
         )}
         <button
@@ -167,6 +237,56 @@ export function GlobalUserActions({ userId, email, isSuperAdmin }: Props) {
             router.refresh();
           });
         }}
+      />
+
+      <ConfirmDialog
+        open={mode.kind === "promote-owner"}
+        title={`Promover ${email} a Owner`}
+        description="Owner é o tier mais alto da plataforma. Pode promover/demover outros owners e admins. Cenário A estrito (M.2): só outro owner pode chegar aqui."
+        confirmLabel="Promover a Owner"
+        requireReason
+        onCancel={close}
+        onConfirm={(reason) =>
+          handle(promoteToOwnerAction({ userId, reason }), "Promovido a Owner")
+        }
+      />
+
+      <ConfirmDialog
+        open={mode.kind === "promote-admin"}
+        title={`Promover ${email} a Admin`}
+        description="Admin pode operar a plataforma (ler/escrever em quase tudo). Cenário A estrito (M.2): só owner pode promover admin."
+        confirmLabel="Promover a Admin"
+        requireReason
+        onCancel={close}
+        onConfirm={(reason) =>
+          handle(promoteToAdminAction({ userId, reason }), "Promovido a Admin")
+        }
+      />
+
+      <ConfirmDialog
+        open={mode.kind === "demote-owner"}
+        title={`Demover Owner ${email}`}
+        description="Esta conta perderá tier=owner. Last-owner guard: se este for o único owner ativo, a operação é bloqueada pelo backend."
+        confirmLabel="Demover Owner"
+        destructive
+        requireReason
+        onCancel={close}
+        onConfirm={(reason) =>
+          handle(demoteOwnerAction({ userId, reason }), "Owner demovido")
+        }
+      />
+
+      <ConfirmDialog
+        open={mode.kind === "demote-admin"}
+        title={`Demover Admin ${email}`}
+        description="Esta conta perderá tier=admin imediatamente."
+        confirmLabel="Demover Admin"
+        destructive
+        requireReason
+        onCancel={close}
+        onConfirm={(reason) =>
+          handle(demoteAdminAction({ userId, reason }), "Admin demovido")
+        }
       />
     </div>
   );

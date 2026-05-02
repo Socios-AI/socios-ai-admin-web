@@ -775,6 +775,29 @@ export type PartnerInvitationRow = {
   created_at: string;
 };
 
+export type PlatformTier = "owner" | "admin" | "affiliate";
+
+// Lê o tier ativo de platform_actors (mais alto se múltiplos · owner > admin > affiliate).
+// Retorna null se o user não tem nenhum tier ativo.
+export async function getUserTier(args: {
+  callerJwt: string;
+  userId: string;
+}): Promise<PlatformTier | null> {
+  const sb = getCallerClient({ callerJwt: args.callerJwt });
+  const { data, error } = await sb
+    .from("platform_actors")
+    .select("tier")
+    .eq("user_id", args.userId)
+    .is("valid_to", null);
+  if (error) throw new Error(`getUserTier failed: ${error.message}`);
+  if (!data || data.length === 0) return null;
+  const tiers = (data as Array<{ tier: PlatformTier }>).map((r) => r.tier);
+  if (tiers.includes("owner")) return "owner";
+  if (tiers.includes("admin")) return "admin";
+  if (tiers.includes("affiliate")) return "affiliate";
+  return null;
+}
+
 export async function listPartners(args: {
   callerJwt: string;
   status?: PartnerRow["status"];
