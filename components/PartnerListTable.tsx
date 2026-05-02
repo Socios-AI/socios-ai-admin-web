@@ -12,11 +12,26 @@ function fmtDate(s: string | null): string {
   return new Date(s).toLocaleDateString("pt-BR");
 }
 
+function TierBadge({ tier }: { tier: PartnerRow["tier"] }) {
+  if (tier === "reseller") {
+    return (
+      <span className="rounded-full bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 px-2 py-0.5 text-xs">
+        Revendedor
+      </span>
+    );
+  }
+  return (
+    <span className="rounded-full bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 px-2 py-0.5 text-xs">
+      Licenciado
+    </span>
+  );
+}
+
 export function PartnerListTable({ partners }: { partners: PartnerRow[] }) {
   if (partners.length === 0) {
     return (
       <div className="rounded-lg border border-border bg-card p-8 text-center text-sm text-muted-foreground">
-        Nenhum licenciado cadastrado ainda.
+        Nenhum parceiro cadastrado nesse filtro.
       </div>
     );
   }
@@ -25,6 +40,7 @@ export function PartnerListTable({ partners }: { partners: PartnerRow[] }) {
       <table className="w-full text-sm">
         <thead className="bg-muted/50 text-left text-xs uppercase tracking-wide text-muted-foreground">
           <tr>
+            <th className="px-4 py-3">Tier</th>
             <th className="px-4 py-3">Status</th>
             <th className="px-4 py-3">User ID</th>
             <th className="px-4 py-3">Comissão</th>
@@ -35,6 +51,7 @@ export function PartnerListTable({ partners }: { partners: PartnerRow[] }) {
         <tbody>
           {partners.map((p) => (
             <tr key={p.id} className="border-t border-border">
+              <td className="px-4 py-3"><TierBadge tier={p.tier} /></td>
               <td className="px-4 py-3"><PartnerStatusBadge status={p.status} /></td>
               <td className="px-4 py-3 font-mono text-xs">{p.user_id.slice(0, 8)}...</td>
               <td className="px-4 py-3">{fmtPct(p.custom_commission_pct)}</td>

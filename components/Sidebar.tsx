@@ -7,7 +7,7 @@ const ITEMS = [
   { href: "/orgs", label: "Organizações", Icon: Building2 },
   { href: "/apps", label: "Apps", Icon: AppWindow },
   { href: "/plans", label: "Planos", Icon: Tag },
-  { href: "/partners", label: "Licenciados", Icon: Handshake },
+  { href: "/partners", label: "Parceiros", Icon: Handshake },
   { href: "/affiliates", label: "Afiliados", Icon: Megaphone },
   { href: "/sessions", label: "Sessões (em breve)", Icon: Activity, disabled: true },
   { href: "/audit", label: "Auditoria", Icon: FileText },
