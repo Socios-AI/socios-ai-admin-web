@@ -741,6 +741,7 @@ export type PartnerRow = {
   id: string;
   user_id: string;
   status: "pending_contract" | "pending_payment" | "pending_kyc" | "active" | "suspended" | "terminated";
+  tier: "licensee" | "reseller";
   introduced_by_partner_id: string | null;
   custom_commission_pct: number | null;
   stripe_connect_account_id: string | null;
@@ -777,10 +778,12 @@ export type PartnerInvitationRow = {
 export async function listPartners(args: {
   callerJwt: string;
   status?: PartnerRow["status"];
+  tier?: PartnerRow["tier"];
 }): Promise<PartnerRow[]> {
   const sb = getCallerClient({ callerJwt: args.callerJwt });
   let q = sb.from("partners").select("*");
   if (args.status) q = q.eq("status", args.status);
+  if (args.tier) q = q.eq("tier", args.tier);
   const { data, error } = await q.order("created_at", { ascending: false });
   if (error) throw new Error(`listPartners failed: ${error.message}`);
   return (data ?? []) as PartnerRow[];

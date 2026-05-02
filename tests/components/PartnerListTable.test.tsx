@@ -6,6 +6,7 @@ const ROW = {
   id: "p1",
   user_id: "u1",
   status: "active" as const,
+  tier: "licensee" as const,
   introduced_by_partner_id: null,
   custom_commission_pct: 0.5,
   stripe_connect_account_id: null,
@@ -25,7 +26,7 @@ const ROW = {
 describe("<PartnerListTable>", () => {
   it("renders empty state when no partners", () => {
     render(<PartnerListTable partners={[]} />);
-    expect(screen.getByText(/nenhum licenciado/i)).toBeInTheDocument();
+    expect(screen.getByText(/nenhum parceiro/i)).toBeInTheDocument();
   });
   it("renders rows with status badge", () => {
     render(<PartnerListTable partners={[ROW]} />);
