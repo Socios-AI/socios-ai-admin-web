@@ -739,7 +739,9 @@ export async function listAuditEvents(args: ListAuditEventsArgs): Promise<ListAu
 
 export type PartnerRow = {
   id: string;
-  user_id: string;
+  // FK ON DELETE SET NULL (migration A.1): user pode ter sido removido
+  // mas o partner record é preservado pra histórico financeiro.
+  user_id: string | null;
   status: "pending_contract" | "pending_payment" | "pending_kyc" | "active" | "suspended" | "terminated";
   tier: "licensee" | "reseller";
   introduced_by_partner_id: string | null;

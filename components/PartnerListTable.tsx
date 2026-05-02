@@ -53,7 +53,13 @@ export function PartnerListTable({ partners }: { partners: PartnerRow[] }) {
             <tr key={p.id} className="border-t border-border">
               <td className="px-4 py-3"><TierBadge tier={p.tier} /></td>
               <td className="px-4 py-3"><PartnerStatusBadge status={p.status} /></td>
-              <td className="px-4 py-3 font-mono text-xs">{p.user_id.slice(0, 8)}...</td>
+              <td className="px-4 py-3 font-mono text-xs">
+                {p.user_id ? (
+                  `${p.user_id.slice(0, 8)}...`
+                ) : (
+                  <span className="italic text-muted-foreground">user removido</span>
+                )}
+              </td>
               <td className="px-4 py-3">{fmtPct(p.custom_commission_pct)}</td>
               <td className="px-4 py-3">{fmtDate(p.activated_at)}</td>
               <td className="px-4 py-3 text-right">

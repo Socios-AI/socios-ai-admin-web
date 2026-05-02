@@ -89,7 +89,7 @@ export default async function PartnerDetailPage({
             ← Licenciados
           </Link>
           <h1 className="font-display font-semibold text-2xl mt-2">
-            {partner.user_id.slice(0, 8)}...
+            {partner.user_id ? `${partner.user_id.slice(0, 8)}...` : "Parceiro órfão (user removido)"}
           </h1>
           <p className="text-sm mt-1">
             <PartnerStatusBadge status={partner.status} />
@@ -110,7 +110,9 @@ export default async function PartnerDetailPage({
         <dl className="grid grid-cols-2 gap-x-8 gap-y-4 text-sm">
           <div>
             <dt className="text-muted-foreground">User ID</dt>
-            <dd className="font-mono">{partner.user_id}</dd>
+            <dd className="font-mono">
+              {partner.user_id ?? <span className="italic text-muted-foreground">removido</span>}
+            </dd>
           </div>
           <div>
             <dt className="text-muted-foreground">Status</dt>
@@ -155,7 +157,7 @@ export default async function PartnerDetailPage({
                   href={`/partners/${introducedBy.id}`}
                   className="text-primary hover:underline"
                 >
-                  {introducedBy.user_id.slice(0, 8)}...
+                  {introducedBy.user_id ? `${introducedBy.user_id.slice(0, 8)}...` : `(removido) ${introducedBy.id.slice(0, 8)}`}
                 </Link>
               ) : (
                 "-"
@@ -176,7 +178,7 @@ export default async function PartnerDetailPage({
                       href={`/partners/${d.id}`}
                       className="text-primary hover:underline"
                     >
-                      {d.user_id.slice(0, 8)}...
+                      {d.user_id ? `${d.user_id.slice(0, 8)}...` : `(removido) ${d.id.slice(0, 8)}`}
                     </Link>
                   </li>
                 ))}
