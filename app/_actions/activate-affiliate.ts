@@ -8,10 +8,13 @@ export type ActivateAffiliateResult =
   | { ok: true; recoveryEmailSent: boolean }
   | { ok: false; error: "FORBIDDEN" | "API_ERROR" | "RECOVERY_FAIL"; message?: string };
 
+const ID_WEB_BASE = process.env.IDENTITY_WEB_BASE_URL ?? "https://id.sociosai.com";
+
 // Two-step: (1) RPC clears banned_until + sets is_active=true,
 // (2) admin API generates a recovery link so the affiliate can set their
-// password and finally log in. Step 2 failure is non-fatal — the admin
-// can re-issue the recovery email later.
+// password and finally log in. The recovery link aponta pra
+// /affiliate-activate (landing dedicada com copy de boas-vindas), não
+// pro /reset genérico. Step 2 failure is non-fatal — admin pode reenviar.
 export async function activateAffiliateAction(input: {
   userId: string;
 }): Promise<ActivateAffiliateResult> {
@@ -37,9 +40,11 @@ export async function activateAffiliateAction(input: {
     return { ok: true, recoveryEmailSent: false };
   }
 
+  const redirectTo = `${ID_WEB_BASE.replace(/\/$/, "")}/affiliate-activate`;
   const { error: linkErr } = await admin.auth.admin.generateLink({
     type: "recovery",
     email: userRes.user.email,
+    options: { redirectTo },
   });
 
   revalidatePath("/affiliates");
