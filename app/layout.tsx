@@ -11,6 +11,7 @@ import "./globals.css";
 
 import type { Metadata, Viewport } from "next";
 import { ToastProvider } from "@/components/ToastProvider";
+import { CookieBanner } from "@/components/CookieBanner";
 
 export const metadata: Metadata = {
   title: "Sócios AI · Admin",
@@ -34,6 +35,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="min-h-screen bg-background text-foreground antialiased">
         {children}
         <ToastProvider />
+        <CookieBanner />
       </body>
     </html>
   );
