@@ -8,9 +8,9 @@ export type RevokeAffiliateInvitationResult =
   | { ok: true }
   | { ok: false; error: "FORBIDDEN" | "VALIDATION" | "NOT_FOUND" | "API_ERROR"; message?: string };
 
-// Revoga um convite de afiliado pendente (status='sent'). Marca como
-// revoked + grava audit. Operação direta (sem RPC dedicado) porque a
-// tabela tem RLS adequada e o gate é admin-only.
+// Revoga um convite de afiliado pendente. Chama RPC SECURITY DEFINER
+// porque affiliate_invitations RLS não permite UPDATE direto via authenticated
+// (padrão M.3: mutações só via RPC). O audit é gravado dentro da RPC.
 export async function revokeAffiliateInvitationAction(input: {
   invitationId: string;
   reason?: string;
@@ -26,30 +26,18 @@ export async function revokeAffiliateInvitationAction(input: {
 
   const sb = getCallerClient({ callerJwt: jwt });
 
-  const { data, error } = await sb
-    .from("affiliate_invitations")
-    .update({ status: "revoked" })
-    .eq("id", id)
-    .eq("status", "sent")
-    .select("id, email")
-    .single();
-
-  if (error || !data) {
-    if (error?.code === "PGRST116") {
-      return { ok: false, error: "NOT_FOUND", message: "Convite não está pendente ou não existe" };
-    }
-    return { ok: false, error: "API_ERROR", message: error?.message ?? "update falhou" };
-  }
-
-  await sb.from("audit_log").insert({
-    event_type: "affiliate_invitation_revoked",
-    actor_user_id: claims.sub,
-    metadata: {
-      invitation_id: id,
-      email: data.email,
-      reason: input.reason ?? null,
-    },
+  const { error } = await sb.rpc("revoke_affiliate_invitation", {
+    p_invitation_id: id,
+    p_reason: input.reason ?? null,
   });
+
+  if (error) {
+    // P0002 = not found (RPC raises com errcode explícito)
+    if (error.code === "P0002" || /not found/i.test(error.message)) {
+      return { ok: false, error: "NOT_FOUND", message: "Convite não encontrado" };
+    }
+    return { ok: false, error: "API_ERROR", message: error.message };
+  }
 
   revalidatePath("/affiliates");
   return { ok: true };
