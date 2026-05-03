@@ -1,13 +1,19 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { NextRequest } from "next/server";
 
-const { verifyMock, jwksMock } = vi.hoisted(() => ({
+const { verifyMock, jwksMock, getUserMock } = vi.hoisted(() => ({
   verifyMock: vi.fn(),
   jwksMock: vi.fn(() => ({ kty: "EC" })),
+  getUserMock: vi.fn(),
 }));
 vi.mock("jose", () => ({
   jwtVerify: verifyMock,
   createRemoteJWKSet: jwksMock,
+}));
+vi.mock("@supabase/ssr", () => ({
+  createServerClient: () => ({
+    auth: { getUser: getUserMock },
+  }),
 }));
 
 import { middleware } from "../middleware";
@@ -15,7 +21,9 @@ import { middleware } from "../middleware";
 beforeEach(() => {
   verifyMock.mockReset();
   jwksMock.mockClear();
+  getUserMock.mockReset();
   process.env.NEXT_PUBLIC_SUPABASE_URL = "https://axyssxqttfnbtawanasf.supabase.co";
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = "test-anon-key";
 });
 
 function makeReq(pathname: string, opts: { cookieValue?: string } = {}): NextRequest {
@@ -33,7 +41,8 @@ describe("middleware", () => {
     expect(res.status).toBe(200);
   });
 
-  it("redirects to id login when no cookie", async () => {
+  it("redirects to id login when supabase reports no user (no cookie)", async () => {
+    getUserMock.mockResolvedValue({ data: { user: null } });
     const res = await middleware(makeReq("/users"));
     expect(res.status).toBe(307);
     const loc = res.headers.get("location") ?? "";
@@ -42,13 +51,14 @@ describe("middleware", () => {
   });
 
   it("rewrites to /forbidden when JWT lacks super_admin claim", async () => {
+    getUserMock.mockResolvedValue({ data: { user: { id: "u1" } } });
     verifyMock.mockResolvedValue({ payload: { super_admin: false, sub: "u1" } });
     const res = await middleware(makeReq("/users", { cookieValue: "fake.jwt.token" }));
-    // NextResponse.rewrite returns status 200 with x-middleware-rewrite header
     expect(res.headers.get("x-middleware-rewrite") ?? "").toContain("/forbidden");
   });
 
   it("redirects to id login when JWT verification fails", async () => {
+    getUserMock.mockResolvedValue({ data: { user: { id: "u1" } } });
     verifyMock.mockRejectedValue(new Error("bad signature"));
     const res = await middleware(makeReq("/users", { cookieValue: "tampered" }));
     expect(res.status).toBe(307);
@@ -56,16 +66,17 @@ describe("middleware", () => {
   });
 
   it("passes through when super_admin AND mfa_enrolled AND aal=aal2", async () => {
+    getUserMock.mockResolvedValue({ data: { user: { id: "u1" } } });
     verifyMock.mockResolvedValue({
       payload: { super_admin: true, mfa_enrolled: true, aal: "aal2", sub: "u1" },
     });
     const res = await middleware(makeReq("/users", { cookieValue: "valid" }));
-    // NextResponse.next() returns 200 with no rewrite header
     expect(res.status).toBe(200);
     expect(res.headers.get("x-middleware-rewrite")).toBeNull();
   });
 
   it("redirects to id mfa-enroll when super_admin but mfa_enrolled=false", async () => {
+    getUserMock.mockResolvedValue({ data: { user: { id: "u1" } } });
     verifyMock.mockResolvedValue({
       payload: { super_admin: true, mfa_enrolled: false, aal: "aal1", sub: "u1" },
     });
@@ -77,6 +88,7 @@ describe("middleware", () => {
   });
 
   it("redirects to id mfa-challenge when mfa_enrolled=true but aal=aal1", async () => {
+    getUserMock.mockResolvedValue({ data: { user: { id: "u1" } } });
     verifyMock.mockResolvedValue({
       payload: { super_admin: true, mfa_enrolled: true, aal: "aal1", sub: "u1" },
     });
