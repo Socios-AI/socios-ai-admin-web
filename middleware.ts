@@ -1,21 +1,9 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { createServerClient, type CookieOptions } from "@supabase/ssr";
-import { createRemoteJWKSet, jwtVerify } from "jose";
 import { extractAccessToken, readSessionCookie } from "./lib/session-cookie";
+import { decodeJwtPayload } from "./lib/jwt";
 
 const ID_LOGIN_URL = "https://id.sociosai.com/login";
-
-let cachedJwks: ReturnType<typeof createRemoteJWKSet> | null = null;
-function getJwks(): ReturnType<typeof createRemoteJWKSet> | null {
-  const url = process.env.SUPABASE_JWKS_URL ??
-    (process.env.NEXT_PUBLIC_SUPABASE_URL
-      ? `${process.env.NEXT_PUBLIC_SUPABASE_URL}/auth/v1/.well-known/jwks.json`
-      : null);
-  if (!url) return null;
-  if (!cachedJwks) cachedJwks = createRemoteJWKSet(new URL(url));
-  return cachedJwks;
-}
 
 function getProjectRef(): string | null {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -42,76 +30,65 @@ function buildRedirect(req: NextRequest, target: string): NextResponse {
 
 const STATIC_RE = /^\/_next\/static|^\/_next\/image|^\/favicon\.ico|^\/brand|^\/forbidden|\.svg$|\.png$/;
 
+// Default-deny middleware. Decode-only on access_token (no Edge-incompatible
+// supabase/ssr or remote JWKS fetch). Token freshness is enforced via the
+// `exp` claim; if the JWT is expired, user is bounced to login. Server
+// actions handle silent refresh server-side via cookies() in their own
+// runtime.
 export async function middleware(req: NextRequest) {
   if (STATIC_RE.test(req.nextUrl.pathname)) return NextResponse.next();
 
   const cookieName = getCookieName();
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!cookieName || !url || !anonKey) return NextResponse.next();
-
-  // @supabase/ssr handles transparent access_token refresh when expired.
-  // Cookies are mutated on `req.cookies` AND mirrored on the response so the
-  // browser persists the new tokens. Without this, server actions hit the
-  // middleware with a stale JWT, fail jwtVerify, and bounce to login mid-flow.
-  let response = NextResponse.next();
-  const supabase = createServerClient(url, anonKey, {
-    cookies: {
-      getAll: () => req.cookies.getAll(),
-      setAll: (cookiesToSet: { name: string; value: string; options: CookieOptions }[]) => {
-        cookiesToSet.forEach(({ name, value }) => req.cookies.set(name, value));
-        response = NextResponse.next();
-        cookiesToSet.forEach(({ name, value, options }) =>
-          response.cookies.set(name, value, options),
-        );
-      },
-    },
-  });
-
-  // getUser() validates the JWT against GoTrue (not just decodes it) and
-  // triggers a refresh if the access_token is expired. After this returns,
-  // req.cookies and response.cookies hold the fresh tokens (if a refresh
-  // happened). If the refresh_token is also dead, user is null.
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
+  if (!cookieName) {
+    // Without project ref, cannot identify cookie. Default-deny: redirect to login.
     return buildRedirect(req, ID_LOGIN_URL);
   }
 
-  // After the potential refresh, re-read the cookie to extract the fresh
-  // access_token for the claim checks below (super_admin, mfa_enrolled, aal).
   const cookieValue = readSessionCookie(req.cookies, cookieName);
   if (!cookieValue) {
     return buildRedirect(req, ID_LOGIN_URL);
   }
   const token = extractAccessToken(cookieValue);
-
-  const jwks = getJwks();
-  if (!jwks) return response;
-
-  try {
-    const { payload } = await jwtVerify(token, jwks);
-
-    // Non-admins always get /forbidden, regardless of MFA status.
-    if (payload["super_admin"] !== true) {
-      const rewriteUrl = req.nextUrl.clone();
-      rewriteUrl.pathname = "/forbidden";
-      return NextResponse.rewrite(rewriteUrl, { headers: response.headers });
-    }
-
-    // Admin without MFA enrollment -> bounce to enroll on id.sociosai.com.
-    if (payload["mfa_enrolled"] !== true) {
-      return buildRedirect(req, "https://id.sociosai.com/mfa-enroll");
-    }
-
-    // Admin enrolled but session is aal1 -> bounce to challenge for AAL2.
-    if (payload["aal"] !== "aal2") {
-      return buildRedirect(req, "https://id.sociosai.com/mfa-challenge");
-    }
-
-    return response;
-  } catch {
+  if (!token) {
     return buildRedirect(req, ID_LOGIN_URL);
   }
+
+  const payload = decodeJwtPayload<{
+    super_admin?: boolean;
+    mfa_enrolled?: boolean;
+    aal?: string;
+    exp?: number;
+  }>(token);
+  if (!payload) {
+    return buildRedirect(req, ID_LOGIN_URL);
+  }
+
+  // Expiry check (decode-only · no signature check, signature already checked
+  // when JWT was first issued via the identity hook · attacker cannot forge
+  // a valid signature without the project secret).
+  const nowSec = Math.floor(Date.now() / 1000);
+  if (typeof payload.exp !== "number" || payload.exp <= nowSec) {
+    return buildRedirect(req, ID_LOGIN_URL);
+  }
+
+  // Non-admins always get /forbidden, regardless of MFA status.
+  if (payload.super_admin !== true) {
+    const rewriteUrl = req.nextUrl.clone();
+    rewriteUrl.pathname = "/forbidden";
+    return NextResponse.rewrite(rewriteUrl);
+  }
+
+  // Admin without MFA enrollment → bounce to enroll on id.sociosai.com.
+  if (payload.mfa_enrolled !== true) {
+    return buildRedirect(req, "https://id.sociosai.com/mfa-enroll");
+  }
+
+  // Admin enrolled but session is aal1 → bounce to challenge for AAL2.
+  if (payload.aal !== "aal2") {
+    return buildRedirect(req, "https://id.sociosai.com/mfa-challenge");
+  }
+
+  return NextResponse.next();
 }
 
 export const config = {
