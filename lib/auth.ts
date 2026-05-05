@@ -1,4 +1,5 @@
 import { cookies } from "next/headers";
+import type { MembershipClaim } from "@socios-ai/auth";
 import { decodeJwtPayload } from "./jwt";
 import { readSessionCookie, extractAccessToken } from "./session-cookie";
 
@@ -6,7 +7,7 @@ export type SuperAdminClaims = {
   sub: string;
   email?: string;
   super_admin: boolean;
-  memberships?: Array<{ app_slug: string; org_id: string | null; role_slug: string }>;
+  memberships?: MembershipClaim[];
 };
 
 export async function getCallerJwt(): Promise<string | null> {
