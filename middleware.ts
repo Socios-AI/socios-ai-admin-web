@@ -88,6 +88,13 @@ export async function middleware(req: NextRequest) {
     return buildRedirect(req, "https://id.sociosai.com/mfa-challenge");
   }
 
+  // /login is not a real route on this app (login lives on id.sociosai.com).
+  // If a fully authenticated user lands here (typed URL, stale bookmark,
+  // back-button after MFA), avoid Next.js 404 by sending them to /.
+  if (req.nextUrl.pathname === "/login") {
+    return NextResponse.redirect(new URL("/", req.url), { status: 307 });
+  }
+
   return NextResponse.next();
 }
 

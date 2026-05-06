@@ -123,4 +123,25 @@ describe("middleware", () => {
     expect(loc).toContain("https://id.sociosai.com/mfa-challenge");
     expect(loc).toContain("from=https%3A%2F%2Fadmin.sociosai.com%2Fusers");
   });
+
+  it("redirects /login to / when fully authenticated (avoid Next.js 404)", async () => {
+    readSessionCookieMock.mockReturnValue("cookie.value");
+    extractAccessTokenMock.mockReturnValue("token");
+    decodeMock.mockReturnValue({
+      super_admin: true,
+      mfa_enrolled: true,
+      aal: "aal2",
+      exp: FUTURE_EXP,
+    });
+    const res = await middleware(makeReq("/login"));
+    expect(res.status).toBe(307);
+    expect(res.headers.get("location")).toBe("https://admin.sociosai.com/");
+  });
+
+  it("/login without cookie still redirects to id login (default-deny preserved)", async () => {
+    readSessionCookieMock.mockReturnValue(null);
+    const res = await middleware(makeReq("/login"));
+    expect(res.status).toBe(307);
+    expect(res.headers.get("location") ?? "").toContain("https://id.sociosai.com/login");
+  });
 });
