@@ -1,38 +1,35 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { NextRequest } from "next/server";
 
-const { verifyMock, jwksMock, getUserMock } = vi.hoisted(() => ({
-  verifyMock: vi.fn(),
-  jwksMock: vi.fn(() => ({ kty: "EC" })),
-  getUserMock: vi.fn(),
+const { decodeMock, readSessionCookieMock, extractAccessTokenMock } = vi.hoisted(() => ({
+  decodeMock: vi.fn(),
+  readSessionCookieMock: vi.fn(),
+  extractAccessTokenMock: vi.fn(),
 }));
-vi.mock("jose", () => ({
-  jwtVerify: verifyMock,
-  createRemoteJWKSet: jwksMock,
+
+vi.mock("../lib/jwt", () => ({
+  decodeJwtPayload: decodeMock,
 }));
-vi.mock("@supabase/ssr", () => ({
-  createServerClient: () => ({
-    auth: { getUser: getUserMock },
-  }),
+
+vi.mock("../lib/session-cookie", () => ({
+  readSessionCookie: readSessionCookieMock,
+  extractAccessToken: extractAccessTokenMock,
 }));
 
 import { middleware } from "../middleware";
 
+const FUTURE_EXP = Math.floor(Date.now() / 1000) + 3600;
+
 beforeEach(() => {
-  verifyMock.mockReset();
-  jwksMock.mockClear();
-  getUserMock.mockReset();
+  decodeMock.mockReset();
+  readSessionCookieMock.mockReset();
+  extractAccessTokenMock.mockReset();
   process.env.NEXT_PUBLIC_SUPABASE_URL = "https://axyssxqttfnbtawanasf.supabase.co";
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = "test-anon-key";
 });
 
-function makeReq(pathname: string, opts: { cookieValue?: string } = {}): NextRequest {
+function makeReq(pathname: string): NextRequest {
   const url = new URL(`https://admin.sociosai.com${pathname}`);
-  const init: { headers: Record<string, string> } = { headers: {} };
-  if (opts.cookieValue) {
-    init.headers.cookie = `sb-axyssxqttfnbtawanasf-auth-token=${opts.cookieValue}`;
-  }
-  return new NextRequest(url, init);
+  return new NextRequest(url, { headers: {} });
 }
 
 describe("middleware", () => {
@@ -41,8 +38,8 @@ describe("middleware", () => {
     expect(res.status).toBe(200);
   });
 
-  it("redirects to id login when supabase reports no user (no cookie)", async () => {
-    getUserMock.mockResolvedValue({ data: { user: null } });
+  it("redirects to id login when no session cookie present", async () => {
+    readSessionCookieMock.mockReturnValue(null);
     const res = await middleware(makeReq("/users"));
     expect(res.status).toBe(307);
     const loc = res.headers.get("location") ?? "";
@@ -50,37 +47,61 @@ describe("middleware", () => {
     expect(loc).toContain("from=https%3A%2F%2Fadmin.sociosai.com%2Fusers");
   });
 
-  it("rewrites to /forbidden when JWT lacks super_admin claim", async () => {
-    getUserMock.mockResolvedValue({ data: { user: { id: "u1" } } });
-    verifyMock.mockResolvedValue({ payload: { super_admin: false, sub: "u1" } });
-    const res = await middleware(makeReq("/users", { cookieValue: "fake.jwt.token" }));
-    expect(res.headers.get("x-middleware-rewrite") ?? "").toContain("/forbidden");
-  });
-
-  it("redirects to id login when JWT verification fails", async () => {
-    getUserMock.mockResolvedValue({ data: { user: { id: "u1" } } });
-    verifyMock.mockRejectedValue(new Error("bad signature"));
-    const res = await middleware(makeReq("/users", { cookieValue: "tampered" }));
+  it("redirects to id login when JWT cannot be decoded", async () => {
+    readSessionCookieMock.mockReturnValue("cookie.value");
+    extractAccessTokenMock.mockReturnValue("token");
+    decodeMock.mockReturnValue(null);
+    const res = await middleware(makeReq("/users"));
     expect(res.status).toBe(307);
     expect(res.headers.get("location")).toContain("https://id.sociosai.com/login");
   });
 
-  it("passes through when super_admin AND mfa_enrolled AND aal=aal2", async () => {
-    getUserMock.mockResolvedValue({ data: { user: { id: "u1" } } });
-    verifyMock.mockResolvedValue({
-      payload: { super_admin: true, mfa_enrolled: true, aal: "aal2", sub: "u1" },
+  it("redirects to id login when JWT is expired", async () => {
+    readSessionCookieMock.mockReturnValue("cookie.value");
+    extractAccessTokenMock.mockReturnValue("token");
+    decodeMock.mockReturnValue({
+      super_admin: true,
+      mfa_enrolled: true,
+      aal: "aal2",
+      exp: Math.floor(Date.now() / 1000) - 1,
     });
-    const res = await middleware(makeReq("/users", { cookieValue: "valid" }));
+    const res = await middleware(makeReq("/users"));
+    expect(res.status).toBe(307);
+    expect(res.headers.get("location")).toContain("https://id.sociosai.com/login");
+  });
+
+  it("rewrites to /forbidden when JWT lacks super_admin claim", async () => {
+    readSessionCookieMock.mockReturnValue("cookie.value");
+    extractAccessTokenMock.mockReturnValue("token");
+    decodeMock.mockReturnValue({ super_admin: false, exp: FUTURE_EXP });
+    const res = await middleware(makeReq("/users"));
+    expect(res.headers.get("x-middleware-rewrite") ?? "").toContain("/forbidden");
+  });
+
+  it("passes through when super_admin AND mfa_enrolled AND aal=aal2", async () => {
+    readSessionCookieMock.mockReturnValue("cookie.value");
+    extractAccessTokenMock.mockReturnValue("token");
+    decodeMock.mockReturnValue({
+      super_admin: true,
+      mfa_enrolled: true,
+      aal: "aal2",
+      exp: FUTURE_EXP,
+    });
+    const res = await middleware(makeReq("/users"));
     expect(res.status).toBe(200);
     expect(res.headers.get("x-middleware-rewrite")).toBeNull();
   });
 
   it("redirects to id mfa-enroll when super_admin but mfa_enrolled=false", async () => {
-    getUserMock.mockResolvedValue({ data: { user: { id: "u1" } } });
-    verifyMock.mockResolvedValue({
-      payload: { super_admin: true, mfa_enrolled: false, aal: "aal1", sub: "u1" },
+    readSessionCookieMock.mockReturnValue("cookie.value");
+    extractAccessTokenMock.mockReturnValue("token");
+    decodeMock.mockReturnValue({
+      super_admin: true,
+      mfa_enrolled: false,
+      aal: "aal1",
+      exp: FUTURE_EXP,
     });
-    const res = await middleware(makeReq("/users", { cookieValue: "valid" }));
+    const res = await middleware(makeReq("/users"));
     expect(res.status).toBe(307);
     const loc = res.headers.get("location") ?? "";
     expect(loc).toContain("https://id.sociosai.com/mfa-enroll");
@@ -88,11 +109,15 @@ describe("middleware", () => {
   });
 
   it("redirects to id mfa-challenge when mfa_enrolled=true but aal=aal1", async () => {
-    getUserMock.mockResolvedValue({ data: { user: { id: "u1" } } });
-    verifyMock.mockResolvedValue({
-      payload: { super_admin: true, mfa_enrolled: true, aal: "aal1", sub: "u1" },
+    readSessionCookieMock.mockReturnValue("cookie.value");
+    extractAccessTokenMock.mockReturnValue("token");
+    decodeMock.mockReturnValue({
+      super_admin: true,
+      mfa_enrolled: true,
+      aal: "aal1",
+      exp: FUTURE_EXP,
     });
-    const res = await middleware(makeReq("/users", { cookieValue: "valid" }));
+    const res = await middleware(makeReq("/users"));
     expect(res.status).toBe(307);
     const loc = res.headers.get("location") ?? "";
     expect(loc).toContain("https://id.sociosai.com/mfa-challenge");
