@@ -1,13 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-const { claimsMock, adminClientMock, dbxMock, stripeMock } = vi.hoisted(() => ({
-  claimsMock: vi.fn(),
+const { authMock, adminClientMock, dbxMock, stripeMock } = vi.hoisted(() => ({
+  authMock: vi.fn(),
   adminClientMock: vi.fn(),
   dbxMock: vi.fn(),
   stripeMock: vi.fn(),
 }));
 
-vi.mock("../../lib/auth", () => ({ getCallerClaims: claimsMock }));
+vi.mock("../../lib/auth", () => ({ requireSuperAdminAAL2: authMock }));
 vi.mock("@socios-ai/auth/admin", () => ({ getSupabaseAdminClient: adminClientMock }));
 vi.mock("../../lib/dropbox-sign-sync", () => ({ createEnvelopeForLicense: dbxMock }));
 vi.mock("../../lib/stripe-connect-sync", () => ({ createLicensePaymentLink: stripeMock }));
@@ -37,7 +37,7 @@ function buildSb(opts: { insertOk?: boolean } = {}) {
 
 describe("createPartnerInvitationAction", () => {
   beforeEach(() => {
-    claimsMock.mockReset();
+    authMock.mockReset();
     adminClientMock.mockReset();
     dbxMock.mockReset();
     stripeMock.mockReset();
@@ -62,21 +62,21 @@ describe("createPartnerInvitationAction", () => {
   };
 
   it("rejects non-super-admin", async () => {
-    claimsMock.mockResolvedValue({ sub: "u", super_admin: false });
+    authMock.mockResolvedValue(null);
     const r = await createPartnerInvitationAction(valid);
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.error).toBe("FORBIDDEN");
   });
 
   it("rejects bad payload", async () => {
-    claimsMock.mockResolvedValue({ sub: "u", super_admin: true });
+    authMock.mockResolvedValue({ claims: { sub: "u", super_admin: true, aal: "aal2", exp: 9999999999 }, jwt: "test-jwt" });
     const r = await createPartnerInvitationAction({ email: "nope" });
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.error).toBe("VALIDATION");
   });
 
   it("creates invitation in mock mode", async () => {
-    claimsMock.mockResolvedValue({ sub: "u", super_admin: true });
+    authMock.mockResolvedValue({ claims: { sub: "u", super_admin: true, aal: "aal2", exp: 9999999999 }, jwt: "test-jwt" });
     const sb = buildSb();
     adminClientMock.mockReturnValue(sb);
     const r = await createPartnerInvitationAction(valid);
@@ -93,7 +93,7 @@ describe("createPartnerInvitationAction", () => {
   });
 
   it("returns API_ERROR on insert failure", async () => {
-    claimsMock.mockResolvedValue({ sub: "u", super_admin: true });
+    authMock.mockResolvedValue({ claims: { sub: "u", super_admin: true, aal: "aal2", exp: 9999999999 }, jwt: "test-jwt" });
     adminClientMock.mockReturnValue(buildSb({ insertOk: false }));
     const r = await createPartnerInvitationAction(valid);
     expect(r.ok).toBe(false);
@@ -101,7 +101,7 @@ describe("createPartnerInvitationAction", () => {
   });
 
   it("returns DROPBOX_SIGN_ERROR when envelope creation throws", async () => {
-    claimsMock.mockResolvedValue({ sub: "u", super_admin: true });
+    authMock.mockResolvedValue({ claims: { sub: "u", super_admin: true, aal: "aal2", exp: 9999999999 }, jwt: "test-jwt" });
     adminClientMock.mockReturnValue(buildSb());
     dbxMock.mockRejectedValueOnce(new Error("dbx down"));
     const r = await createPartnerInvitationAction(valid);

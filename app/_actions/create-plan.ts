@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { getSupabaseAdminClient } from "@socios-ai/auth/admin";
-import { getCallerClaims } from "@/lib/auth";
+import { requireSuperAdminAAL2 } from "@/lib/auth";
 import { createPlanSchema, featuresArrayToObject } from "@/lib/validation";
 import { syncPlanToStripe } from "@/lib/stripe-sync";
 
@@ -11,9 +11,11 @@ export type CreatePlanResult =
   | { ok: false; error: "FORBIDDEN" | "VALIDATION" | "CONFLICT" | "API_ERROR" | "STRIPE_ERROR"; message?: string };
 
 export async function createPlanAction(input: unknown): Promise<CreatePlanResult> {
-  const claims = await getCallerClaims();
-  if (!claims?.super_admin) return { ok: false, error: "FORBIDDEN" };
+  const auth = await requireSuperAdminAAL2();
 
+  if (!auth) return { ok: false, error: "FORBIDDEN" };
+
+  const claims = auth.claims;
   const parsed = createPlanSchema.safeParse(input);
   if (!parsed.success) {
     return { ok: false, error: "VALIDATION", message: parsed.error.issues[0]?.message };

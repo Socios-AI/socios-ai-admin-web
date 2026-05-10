@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { getCallerClient, getSupabaseAdminClient } from "@socios-ai/auth/admin";
-import { getCallerJwt, getCallerClaims } from "@/lib/auth";
+import { requireSuperAdminAAL2 } from "@/lib/auth";
 
 export type ActivateAffiliateResult =
   | { ok: true; recoveryEmailSent: boolean }
@@ -18,12 +18,11 @@ const ID_WEB_BASE = process.env.IDENTITY_WEB_BASE_URL ?? "https://id.sociosai.co
 export async function activateAffiliateAction(input: {
   userId: string;
 }): Promise<ActivateAffiliateResult> {
-  const claims = await getCallerClaims();
-  if (!claims?.super_admin) return { ok: false, error: "FORBIDDEN" };
+  const auth = await requireSuperAdminAAL2();
 
-  const jwt = await getCallerJwt();
-  if (!jwt) return { ok: false, error: "FORBIDDEN" };
+  if (!auth) return { ok: false, error: "FORBIDDEN" };
 
+  const { jwt } = auth;
   const sb = getCallerClient({ callerJwt: jwt });
   const { error: rpcErr } = await sb.rpc("request_affiliate_activation", {
     p_user_id: input.userId,

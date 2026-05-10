@@ -1,12 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-const { claimsMock, adminClientMock } = vi.hoisted(() => ({
-  claimsMock: vi.fn(),
+const { authMock, adminClientMock } = vi.hoisted(() => ({
+  authMock: vi.fn(),
   adminClientMock: vi.fn(),
 }));
 
 vi.mock("../../lib/auth", () => ({
-  getCallerClaims: claimsMock,
+  requireSuperAdminAAL2: authMock,
 }));
 
 vi.mock("@socios-ai/auth/admin", () => ({
@@ -38,13 +38,13 @@ function buildSupabase(existing: AppRow, updateError: { message: string } | null
 }
 
 beforeEach(() => {
-  claimsMock.mockReset();
+  authMock.mockReset();
   adminClientMock.mockReset();
 });
 
 describe("toggleAppFlagAction", () => {
   it("happy path: super-admin flips active=false with reason", async () => {
-    claimsMock.mockResolvedValue({ super_admin: true, sub: "super-1" });
+    authMock.mockResolvedValue({ claims: { super_admin: true, sub: "super-1", aal: "aal2", exp: 9999999999 }, jwt: "test-jwt" });
     const harness = buildSupabase({ slug: "case-pred", active: true, accepts_new_subscriptions: true });
     adminClientMock.mockReturnValue({ from: harness.fromMock });
 
@@ -63,7 +63,7 @@ describe("toggleAppFlagAction", () => {
   });
 
   it("toggle accepts_new_subscriptions=false uses subscriptions_closed event", async () => {
-    claimsMock.mockResolvedValue({ super_admin: true, sub: "super-1" });
+    authMock.mockResolvedValue({ claims: { super_admin: true, sub: "super-1", aal: "aal2", exp: 9999999999 }, jwt: "test-jwt" });
     const harness = buildSupabase({ slug: "case-pred", active: true, accepts_new_subscriptions: true });
     adminClientMock.mockReturnValue({ from: harness.fromMock });
 
@@ -80,7 +80,7 @@ describe("toggleAppFlagAction", () => {
   });
 
   it("non-super-admin → FORBIDDEN", async () => {
-    claimsMock.mockResolvedValue({ super_admin: false, sub: "u-1" });
+    authMock.mockResolvedValue(null);
     const result = await toggleAppFlagAction({
       slug: "x",
       flag: "active",
@@ -92,7 +92,7 @@ describe("toggleAppFlagAction", () => {
   });
 
   it("reason too short → VALIDATION", async () => {
-    claimsMock.mockResolvedValue({ super_admin: true, sub: "super-1" });
+    authMock.mockResolvedValue({ claims: { super_admin: true, sub: "super-1", aal: "aal2", exp: 9999999999 }, jwt: "test-jwt" });
     const result = await toggleAppFlagAction({
       slug: "x",
       flag: "active",
@@ -103,7 +103,7 @@ describe("toggleAppFlagAction", () => {
   });
 
   it("app not found → NOT_FOUND", async () => {
-    claimsMock.mockResolvedValue({ super_admin: true, sub: "super-1" });
+    authMock.mockResolvedValue({ claims: { super_admin: true, sub: "super-1", aal: "aal2", exp: 9999999999 }, jwt: "test-jwt" });
     const harness = buildSupabase(null);
     adminClientMock.mockReturnValue({ from: harness.fromMock });
 

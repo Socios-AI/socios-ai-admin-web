@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-const { claimsMock, adminClientMock } = vi.hoisted(() => {
+const { authMock, adminClientMock } = vi.hoisted(() => {
   const insertMock = vi.fn();
   return {
-    claimsMock: vi.fn(),
+    authMock: vi.fn(),
     insertMock,
     adminClientMock: vi.fn(() => ({
       from: vi.fn(() => ({ insert: insertMock })),
@@ -12,7 +12,7 @@ const { claimsMock, adminClientMock } = vi.hoisted(() => {
 });
 
 vi.mock("../../lib/auth", () => ({
-  getCallerClaims: claimsMock,
+  requireSuperAdminAAL2: authMock,
 }));
 
 vi.mock("@socios-ai/auth/admin", () => ({
@@ -26,7 +26,7 @@ vi.mock("next/cache", () => ({
 import { createAppAction } from "../../app/_actions/create-app";
 
 beforeEach(() => {
-  claimsMock.mockReset();
+  authMock.mockReset();
   adminClientMock.mockClear();
 });
 
@@ -43,7 +43,7 @@ describe("createAppAction", () => {
   }
 
   it("happy path: super-admin caller, valid input → ok with slug", async () => {
-    claimsMock.mockResolvedValue({ super_admin: true, sub: "super-1" });
+    authMock.mockResolvedValue({ claims: { super_admin: true, sub: "super-1", aal: "aal2", exp: 9999999999 }, jwt: "test-jwt" });
     configureSupabase({ error: null });
 
     const result = await createAppAction({
@@ -60,7 +60,7 @@ describe("createAppAction", () => {
   });
 
   it("non-super-admin → FORBIDDEN, no DB call", async () => {
-    claimsMock.mockResolvedValue({ super_admin: false, sub: "user-1" });
+    authMock.mockResolvedValue(null);
 
     const result = await createAppAction({
       slug: "case-pred",
@@ -72,7 +72,7 @@ describe("createAppAction", () => {
   });
 
   it("invalid slug → VALIDATION error", async () => {
-    claimsMock.mockResolvedValue({ super_admin: true, sub: "super-1" });
+    authMock.mockResolvedValue({ claims: { super_admin: true, sub: "super-1", aal: "aal2", exp: 9999999999 }, jwt: "test-jwt" });
 
     const result = await createAppAction({
       slug: "Bad Slug With Spaces",
@@ -83,7 +83,7 @@ describe("createAppAction", () => {
   });
 
   it("duplicate slug (23505) → CONFLICT", async () => {
-    claimsMock.mockResolvedValue({ super_admin: true, sub: "super-1" });
+    authMock.mockResolvedValue({ claims: { super_admin: true, sub: "super-1", aal: "aal2", exp: 9999999999 }, jwt: "test-jwt" });
     configureSupabase({ error: { code: "23505", message: "duplicate key" } });
 
     const result = await createAppAction({
@@ -96,7 +96,7 @@ describe("createAppAction", () => {
   });
 
   it("non-https public_url → VALIDATION", async () => {
-    claimsMock.mockResolvedValue({ super_admin: true, sub: "super-1" });
+    authMock.mockResolvedValue({ claims: { super_admin: true, sub: "super-1", aal: "aal2", exp: 9999999999 }, jwt: "test-jwt" });
 
     const result = await createAppAction({
       slug: "ok-slug",

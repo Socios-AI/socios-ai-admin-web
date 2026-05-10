@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { getSupabaseAdminClient } from "@socios-ai/auth/admin";
-import { getCallerClaims } from "@/lib/auth";
+import { requireSuperAdminAAL2 } from "@/lib/auth";
 
 export type CreateResellerResult =
   | { ok: true; userId: string; partnerId: string; recoveryEmailSent: boolean }
@@ -18,9 +18,11 @@ export async function createResellerAction(input: {
   fullName: string;
   customCommissionPct?: number;
 }): Promise<CreateResellerResult> {
-  const claims = await getCallerClaims();
-  if (!claims?.super_admin) return { ok: false, error: "FORBIDDEN" };
+  const auth = await requireSuperAdminAAL2();
 
+  if (!auth) return { ok: false, error: "FORBIDDEN" };
+
+  const claims = auth.claims;
   const email = input.email?.trim().toLowerCase();
   const fullName = input.fullName?.trim();
   if (!email || !email.includes("@") || !fullName) {
