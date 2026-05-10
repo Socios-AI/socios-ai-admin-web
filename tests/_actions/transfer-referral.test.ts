@@ -1,12 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-const { claimsMock, adminClientMock } = vi.hoisted(() => ({
-  claimsMock: vi.fn(),
+const { authMock, adminClientMock } = vi.hoisted(() => ({
+  authMock: vi.fn(),
   adminClientMock: vi.fn(),
 }));
 
 vi.mock("../../lib/auth", () => ({
-  getCallerClaims: claimsMock,
+  requireSuperAdminAAL2: authMock,
 }));
 
 vi.mock("@socios-ai/auth/admin", () => ({
@@ -19,10 +19,7 @@ vi.mock("next/cache", () => ({
 
 import { transferReferralAction } from "../../app/_actions/transfer-referral";
 
-const ADMIN_CLAIMS = {
-  sub: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
-  super_admin: true,
-};
+const ADMIN_CLAIMS = { claims: { sub: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa", super_admin: true, aal: "aal2", exp: 9999999999 }, jwt: "test-jwt" };
 
 const REFERRAL_ID = "11111111-1111-1111-1111-111111111111";
 const CUSTOMER_ID = "22222222-2222-2222-2222-222222222222";
@@ -98,19 +95,19 @@ function buildSb(opts: {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  claimsMock.mockReset();
+  authMock.mockReset();
   adminClientMock.mockReset();
 });
 
 describe("transferReferralAction", () => {
   it("FORBIDDEN when caller is not super_admin", async () => {
-    claimsMock.mockResolvedValue({ sub: "x", super_admin: false });
+    authMock.mockResolvedValue(null);
     const result = await transferReferralAction(validInput);
     expect(result).toEqual({ ok: false, error: "FORBIDDEN" });
   });
 
   it("VALIDATION when referralId is not a UUID", async () => {
-    claimsMock.mockResolvedValue(ADMIN_CLAIMS);
+    authMock.mockResolvedValue(ADMIN_CLAIMS);
     const result = await transferReferralAction({
       referralId: "nope",
       toPartnerId: TO_PARTNER,
@@ -119,7 +116,7 @@ describe("transferReferralAction", () => {
   });
 
   it("NOT_FOUND when referral does not exist", async () => {
-    claimsMock.mockResolvedValue(ADMIN_CLAIMS);
+    authMock.mockResolvedValue(ADMIN_CLAIMS);
     const sb = buildSb({ ref: null });
     adminClientMock.mockReturnValue({ from: sb.from });
     const result = await transferReferralAction(validInput);
@@ -127,7 +124,7 @@ describe("transferReferralAction", () => {
   });
 
   it("VALIDATION when destination is the same as origin", async () => {
-    claimsMock.mockResolvedValue(ADMIN_CLAIMS);
+    authMock.mockResolvedValue(ADMIN_CLAIMS);
     const sb = buildSb({});
     adminClientMock.mockReturnValue({ from: sb.from });
     const result = await transferReferralAction({
@@ -139,7 +136,7 @@ describe("transferReferralAction", () => {
   });
 
   it("CONFLICT when destination partner is not active", async () => {
-    claimsMock.mockResolvedValue(ADMIN_CLAIMS);
+    authMock.mockResolvedValue(ADMIN_CLAIMS);
     const sb = buildSb({ dest: { id: TO_PARTNER, status: "suspended" } });
     adminClientMock.mockReturnValue({ from: sb.from });
     const result = await transferReferralAction(validInput);
@@ -148,7 +145,7 @@ describe("transferReferralAction", () => {
   });
 
   it("CONFLICT when attribution is locked", async () => {
-    claimsMock.mockResolvedValue(ADMIN_CLAIMS);
+    authMock.mockResolvedValue(ADMIN_CLAIMS);
     const sb = buildSb({ locked: { id: "sub-1" } });
     adminClientMock.mockReturnValue({ from: sb.from });
     const result = await transferReferralAction(validInput);
@@ -157,7 +154,7 @@ describe("transferReferralAction", () => {
   });
 
   it("API_ERROR when update fails", async () => {
-    claimsMock.mockResolvedValue(ADMIN_CLAIMS);
+    authMock.mockResolvedValue(ADMIN_CLAIMS);
     const sb = buildSb({ updErr: { message: "db down" } });
     adminClientMock.mockReturnValue({ from: sb.from });
     const result = await transferReferralAction(validInput);
@@ -165,7 +162,7 @@ describe("transferReferralAction", () => {
   });
 
   it("happy path: updates and audits with referral.transferred + from/to partner ids", async () => {
-    claimsMock.mockResolvedValue(ADMIN_CLAIMS);
+    authMock.mockResolvedValue(ADMIN_CLAIMS);
     const sb = buildSb({});
     adminClientMock.mockReturnValue({ from: sb.from });
 
@@ -181,7 +178,7 @@ describe("transferReferralAction", () => {
     expect(sb.auditInsert).toHaveBeenCalledWith(
       expect.objectContaining({
         event_type: "referral.transferred",
-        actor_user_id: ADMIN_CLAIMS.sub,
+        actor_user_id: ADMIN_CLAIMS.claims.sub,
         target_user_id: CUSTOMER_ID,
         metadata: expect.objectContaining({
           referral_id: REFERRAL_ID,

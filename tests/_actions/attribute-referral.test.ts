@@ -1,12 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-const { claimsMock, adminClientMock } = vi.hoisted(() => ({
-  claimsMock: vi.fn(),
+const { authMock, adminClientMock } = vi.hoisted(() => ({
+  authMock: vi.fn(),
   adminClientMock: vi.fn(),
 }));
 
 vi.mock("../../lib/auth", () => ({
-  getCallerClaims: claimsMock,
+  requireSuperAdminAAL2: authMock,
 }));
 
 vi.mock("@socios-ai/auth/admin", () => ({
@@ -19,10 +19,7 @@ vi.mock("next/cache", () => ({
 
 import { attributeReferralAction } from "../../app/_actions/attribute-referral";
 
-const ADMIN_CLAIMS = {
-  sub: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
-  super_admin: true,
-};
+const ADMIN_CLAIMS = { claims: { sub: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa", super_admin: true, aal: "aal2", exp: 9999999999 }, jwt: "test-jwt" };
 
 const validInput = {
   customerUserId: "11111111-1111-1111-1111-111111111111",
@@ -66,26 +63,26 @@ function buildSb(opts: {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  claimsMock.mockReset();
+  authMock.mockReset();
   adminClientMock.mockReset();
 });
 
 describe("attributeReferralAction", () => {
   it("FORBIDDEN when claims is null", async () => {
-    claimsMock.mockResolvedValue(null);
+    authMock.mockResolvedValue(null);
     const result = await attributeReferralAction(validInput);
     expect(result).toEqual({ ok: false, error: "FORBIDDEN" });
     expect(adminClientMock).not.toHaveBeenCalled();
   });
 
   it("FORBIDDEN when caller is not super_admin", async () => {
-    claimsMock.mockResolvedValue({ sub: "x", super_admin: false });
+    authMock.mockResolvedValue(null);
     const result = await attributeReferralAction(validInput);
     expect(result).toEqual({ ok: false, error: "FORBIDDEN" });
   });
 
   it("VALIDATION when customerUserId is not a UUID", async () => {
-    claimsMock.mockResolvedValue(ADMIN_CLAIMS);
+    authMock.mockResolvedValue(ADMIN_CLAIMS);
     const result = await attributeReferralAction({
       ...validInput,
       customerUserId: "not-a-uuid",
@@ -94,7 +91,7 @@ describe("attributeReferralAction", () => {
   });
 
   it("CONFLICT when user already has a referral", async () => {
-    claimsMock.mockResolvedValue(ADMIN_CLAIMS);
+    authMock.mockResolvedValue(ADMIN_CLAIMS);
     const sb = buildSb({
       existing: { source_partner_id: "33333333-3333-3333-3333-333333333333" },
     });
@@ -106,7 +103,7 @@ describe("attributeReferralAction", () => {
   });
 
   it("API_ERROR when insert fails", async () => {
-    claimsMock.mockResolvedValue(ADMIN_CLAIMS);
+    authMock.mockResolvedValue(ADMIN_CLAIMS);
     const sb = buildSb({
       insertResult: { data: null, error: { message: "db down" } },
     });
@@ -117,7 +114,7 @@ describe("attributeReferralAction", () => {
   });
 
   it("happy path: returns ok with referralId, audits with referral.created and metadata", async () => {
-    claimsMock.mockResolvedValue(ADMIN_CLAIMS);
+    authMock.mockResolvedValue(ADMIN_CLAIMS);
     const sb = buildSb({});
     adminClientMock.mockReturnValue({ from: sb.from });
 
@@ -127,7 +124,7 @@ describe("attributeReferralAction", () => {
     expect(sb.auditInsert).toHaveBeenCalledWith(
       expect.objectContaining({
         event_type: "referral.created",
-        actor_user_id: ADMIN_CLAIMS.sub,
+        actor_user_id: ADMIN_CLAIMS.claims.sub,
         target_user_id: validInput.customerUserId,
         metadata: expect.objectContaining({
           referral_id: "new-ref-id",

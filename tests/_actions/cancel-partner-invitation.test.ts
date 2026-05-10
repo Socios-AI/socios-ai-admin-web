@@ -1,11 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-const { claimsMock, adminClientMock } = vi.hoisted(() => ({
-  claimsMock: vi.fn(),
+const { authMock, adminClientMock } = vi.hoisted(() => ({
+  authMock: vi.fn(),
   adminClientMock: vi.fn(),
 }));
 
-vi.mock("../../lib/auth", () => ({ getCallerClaims: claimsMock }));
+vi.mock("../../lib/auth", () => ({ requireSuperAdminAAL2: authMock }));
 vi.mock("@socios-ai/auth/admin", () => ({ getSupabaseAdminClient: adminClientMock }));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 
@@ -31,7 +31,7 @@ function buildSb(currentStatus: string | null) {
 
 describe("cancelPartnerInvitationAction", () => {
   beforeEach(() => {
-    claimsMock.mockReset();
+    authMock.mockReset();
     adminClientMock.mockReset();
   });
 
@@ -41,21 +41,21 @@ describe("cancelPartnerInvitationAction", () => {
   };
 
   it("forbidden for non-super-admin", async () => {
-    claimsMock.mockResolvedValue({ sub: "u", super_admin: false });
+    authMock.mockResolvedValue(null);
     const r = await cancelPartnerInvitationAction(valid);
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.error).toBe("FORBIDDEN");
   });
 
   it("validation error", async () => {
-    claimsMock.mockResolvedValue({ sub: "u", super_admin: true });
+    authMock.mockResolvedValue({ claims: { sub: "u", super_admin: true, aal: "aal2", exp: 9999999999 }, jwt: "test-jwt" });
     const r = await cancelPartnerInvitationAction({ invitationId: "x" });
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.error).toBe("VALIDATION");
   });
 
   it("not found", async () => {
-    claimsMock.mockResolvedValue({ sub: "u", super_admin: true });
+    authMock.mockResolvedValue({ claims: { sub: "u", super_admin: true, aal: "aal2", exp: 9999999999 }, jwt: "test-jwt" });
     adminClientMock.mockReturnValue(buildSb(null));
     const r = await cancelPartnerInvitationAction(valid);
     expect(r.ok).toBe(false);
@@ -63,7 +63,7 @@ describe("cancelPartnerInvitationAction", () => {
   });
 
   it("cannot cancel a converted invitation", async () => {
-    claimsMock.mockResolvedValue({ sub: "u", super_admin: true });
+    authMock.mockResolvedValue({ claims: { sub: "u", super_admin: true, aal: "aal2", exp: 9999999999 }, jwt: "test-jwt" });
     adminClientMock.mockReturnValue(buildSb("converted"));
     const r = await cancelPartnerInvitationAction(valid);
     expect(r.ok).toBe(false);
@@ -71,7 +71,7 @@ describe("cancelPartnerInvitationAction", () => {
   });
 
   it("revokes a sent invitation", async () => {
-    claimsMock.mockResolvedValue({ sub: "u", super_admin: true });
+    authMock.mockResolvedValue({ claims: { sub: "u", super_admin: true, aal: "aal2", exp: 9999999999 }, jwt: "test-jwt" });
     adminClientMock.mockReturnValue(buildSb("sent"));
     const r = await cancelPartnerInvitationAction(valid);
     expect(r.ok).toBe(true);

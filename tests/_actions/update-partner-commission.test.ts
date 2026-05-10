@@ -1,11 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-const { claimsMock, adminClientMock } = vi.hoisted(() => ({
-  claimsMock: vi.fn(),
+const { authMock, adminClientMock } = vi.hoisted(() => ({
+  authMock: vi.fn(),
   adminClientMock: vi.fn(),
 }));
 
-vi.mock("../../lib/auth", () => ({ getCallerClaims: claimsMock }));
+vi.mock("../../lib/auth", () => ({ requireSuperAdminAAL2: authMock }));
 vi.mock("@socios-ai/auth/admin", () => ({ getSupabaseAdminClient: adminClientMock }));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 
@@ -31,7 +31,7 @@ function buildSb(currentPct: number | null | "missing") {
 
 describe("updatePartnerCommissionAction", () => {
   beforeEach(() => {
-    claimsMock.mockReset();
+    authMock.mockReset();
     adminClientMock.mockReset();
   });
 
@@ -47,21 +47,21 @@ describe("updatePartnerCommissionAction", () => {
   };
 
   it("forbidden for non-super-admin", async () => {
-    claimsMock.mockResolvedValue({ sub: "u", super_admin: false });
+    authMock.mockResolvedValue(null);
     const r = await updatePartnerCommissionAction(validSet);
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.error).toBe("FORBIDDEN");
   });
 
   it("validation error", async () => {
-    claimsMock.mockResolvedValue({ sub: "u", super_admin: true });
+    authMock.mockResolvedValue({ claims: { sub: "u", super_admin: true, aal: "aal2", exp: 9999999999 }, jwt: "test-jwt" });
     const r = await updatePartnerCommissionAction({ partnerId: "x" });
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.error).toBe("VALIDATION");
   });
 
   it("not found", async () => {
-    claimsMock.mockResolvedValue({ sub: "u", super_admin: true });
+    authMock.mockResolvedValue({ claims: { sub: "u", super_admin: true, aal: "aal2", exp: 9999999999 }, jwt: "test-jwt" });
     adminClientMock.mockReturnValue(buildSb("missing"));
     const r = await updatePartnerCommissionAction(validSet);
     expect(r.ok).toBe(false);
@@ -69,14 +69,14 @@ describe("updatePartnerCommissionAction", () => {
   });
 
   it("sets a numeric commission", async () => {
-    claimsMock.mockResolvedValue({ sub: "u", super_admin: true });
+    authMock.mockResolvedValue({ claims: { sub: "u", super_admin: true, aal: "aal2", exp: 9999999999 }, jwt: "test-jwt" });
     adminClientMock.mockReturnValue(buildSb(0.5));
     const r = await updatePartnerCommissionAction(validSet);
     expect(r.ok).toBe(true);
   });
 
   it("clears the commission with null", async () => {
-    claimsMock.mockResolvedValue({ sub: "u", super_admin: true });
+    authMock.mockResolvedValue({ claims: { sub: "u", super_admin: true, aal: "aal2", exp: 9999999999 }, jwt: "test-jwt" });
     adminClientMock.mockReturnValue(buildSb(0.5));
     const r = await updatePartnerCommissionAction(validClear);
     expect(r.ok).toBe(true);

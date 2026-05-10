@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { getSupabaseAdminClient } from "@socios-ai/auth/admin";
-import { getCallerClaims } from "@/lib/auth";
+import { requireSuperAdminAAL2 } from "@/lib/auth";
 import { updateAppSchema } from "@/lib/validation";
 
 export type UpdateAppResult =
@@ -10,9 +10,11 @@ export type UpdateAppResult =
   | { ok: false; error: "FORBIDDEN" | "VALIDATION" | "NOT_FOUND" | "API_ERROR"; message?: string };
 
 export async function updateAppAction(input: unknown): Promise<UpdateAppResult> {
-  const claims = await getCallerClaims();
-  if (!claims?.super_admin) return { ok: false, error: "FORBIDDEN" };
+  const auth = await requireSuperAdminAAL2();
 
+  if (!auth) return { ok: false, error: "FORBIDDEN" };
+
+  const claims = auth.claims;
   const parsed = updateAppSchema.safeParse(input);
   if (!parsed.success) {
     return { ok: false, error: "VALIDATION", message: parsed.error.issues[0]?.message };

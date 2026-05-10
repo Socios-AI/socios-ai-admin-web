@@ -1,7 +1,7 @@
 "use server";
 
 import { getSupabaseAdminClient } from "@socios-ai/auth/admin";
-import { getCallerClaims } from "@/lib/auth";
+import { requireSuperAdminAAL2 } from "@/lib/auth";
 
 export type GrantComplimentaryResult =
   | { ok: true; orderId: string }
@@ -16,8 +16,8 @@ export async function grantComplimentaryAction(args: {
   leadId?: string;
   reason: string;
 }): Promise<GrantComplimentaryResult> {
-  const claims = await getCallerClaims();
-  if (!claims?.super_admin) {
+  const auth = await requireSuperAdminAAL2();
+  if (!auth) {
     return { ok: false, error: "FORBIDDEN", message: "Apenas super-admin pode liberar análise complimentary" };
   }
 

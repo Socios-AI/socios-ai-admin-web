@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { getSupabaseAdminClient } from "@socios-ai/auth/admin";
-import { getCallerClaims } from "@/lib/auth";
+import { requireSuperAdminAAL2 } from "@/lib/auth";
 import { toggleAppFlagSchema } from "@/lib/validation";
 
 export type ToggleAppFlagResult =
@@ -18,9 +18,11 @@ const FLAG_TO_EVENT: Record<"active" | "accepts_new_subscriptions", { onTrue: st
 };
 
 export async function toggleAppFlagAction(input: unknown): Promise<ToggleAppFlagResult> {
-  const claims = await getCallerClaims();
-  if (!claims?.super_admin) return { ok: false, error: "FORBIDDEN" };
+  const auth = await requireSuperAdminAAL2();
 
+  if (!auth) return { ok: false, error: "FORBIDDEN" };
+
+  const claims = auth.claims;
   const parsed = toggleAppFlagSchema.safeParse(input);
   if (!parsed.success) {
     return { ok: false, error: "VALIDATION", message: parsed.error.issues[0]?.message };

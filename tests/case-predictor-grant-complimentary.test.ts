@@ -1,10 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-const { claimsMock, adminClientMock, mockSingle, mockRpc } = vi.hoisted(() => {
+const { authMock, adminClientMock, mockSingle, mockRpc } = vi.hoisted(() => {
   const single = vi.fn();
   const rpc = vi.fn();
   return {
-    claimsMock: vi.fn(),
+    authMock: vi.fn(),
     mockSingle: single,
     mockRpc: rpc,
     adminClientMock: vi.fn(() => {
@@ -20,7 +20,7 @@ const { claimsMock, adminClientMock, mockSingle, mockRpc } = vi.hoisted(() => {
 });
 
 vi.mock("../lib/auth", () => ({
-  getCallerClaims: claimsMock,
+  requireSuperAdminAAL2: authMock,
 }));
 
 vi.mock("@socios-ai/auth/admin", () => ({
@@ -30,7 +30,7 @@ vi.mock("@socios-ai/auth/admin", () => ({
 import { grantComplimentaryAction } from "../app/_actions/case-predictor/grant-complimentary";
 
 beforeEach(() => {
-  claimsMock.mockReset();
+  authMock.mockReset();
   adminClientMock.mockClear();
   mockSingle.mockReset();
   mockRpc.mockReset();
@@ -38,28 +38,28 @@ beforeEach(() => {
 
 describe("grantComplimentaryAction", () => {
   it("rejects non-super-admin with FORBIDDEN", async () => {
-    claimsMock.mockResolvedValue({ super_admin: false });
+    authMock.mockResolvedValue(null);
     const r = await grantComplimentaryAction({ email: "x@y.com", reason: "VIP" });
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.error).toBe("FORBIDDEN");
   });
 
   it("rejects invalid email", async () => {
-    claimsMock.mockResolvedValue({ super_admin: true, sub: "admin-1" });
+    authMock.mockResolvedValue({ claims: { super_admin: true, sub: "admin-1", aal: "aal2", exp: 9999999999 }, jwt: "test-jwt" });
     const r = await grantComplimentaryAction({ email: "not-an-email", reason: "VIP" });
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.error).toBe("INVALID_EMAIL");
   });
 
   it("rejects short reason", async () => {
-    claimsMock.mockResolvedValue({ super_admin: true, sub: "admin-1" });
+    authMock.mockResolvedValue({ claims: { super_admin: true, sub: "admin-1", aal: "aal2", exp: 9999999999 }, jwt: "test-jwt" });
     const r = await grantComplimentaryAction({ email: "u@k4.test", reason: "no" });
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.error).toBe("REASON_TOO_SHORT");
   });
 
   it("resolves email to user_id and calls RPC", async () => {
-    claimsMock.mockResolvedValue({ super_admin: true, sub: "admin-1" });
+    authMock.mockResolvedValue({ claims: { super_admin: true, sub: "admin-1", aal: "aal2", exp: 9999999999 }, jwt: "test-jwt" });
     mockSingle.mockResolvedValue({ data: { id: "user-1" }, error: null });
     mockRpc.mockResolvedValue({ data: "order-uuid-123", error: null });
     const result = await grantComplimentaryAction({ email: "test@k4.test", reason: "VIP customer" });
@@ -73,7 +73,7 @@ describe("grantComplimentaryAction", () => {
   });
 
   it("rejects when email not found", async () => {
-    claimsMock.mockResolvedValue({ super_admin: true, sub: "admin-1" });
+    authMock.mockResolvedValue({ claims: { super_admin: true, sub: "admin-1", aal: "aal2", exp: 9999999999 }, jwt: "test-jwt" });
     mockSingle.mockResolvedValue({ data: null, error: { message: "no rows" } });
     const result = await grantComplimentaryAction({ email: "missing@k4.test", reason: "VIP customer" });
     expect(result.ok).toBe(false);
@@ -81,7 +81,7 @@ describe("grantComplimentaryAction", () => {
   });
 
   it("propagates RPC errors", async () => {
-    claimsMock.mockResolvedValue({ super_admin: true, sub: "admin-1" });
+    authMock.mockResolvedValue({ claims: { super_admin: true, sub: "admin-1", aal: "aal2", exp: 9999999999 }, jwt: "test-jwt" });
     mockSingle.mockResolvedValue({ data: { id: "user-1" }, error: null });
     mockRpc.mockResolvedValue({ data: null, error: { message: "rpc failed" } });
     const result = await grantComplimentaryAction({ email: "u@k4.test", reason: "VIP customer" });

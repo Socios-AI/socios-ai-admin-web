@@ -1,11 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-const { claimsMock, adminClientMock } = vi.hoisted(() => ({
-  claimsMock: vi.fn(),
+const { authMock, adminClientMock } = vi.hoisted(() => ({
+  authMock: vi.fn(),
   adminClientMock: vi.fn(),
 }));
 
-vi.mock("../../lib/auth", () => ({ getCallerClaims: claimsMock }));
+vi.mock("../../lib/auth", () => ({ requireSuperAdminAAL2: authMock }));
 vi.mock("@socios-ai/auth/admin", () => ({ getSupabaseAdminClient: adminClientMock }));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 
@@ -31,7 +31,7 @@ function buildSb(currentStatus: string | null) {
 
 describe("suspendPartnerAction", () => {
   beforeEach(() => {
-    claimsMock.mockReset();
+    authMock.mockReset();
     adminClientMock.mockReset();
   });
 
@@ -41,21 +41,21 @@ describe("suspendPartnerAction", () => {
   };
 
   it("forbidden for non-super-admin", async () => {
-    claimsMock.mockResolvedValue({ sub: "u", super_admin: false });
+    authMock.mockResolvedValue(null);
     const r = await suspendPartnerAction(valid);
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.error).toBe("FORBIDDEN");
   });
 
   it("validation error", async () => {
-    claimsMock.mockResolvedValue({ sub: "u", super_admin: true });
+    authMock.mockResolvedValue({ claims: { sub: "u", super_admin: true, aal: "aal2", exp: 9999999999 }, jwt: "test-jwt" });
     const r = await suspendPartnerAction({ partnerId: "x" });
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.error).toBe("VALIDATION");
   });
 
   it("not found", async () => {
-    claimsMock.mockResolvedValue({ sub: "u", super_admin: true });
+    authMock.mockResolvedValue({ claims: { sub: "u", super_admin: true, aal: "aal2", exp: 9999999999 }, jwt: "test-jwt" });
     adminClientMock.mockReturnValue(buildSb(null));
     const r = await suspendPartnerAction(valid);
     expect(r.ok).toBe(false);
@@ -63,7 +63,7 @@ describe("suspendPartnerAction", () => {
   });
 
   it("cannot suspend a terminated partner", async () => {
-    claimsMock.mockResolvedValue({ sub: "u", super_admin: true });
+    authMock.mockResolvedValue({ claims: { sub: "u", super_admin: true, aal: "aal2", exp: 9999999999 }, jwt: "test-jwt" });
     adminClientMock.mockReturnValue(buildSb("terminated"));
     const r = await suspendPartnerAction(valid);
     expect(r.ok).toBe(false);
@@ -71,7 +71,7 @@ describe("suspendPartnerAction", () => {
   });
 
   it("suspends an active partner", async () => {
-    claimsMock.mockResolvedValue({ sub: "u", super_admin: true });
+    authMock.mockResolvedValue({ claims: { sub: "u", super_admin: true, aal: "aal2", exp: 9999999999 }, jwt: "test-jwt" });
     adminClientMock.mockReturnValue(buildSb("active"));
     const r = await suspendPartnerAction(valid);
     expect(r.ok).toBe(true);

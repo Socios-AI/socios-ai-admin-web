@@ -1,13 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-const { claimsMock, adminClientMock, archiveMock } = vi.hoisted(() => ({
-  claimsMock: vi.fn(),
+const { authMock, adminClientMock, archiveMock } = vi.hoisted(() => ({
+  authMock: vi.fn(),
   adminClientMock: vi.fn(),
   archiveMock: vi.fn(),
 }));
 
 vi.mock("../../lib/auth", () => ({
-  getCallerClaims: claimsMock,
+  requireSuperAdminAAL2: authMock,
 }));
 
 vi.mock("@socios-ai/auth/admin", () => ({
@@ -49,7 +49,7 @@ function buildSb(existing: Existing | null) {
 }
 
 beforeEach(() => {
-  claimsMock.mockReset();
+  authMock.mockReset();
   adminClientMock.mockReset();
   archiveMock.mockReset();
   archiveMock.mockResolvedValue({ mocked: true });
@@ -65,7 +65,7 @@ describe("togglePlanFlagAction", () => {
   };
 
   it("deactivating is_active archives stripe product and audits plan.deactivated", async () => {
-    claimsMock.mockResolvedValue({ super_admin: true, sub: "super-1" });
+    authMock.mockResolvedValue({ claims: { super_admin: true, sub: "super-1", aal: "aal2", exp: 9999999999 }, jwt: "test-jwt" });
     const harness = buildSb(EXISTING);
     adminClientMock.mockReturnValue({ from: harness.fromMock });
 
@@ -84,7 +84,7 @@ describe("togglePlanFlagAction", () => {
   });
 
   it("toggling is_visible does not archive product", async () => {
-    claimsMock.mockResolvedValue({ super_admin: true, sub: "super-1" });
+    authMock.mockResolvedValue({ claims: { super_admin: true, sub: "super-1", aal: "aal2", exp: 9999999999 }, jwt: "test-jwt" });
     const harness = buildSb(EXISTING);
     adminClientMock.mockReturnValue({ from: harness.fromMock });
 
@@ -102,7 +102,7 @@ describe("togglePlanFlagAction", () => {
   });
 
   it("activating again uses plan.created event (re-activation)", async () => {
-    claimsMock.mockResolvedValue({ super_admin: true, sub: "super-1" });
+    authMock.mockResolvedValue({ claims: { super_admin: true, sub: "super-1", aal: "aal2", exp: 9999999999 }, jwt: "test-jwt" });
     const harness = buildSb({ ...EXISTING, is_active: false });
     adminClientMock.mockReturnValue({ from: harness.fromMock });
 
@@ -120,7 +120,7 @@ describe("togglePlanFlagAction", () => {
   });
 
   it("non-super-admin → FORBIDDEN", async () => {
-    claimsMock.mockResolvedValue({ super_admin: false, sub: "u-1" });
+    authMock.mockResolvedValue(null);
     const result = await togglePlanFlagAction({
       id: "00000000-0000-0000-0000-000000000001",
       flag: "is_active",
@@ -132,7 +132,7 @@ describe("togglePlanFlagAction", () => {
   });
 
   it("reason too short → VALIDATION", async () => {
-    claimsMock.mockResolvedValue({ super_admin: true, sub: "super-1" });
+    authMock.mockResolvedValue({ claims: { super_admin: true, sub: "super-1", aal: "aal2", exp: 9999999999 }, jwt: "test-jwt" });
     const result = await togglePlanFlagAction({
       id: "00000000-0000-0000-0000-000000000001",
       flag: "is_active",
@@ -143,7 +143,7 @@ describe("togglePlanFlagAction", () => {
   });
 
   it("plan not found → NOT_FOUND", async () => {
-    claimsMock.mockResolvedValue({ super_admin: true, sub: "super-1" });
+    authMock.mockResolvedValue({ claims: { super_admin: true, sub: "super-1", aal: "aal2", exp: 9999999999 }, jwt: "test-jwt" });
     const harness = buildSb(null);
     adminClientMock.mockReturnValue({ from: harness.fromMock });
 
@@ -157,7 +157,7 @@ describe("togglePlanFlagAction", () => {
   });
 
   it("stripe archive failure does not roll back DB but logs error in audit metadata", async () => {
-    claimsMock.mockResolvedValue({ super_admin: true, sub: "super-1" });
+    authMock.mockResolvedValue({ claims: { super_admin: true, sub: "super-1", aal: "aal2", exp: 9999999999 }, jwt: "test-jwt" });
     archiveMock.mockRejectedValue(new Error("Stripe 500"));
     const harness = buildSb(EXISTING);
     adminClientMock.mockReturnValue({ from: harness.fromMock });

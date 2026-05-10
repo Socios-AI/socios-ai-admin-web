@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { getSupabaseAdminClient } from "@socios-ai/auth/admin";
-import { getCallerClaims } from "@/lib/auth";
+import { requireSuperAdminAAL2 } from "@/lib/auth";
 import { togglePlanFlagSchema } from "@/lib/validation";
 import { archiveStripeProduct } from "@/lib/stripe-sync";
 
@@ -16,9 +16,11 @@ const FLAG_TO_EVENT: Record<"is_active" | "is_visible", { onTrue: string; onFals
 };
 
 export async function togglePlanFlagAction(input: unknown): Promise<TogglePlanFlagResult> {
-  const claims = await getCallerClaims();
-  if (!claims?.super_admin) return { ok: false, error: "FORBIDDEN" };
+  const auth = await requireSuperAdminAAL2();
 
+  if (!auth) return { ok: false, error: "FORBIDDEN" };
+
+  const claims = auth.claims;
   const parsed = togglePlanFlagSchema.safeParse(input);
   if (!parsed.success) {
     return { ok: false, error: "VALIDATION", message: parsed.error.issues[0]?.message };

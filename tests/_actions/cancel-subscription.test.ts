@@ -1,12 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-const { claimsMock, adminClientMock } = vi.hoisted(() => ({
-  claimsMock: vi.fn(),
+const { authMock, adminClientMock } = vi.hoisted(() => ({
+  authMock: vi.fn(),
   adminClientMock: vi.fn(),
 }));
 
 vi.mock("../../lib/auth", () => ({
-  getCallerClaims: claimsMock,
+  requireSuperAdminAAL2: authMock,
 }));
 
 vi.mock("@socios-ai/auth/admin", () => ({
@@ -25,10 +25,7 @@ const validInput = {
   reason: "Cliente solicitou cancelamento",
 };
 
-const SUPER_ADMIN_CLAIMS = {
-  sub: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
-  super_admin: true,
-};
+const SUPER_ADMIN_CLAIMS = { claims: { sub: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa", super_admin: true, aal: "aal2", exp: 9999999999 }, jwt: "test-jwt" };
 
 function buildSb(opts: {
   sub?: { user_id: string | null; org_id?: string | null; status: string; plan_id: string } | null;
@@ -74,20 +71,20 @@ function buildSb(opts: {
 }
 
 beforeEach(() => {
-  claimsMock.mockReset();
+  authMock.mockReset();
   adminClientMock.mockReset();
 });
 
 describe("cancelSubscriptionAction", () => {
   it("non-super-admin → FORBIDDEN", async () => {
-    claimsMock.mockResolvedValue({ super_admin: false });
+    authMock.mockResolvedValue(null);
     const result = await cancelSubscriptionAction(validInput);
     expect(result).toEqual({ ok: false, error: "FORBIDDEN" });
     expect(adminClientMock).not.toHaveBeenCalled();
   });
 
   it("missing reason → VALIDATION", async () => {
-    claimsMock.mockResolvedValue({ super_admin: true, sub: "admin-1" });
+    authMock.mockResolvedValue({ claims: { super_admin: true, sub: "admin-1", aal: "aal2", exp: 9999999999 }, jwt: "test-jwt" });
     const result = await cancelSubscriptionAction({
       subscriptionId: validInput.subscriptionId,
       reason: "no",
@@ -96,7 +93,7 @@ describe("cancelSubscriptionAction", () => {
   });
 
   it("subscription not found → NOT_FOUND", async () => {
-    claimsMock.mockResolvedValue({ super_admin: true, sub: "admin-1" });
+    authMock.mockResolvedValue({ claims: { super_admin: true, sub: "admin-1", aal: "aal2", exp: 9999999999 }, jwt: "test-jwt" });
     const sb = buildSb({ sub: null, subError: { message: "no rows" } });
     adminClientMock.mockReturnValue({ from: sb.from });
 
@@ -105,7 +102,7 @@ describe("cancelSubscriptionAction", () => {
   });
 
   it("already canceled → CONFLICT", async () => {
-    claimsMock.mockResolvedValue({ super_admin: true, sub: "admin-1" });
+    authMock.mockResolvedValue({ claims: { super_admin: true, sub: "admin-1", aal: "aal2", exp: 9999999999 }, jwt: "test-jwt" });
     const sb = buildSb({
       sub: {
         user_id: "11111111-1111-1111-1111-111111111111",
@@ -120,7 +117,7 @@ describe("cancelSubscriptionAction", () => {
   });
 
   it("expired → CONFLICT", async () => {
-    claimsMock.mockResolvedValue({ super_admin: true, sub: "admin-1" });
+    authMock.mockResolvedValue({ claims: { super_admin: true, sub: "admin-1", aal: "aal2", exp: 9999999999 }, jwt: "test-jwt" });
     const sb = buildSb({
       sub: {
         user_id: "11111111-1111-1111-1111-111111111111",
@@ -135,7 +132,7 @@ describe("cancelSubscriptionAction", () => {
   });
 
   it("happy path → ok, updates status='canceled' + canceled_at, writes audit, revalidates", async () => {
-    claimsMock.mockResolvedValue({ super_admin: true, sub: "admin-1" });
+    authMock.mockResolvedValue({ claims: { super_admin: true, sub: "admin-1", aal: "aal2", exp: 9999999999 }, jwt: "test-jwt" });
     const sb = buildSb({});
     adminClientMock.mockReturnValue({ from: sb.from });
 
@@ -184,7 +181,7 @@ describe("cancelSubscriptionAction", () => {
 describe("cancelSubscriptionAction · org branch", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    claimsMock.mockResolvedValue(SUPER_ADMIN_CLAIMS);
+    authMock.mockResolvedValue(SUPER_ADMIN_CLAIMS);
   });
 
   it("cancels org sub and writes subject_type=org metadata", async () => {

@@ -1,13 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-const { claimsMock, adminClientMock, syncPlanMock } = vi.hoisted(() => ({
-  claimsMock: vi.fn(),
+const { authMock, adminClientMock, syncPlanMock } = vi.hoisted(() => ({
+  authMock: vi.fn(),
   adminClientMock: vi.fn(),
   syncPlanMock: vi.fn(),
 }));
 
 vi.mock("../../lib/auth", () => ({
-  getCallerClaims: claimsMock,
+  requireSuperAdminAAL2: authMock,
 }));
 
 vi.mock("@socios-ai/auth/admin", () => ({
@@ -60,7 +60,7 @@ function buildSb(opts: {
 }
 
 beforeEach(() => {
-  claimsMock.mockReset();
+  authMock.mockReset();
   adminClientMock.mockReset();
   syncPlanMock.mockReset();
 });
@@ -79,7 +79,7 @@ const VALID_INPUT = {
 
 describe("createPlanAction", () => {
   it("happy path (mock stripe): inserts plan, junction rows, audit", async () => {
-    claimsMock.mockResolvedValue({ super_admin: true, sub: "super-1" });
+    authMock.mockResolvedValue({ claims: { super_admin: true, sub: "super-1", aal: "aal2", exp: 9999999999 }, jwt: "test-jwt" });
     syncPlanMock.mockResolvedValue({
       stripe_product_id: "prod_mock_case-pred-pro",
       stripe_price_id: "price_mock_case-pred-pro",
@@ -109,7 +109,7 @@ describe("createPlanAction", () => {
   });
 
   it("non-super-admin → FORBIDDEN", async () => {
-    claimsMock.mockResolvedValue({ super_admin: false, sub: "u-1" });
+    authMock.mockResolvedValue(null);
     const result = await createPlanAction(VALID_INPUT);
     expect(result).toEqual({ ok: false, error: "FORBIDDEN" });
     expect(syncPlanMock).not.toHaveBeenCalled();
@@ -117,20 +117,20 @@ describe("createPlanAction", () => {
   });
 
   it("invalid slug → VALIDATION", async () => {
-    claimsMock.mockResolvedValue({ super_admin: true, sub: "super-1" });
+    authMock.mockResolvedValue({ claims: { super_admin: true, sub: "super-1", aal: "aal2", exp: 9999999999 }, jwt: "test-jwt" });
     const result = await createPlanAction({ ...VALID_INPUT, slug: "Bad Slug" });
     expect(result).toMatchObject({ ok: false, error: "VALIDATION" });
     expect(syncPlanMock).not.toHaveBeenCalled();
   });
 
   it("empty app_slugs → VALIDATION", async () => {
-    claimsMock.mockResolvedValue({ super_admin: true, sub: "super-1" });
+    authMock.mockResolvedValue({ claims: { super_admin: true, sub: "super-1", aal: "aal2", exp: 9999999999 }, jwt: "test-jwt" });
     const result = await createPlanAction({ ...VALID_INPUT, app_slugs: [] });
     expect(result).toMatchObject({ ok: false, error: "VALIDATION" });
   });
 
   it("stripe sync failure → STRIPE_ERROR", async () => {
-    claimsMock.mockResolvedValue({ super_admin: true, sub: "super-1" });
+    authMock.mockResolvedValue({ claims: { super_admin: true, sub: "super-1", aal: "aal2", exp: 9999999999 }, jwt: "test-jwt" });
     syncPlanMock.mockRejectedValue(new Error("Stripe down"));
 
     const result = await createPlanAction(VALID_INPUT);
@@ -140,7 +140,7 @@ describe("createPlanAction", () => {
   });
 
   it("duplicate slug (23505) → CONFLICT", async () => {
-    claimsMock.mockResolvedValue({ super_admin: true, sub: "super-1" });
+    authMock.mockResolvedValue({ claims: { super_admin: true, sub: "super-1", aal: "aal2", exp: 9999999999 }, jwt: "test-jwt" });
     syncPlanMock.mockResolvedValue({
       stripe_product_id: null,
       stripe_price_id: null,
@@ -157,7 +157,7 @@ describe("createPlanAction", () => {
   });
 
   it("plan_apps link failure rolls back the plan row", async () => {
-    claimsMock.mockResolvedValue({ super_admin: true, sub: "super-1" });
+    authMock.mockResolvedValue({ claims: { super_admin: true, sub: "super-1", aal: "aal2", exp: 9999999999 }, jwt: "test-jwt" });
     syncPlanMock.mockResolvedValue({
       stripe_product_id: "prod_mock_x",
       stripe_price_id: "price_mock_x",

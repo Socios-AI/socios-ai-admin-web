@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-const { claimsMock, adminClientMock, repriceMock, updateProductMock, syncPlanMock } = vi.hoisted(() => ({
-  claimsMock: vi.fn(),
+const { authMock, adminClientMock, repriceMock, updateProductMock, syncPlanMock } = vi.hoisted(() => ({
+  authMock: vi.fn(),
   adminClientMock: vi.fn(),
   repriceMock: vi.fn(),
   updateProductMock: vi.fn(),
@@ -9,7 +9,7 @@ const { claimsMock, adminClientMock, repriceMock, updateProductMock, syncPlanMoc
 }));
 
 vi.mock("../../lib/auth", () => ({
-  getCallerClaims: claimsMock,
+  requireSuperAdminAAL2: authMock,
 }));
 
 vi.mock("@socios-ai/auth/admin", () => ({
@@ -67,7 +67,7 @@ function buildSb(existing: ExistingPlan | null) {
 }
 
 beforeEach(() => {
-  claimsMock.mockReset();
+  authMock.mockReset();
   adminClientMock.mockReset();
   repriceMock.mockReset();
   updateProductMock.mockReset();
@@ -101,7 +101,7 @@ const BASE_INPUT = {
 
 describe("updatePlanAction", () => {
   it("happy path: name-only edit, no price change, audit plan.updated", async () => {
-    claimsMock.mockResolvedValue({ super_admin: true, sub: "super-1" });
+    authMock.mockResolvedValue({ claims: { super_admin: true, sub: "super-1", aal: "aal2", exp: 9999999999 }, jwt: "test-jwt" });
     const harness = buildSb(EXISTING);
     adminClientMock.mockReturnValue({ from: harness.fromMock });
 
@@ -120,7 +120,7 @@ describe("updatePlanAction", () => {
   });
 
   it("price change triggers reprice and emits plan.stripe_synced event", async () => {
-    claimsMock.mockResolvedValue({ super_admin: true, sub: "super-1" });
+    authMock.mockResolvedValue({ claims: { super_admin: true, sub: "super-1", aal: "aal2", exp: 9999999999 }, jwt: "test-jwt" });
     repriceMock.mockResolvedValue({ stripe_price_id: "price_mock_new", mocked: true });
     const harness = buildSb(EXISTING);
     adminClientMock.mockReturnValue({ from: harness.fromMock });
@@ -141,7 +141,7 @@ describe("updatePlanAction", () => {
   });
 
   it("switching billing_period to custom detaches stripe_price_id", async () => {
-    claimsMock.mockResolvedValue({ super_admin: true, sub: "super-1" });
+    authMock.mockResolvedValue({ claims: { super_admin: true, sub: "super-1", aal: "aal2", exp: 9999999999 }, jwt: "test-jwt" });
     const harness = buildSb(EXISTING);
     adminClientMock.mockReturnValue({ from: harness.fromMock });
 
@@ -157,13 +157,13 @@ describe("updatePlanAction", () => {
   });
 
   it("non-super-admin → FORBIDDEN", async () => {
-    claimsMock.mockResolvedValue({ super_admin: false, sub: "u-1" });
+    authMock.mockResolvedValue(null);
     const result = await updatePlanAction(BASE_INPUT);
     expect(result).toEqual({ ok: false, error: "FORBIDDEN" });
   });
 
   it("plan not found → NOT_FOUND", async () => {
-    claimsMock.mockResolvedValue({ super_admin: true, sub: "super-1" });
+    authMock.mockResolvedValue({ claims: { super_admin: true, sub: "super-1", aal: "aal2", exp: 9999999999 }, jwt: "test-jwt" });
     const harness = buildSb(null);
     adminClientMock.mockReturnValue({ from: harness.fromMock });
 
@@ -172,7 +172,7 @@ describe("updatePlanAction", () => {
   });
 
   it("plan with no existing product runs full sync (custom → recurring transition)", async () => {
-    claimsMock.mockResolvedValue({ super_admin: true, sub: "super-1" });
+    authMock.mockResolvedValue({ claims: { super_admin: true, sub: "super-1", aal: "aal2", exp: 9999999999 }, jwt: "test-jwt" });
     syncPlanMock.mockResolvedValue({
       stripe_product_id: "prod_mock_new",
       stripe_price_id: "price_mock_new",

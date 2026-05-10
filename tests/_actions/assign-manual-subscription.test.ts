@@ -1,12 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-const { claimsMock, adminClientMock } = vi.hoisted(() => ({
-  claimsMock: vi.fn(),
+const { authMock, adminClientMock } = vi.hoisted(() => ({
+  authMock: vi.fn(),
   adminClientMock: vi.fn(),
 }));
 
 vi.mock("../../lib/auth", () => ({
-  getCallerClaims: claimsMock,
+  requireSuperAdminAAL2: authMock,
 }));
 
 vi.mock("@socios-ai/auth/admin", () => ({
@@ -78,20 +78,20 @@ function buildSb(opts: {
 }
 
 beforeEach(() => {
-  claimsMock.mockReset();
+  authMock.mockReset();
   adminClientMock.mockReset();
 });
 
 describe("assignManualSubscriptionAction", () => {
   it("non-super-admin → FORBIDDEN", async () => {
-    claimsMock.mockResolvedValue({ super_admin: false });
+    authMock.mockResolvedValue(null);
     const result = await assignManualSubscriptionAction(validInput);
     expect(result).toEqual({ ok: false, error: "FORBIDDEN" });
     expect(adminClientMock).not.toHaveBeenCalled();
   });
 
   it("invalid planId → VALIDATION", async () => {
-    claimsMock.mockResolvedValue({ super_admin: true });
+    authMock.mockResolvedValue({ claims: { super_admin: true, aal: "aal2", exp: 9999999999 }, jwt: "test-jwt" });
     const result = await assignManualSubscriptionAction({
       ...validInput,
       planId: "not-a-uuid",
@@ -100,7 +100,7 @@ describe("assignManualSubscriptionAction", () => {
   });
 
   it("plan not found or inactive → NOT_FOUND", async () => {
-    claimsMock.mockResolvedValue({ super_admin: true, sub: "admin-1" });
+    authMock.mockResolvedValue({ claims: { super_admin: true, sub: "admin-1", aal: "aal2", exp: 9999999999 }, jwt: "test-jwt" });
     const sb = buildSb({ plan: null, planError: { message: "no rows" } });
     adminClientMock.mockReturnValue({ from: sb.from });
 
@@ -109,7 +109,7 @@ describe("assignManualSubscriptionAction", () => {
   });
 
   it("plan is_active=false → NOT_FOUND with helpful message", async () => {
-    claimsMock.mockResolvedValue({ super_admin: true, sub: "admin-1" });
+    authMock.mockResolvedValue({ claims: { super_admin: true, sub: "admin-1", aal: "aal2", exp: 9999999999 }, jwt: "test-jwt" });
     const sb = buildSb({
       plan: { id: validInput.planId, slug: "case-pro", name: "Case Pro", is_active: false },
     });
@@ -121,7 +121,7 @@ describe("assignManualSubscriptionAction", () => {
   });
 
   it("duplicate active subscription → CONFLICT", async () => {
-    claimsMock.mockResolvedValue({ super_admin: true, sub: "admin-1" });
+    authMock.mockResolvedValue({ claims: { super_admin: true, sub: "admin-1", aal: "aal2", exp: 9999999999 }, jwt: "test-jwt" });
     const sb = buildSb({
       existingSub: { id: "existing-sub-id" },
     });
@@ -132,7 +132,7 @@ describe("assignManualSubscriptionAction", () => {
   });
 
   it("happy path → ok with subscriptionId, inserts subscription + audit", async () => {
-    claimsMock.mockResolvedValue({ super_admin: true, sub: "admin-1" });
+    authMock.mockResolvedValue({ claims: { super_admin: true, sub: "admin-1", aal: "aal2", exp: 9999999999 }, jwt: "test-jwt" });
     const sb = buildSb({});
     adminClientMock.mockReturnValue({ from: sb.from });
 
@@ -158,7 +158,7 @@ describe("assignManualSubscriptionAction", () => {
   });
 
   it("inserts subscription with status='manual', external_ref=null, created_by=adminId, notes in metadata", async () => {
-    claimsMock.mockResolvedValue({ super_admin: true, sub: "admin-7" });
+    authMock.mockResolvedValue({ claims: { super_admin: true, sub: "admin-7", aal: "aal2", exp: 9999999999 }, jwt: "test-jwt" });
     const sb = buildSb({});
     const subInsertCapture = vi.fn().mockResolvedValue({ data: { id: "new-sub-id" }, error: null });
     const subInsertSelect = vi.fn(() => ({ single: subInsertCapture }));
@@ -215,7 +215,7 @@ describe("assignManualSubscriptionAction", () => {
   });
 
   it("calls revalidatePath with /users/{userId}", async () => {
-    claimsMock.mockResolvedValue({ super_admin: true, sub: "admin-1" });
+    authMock.mockResolvedValue({ claims: { super_admin: true, sub: "admin-1", aal: "aal2", exp: 9999999999 }, jwt: "test-jwt" });
     const sb = buildSb({});
     adminClientMock.mockReturnValue({ from: sb.from });
 
@@ -226,10 +226,7 @@ describe("assignManualSubscriptionAction", () => {
   });
 });
 
-const SUPER_ADMIN_CLAIMS = {
-  sub: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
-  super_admin: true,
-};
+const SUPER_ADMIN_CLAIMS = { claims: { sub: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa", super_admin: true, aal: "aal2", exp: 9999999999 }, jwt: "test-jwt" };
 
 const validOrgInput = {
   orgId: "33333333-3333-3333-3333-333333333333",
@@ -305,11 +302,11 @@ function buildOrgSb(opts: {
 describe("assignManualSubscriptionAction · org branch", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    claimsMock.mockResolvedValue(SUPER_ADMIN_CLAIMS);
+    authMock.mockResolvedValue(SUPER_ADMIN_CLAIMS);
   });
 
   it("returns FORBIDDEN when caller is not super_admin", async () => {
-    claimsMock.mockResolvedValue({ sub: "x", super_admin: false });
+    authMock.mockResolvedValue(null);
     const res = await assignManualSubscriptionAction(validOrgInput);
     expect(res).toEqual({ ok: false, error: "FORBIDDEN" });
   });
@@ -378,7 +375,7 @@ describe("assignManualSubscriptionAction · org branch", () => {
 describe("assignManualSubscriptionAction · user branch (regression)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    claimsMock.mockResolvedValue(SUPER_ADMIN_CLAIMS);
+    authMock.mockResolvedValue(SUPER_ADMIN_CLAIMS);
   });
 
   it("inserts user sub with subject_type=user metadata", async () => {

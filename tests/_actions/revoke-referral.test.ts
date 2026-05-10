@@ -1,12 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-const { claimsMock, adminClientMock } = vi.hoisted(() => ({
-  claimsMock: vi.fn(),
+const { authMock, adminClientMock } = vi.hoisted(() => ({
+  authMock: vi.fn(),
   adminClientMock: vi.fn(),
 }));
 
 vi.mock("../../lib/auth", () => ({
-  getCallerClaims: claimsMock,
+  requireSuperAdminAAL2: authMock,
 }));
 
 vi.mock("@socios-ai/auth/admin", () => ({
@@ -19,10 +19,7 @@ vi.mock("next/cache", () => ({
 
 import { revokeReferralAction } from "../../app/_actions/revoke-referral";
 
-const ADMIN_CLAIMS = {
-  sub: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
-  super_admin: true,
-};
+const ADMIN_CLAIMS = { claims: { sub: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa", super_admin: true, aal: "aal2", exp: 9999999999 }, jwt: "test-jwt" };
 
 const REFERRAL_ID = "11111111-1111-1111-1111-111111111111";
 const CUSTOMER_ID = "22222222-2222-2222-2222-222222222222";
@@ -80,31 +77,31 @@ function buildSb(opts: {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  claimsMock.mockReset();
+  authMock.mockReset();
   adminClientMock.mockReset();
 });
 
 describe("revokeReferralAction", () => {
   it("FORBIDDEN when claims is null", async () => {
-    claimsMock.mockResolvedValue(null);
+    authMock.mockResolvedValue(null);
     const result = await revokeReferralAction(validInput);
     expect(result).toEqual({ ok: false, error: "FORBIDDEN" });
   });
 
   it("FORBIDDEN when caller is not super_admin", async () => {
-    claimsMock.mockResolvedValue({ sub: "x", super_admin: false });
+    authMock.mockResolvedValue(null);
     const result = await revokeReferralAction(validInput);
     expect(result).toEqual({ ok: false, error: "FORBIDDEN" });
   });
 
   it("VALIDATION when referralId is not a UUID", async () => {
-    claimsMock.mockResolvedValue(ADMIN_CLAIMS);
+    authMock.mockResolvedValue(ADMIN_CLAIMS);
     const result = await revokeReferralAction({ referralId: "nope" });
     expect(result).toMatchObject({ ok: false, error: "VALIDATION" });
   });
 
   it("NOT_FOUND when referral does not exist", async () => {
-    claimsMock.mockResolvedValue(ADMIN_CLAIMS);
+    authMock.mockResolvedValue(ADMIN_CLAIMS);
     const sb = buildSb({ ref: null });
     adminClientMock.mockReturnValue({ from: sb.from });
     const result = await revokeReferralAction(validInput);
@@ -112,7 +109,7 @@ describe("revokeReferralAction", () => {
   });
 
   it("CONFLICT when a subscription has attribution_locked_at set", async () => {
-    claimsMock.mockResolvedValue(ADMIN_CLAIMS);
+    authMock.mockResolvedValue(ADMIN_CLAIMS);
     const sb = buildSb({ locked: { id: "sub-1" } });
     adminClientMock.mockReturnValue({ from: sb.from });
     const result = await revokeReferralAction(validInput);
@@ -121,7 +118,7 @@ describe("revokeReferralAction", () => {
   });
 
   it("API_ERROR when delete fails", async () => {
-    claimsMock.mockResolvedValue(ADMIN_CLAIMS);
+    authMock.mockResolvedValue(ADMIN_CLAIMS);
     const sb = buildSb({ delErr: { message: "db down" } });
     adminClientMock.mockReturnValue({ from: sb.from });
     const result = await revokeReferralAction(validInput);
@@ -129,7 +126,7 @@ describe("revokeReferralAction", () => {
   });
 
   it("happy path: deletes and audits with referral.revoked and metadata", async () => {
-    claimsMock.mockResolvedValue(ADMIN_CLAIMS);
+    authMock.mockResolvedValue(ADMIN_CLAIMS);
     const sb = buildSb({});
     adminClientMock.mockReturnValue({ from: sb.from });
 
@@ -140,7 +137,7 @@ describe("revokeReferralAction", () => {
     expect(sb.auditInsert).toHaveBeenCalledWith(
       expect.objectContaining({
         event_type: "referral.revoked",
-        actor_user_id: ADMIN_CLAIMS.sub,
+        actor_user_id: ADMIN_CLAIMS.claims.sub,
         target_user_id: CUSTOMER_ID,
         metadata: expect.objectContaining({
           referral_id: REFERRAL_ID,
