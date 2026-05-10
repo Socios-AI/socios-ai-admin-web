@@ -71,3 +71,45 @@ jobs:
             docker compose pull
             docker compose up -d --force-recreate web
             docker image prune -f
+
+      - name: Post-deploy smoke
+        # Validates that the middleware actually runs after the deploy.
+        # If the runtime can't load the middleware (Edge bypass, broken
+        # import, etc.) we get HTTP 200 with app HTML instead of the 307
+        # redirect. Marks the workflow failed so the operator can react.
+        # Background: 2026-05-06 P0 incident · admin-web Edge bypass.
+        env:
+          SMOKE_URL: https://admin.sociosai.com/
+          EXPECTED_REDIRECT_HOST: id.sociosai.com
+        run: |
+          set -euo pipefail
+
+          for i in $(seq 1 30); do
+            code=$(curl -s -o /dev/null -w "%{http_code}" --max-redirs 0 "$SMOKE_URL" 2>/dev/null || echo "000")
+            if [ "$code" != "000" ] && [ "$code" != "502" ] && [ "$code" != "503" ] && [ "$code" != "504" ]; then
+              echo "container responding (HTTP $code after $((i*2 - 2))s)"
+              break
+            fi
+            if [ "$i" = "30" ]; then
+              echo "::error::container never came up (last HTTP code: $code)"
+              exit 1
+            fi
+            sleep 2
+          done
+
+          code=$(curl -s -o /dev/null -w "%{http_code}" --max-redirs 0 "$SMOKE_URL")
+          if [ "$code" != "307" ] && [ "$code" != "302" ]; then
+            echo "::error::expected 307/302 from $SMOKE_URL when unauthenticated, got HTTP $code · middleware not running?"
+            exit 1
+          fi
+
+          location=$(curl -sI --max-redirs 0 "$SMOKE_URL" | awk 'tolower($1) == "location:" { print $2 }' | tr -d '\r')
+          case "$location" in
+            *"$EXPECTED_REDIRECT_HOST"*)
+              echo "smoke OK: middleware redirected to $location"
+              ;;
+            *)
+              echo "::error::middleware redirect does not point to $EXPECTED_REDIRECT_HOST (got: $location)"
+              exit 1
+              ;;
+          esac
