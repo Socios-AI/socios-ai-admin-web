@@ -1,15 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-const { jwtMock, claimsMock, rpcMock, getCallerClientMock } = vi.hoisted(() => ({
-  jwtMock: vi.fn(),
-  claimsMock: vi.fn(),
+const { authMock, rpcMock, getCallerClientMock } = vi.hoisted(() => ({
+  authMock: vi.fn(),
   rpcMock: vi.fn(),
   getCallerClientMock: vi.fn(),
 }));
 
 vi.mock("../../lib/auth", () => ({
-  getCallerJwt: jwtMock,
-  getCallerClaims: claimsMock,
+  requireSuperAdminAAL2: authMock,
 }));
 
 vi.mock("@socios-ai/auth/admin", () => ({
@@ -19,8 +17,7 @@ vi.mock("@socios-ai/auth/admin", () => ({
 import { deleteUserAction } from "../../app/_actions/delete-user";
 
 beforeEach(() => {
-  jwtMock.mockReset();
-  claimsMock.mockReset();
+  authMock.mockReset();
   rpcMock.mockReset();
   getCallerClientMock.mockReset();
   getCallerClientMock.mockReturnValue({ rpc: rpcMock });
@@ -33,8 +30,7 @@ describe("deleteUserAction", () => {
   };
 
   it("super-admin happy path → calls admin_delete_user with right args, ok: true", async () => {
-    claimsMock.mockResolvedValue({ super_admin: true });
-    jwtMock.mockResolvedValue("jwt-1");
+    authMock.mockResolvedValue({ claims: { super_admin: true, sub: "u1", aal: "aal2", exp: 9999999999 }, jwt: "jwt-1" });
     rpcMock.mockResolvedValue({ error: null });
 
     const result = await deleteUserAction(validInput);
@@ -48,8 +44,7 @@ describe("deleteUserAction", () => {
   });
 
   it("non-super-admin → FORBIDDEN, RPC not called", async () => {
-    claimsMock.mockResolvedValue({ super_admin: false });
-    jwtMock.mockResolvedValue("jwt-1");
+    authMock.mockResolvedValue(null);
 
     const result = await deleteUserAction(validInput);
 
@@ -58,8 +53,7 @@ describe("deleteUserAction", () => {
   });
 
   it("missing claims → FORBIDDEN, RPC not called", async () => {
-    claimsMock.mockResolvedValue(null);
-    jwtMock.mockResolvedValue("jwt-1");
+    authMock.mockResolvedValue(null);
 
     const result = await deleteUserAction(validInput);
 
@@ -68,8 +62,7 @@ describe("deleteUserAction", () => {
   });
 
   it("missing JWT → FORBIDDEN, RPC not called", async () => {
-    claimsMock.mockResolvedValue({ super_admin: true });
-    jwtMock.mockResolvedValue(null);
+    authMock.mockResolvedValue(null);
 
     const result = await deleteUserAction(validInput);
 
@@ -78,8 +71,7 @@ describe("deleteUserAction", () => {
   });
 
   it("short reason → VALIDATION error", async () => {
-    claimsMock.mockResolvedValue({ super_admin: true });
-    jwtMock.mockResolvedValue("jwt-1");
+    authMock.mockResolvedValue({ claims: { super_admin: true, sub: "u1", aal: "aal2", exp: 9999999999 }, jwt: "jwt-1" });
 
     const result = await deleteUserAction({ ...validInput, reason: "no" });
 
@@ -87,8 +79,7 @@ describe("deleteUserAction", () => {
   });
 
   it("invalid userId → VALIDATION error", async () => {
-    claimsMock.mockResolvedValue({ super_admin: true });
-    jwtMock.mockResolvedValue("jwt-1");
+    authMock.mockResolvedValue({ claims: { super_admin: true, sub: "u1", aal: "aal2", exp: 9999999999 }, jwt: "jwt-1" });
 
     const result = await deleteUserAction({ ...validInput, userId: "not-a-uuid" });
 
@@ -96,8 +87,7 @@ describe("deleteUserAction", () => {
   });
 
   it("RPC returns error (e.g. last super_admin guard) → API_ERROR with message", async () => {
-    claimsMock.mockResolvedValue({ super_admin: true });
-    jwtMock.mockResolvedValue("jwt-1");
+    authMock.mockResolvedValue({ claims: { super_admin: true, sub: "u1", aal: "aal2", exp: 9999999999 }, jwt: "jwt-1" });
     rpcMock.mockResolvedValue({
       error: { message: "cannot delete the last super_admin" },
     });
@@ -112,8 +102,7 @@ describe("deleteUserAction", () => {
   });
 
   it("RPC throws → API_ERROR with caught message", async () => {
-    claimsMock.mockResolvedValue({ super_admin: true });
-    jwtMock.mockResolvedValue("jwt-1");
+    authMock.mockResolvedValue({ claims: { super_admin: true, sub: "u1", aal: "aal2", exp: 9999999999 }, jwt: "jwt-1" });
     rpcMock.mockRejectedValue(new Error("network blew up"));
 
     const result = await deleteUserAction(validInput);

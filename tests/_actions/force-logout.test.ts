@@ -1,14 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-const { jwtMock, claimsMock, forceMock } = vi.hoisted(() => ({
-  jwtMock: vi.fn(),
-  claimsMock: vi.fn(),
+const { authMock, forceMock } = vi.hoisted(() => ({
+  authMock: vi.fn(),
   forceMock: vi.fn(),
 }));
 
 vi.mock("../../lib/auth", () => ({
-  getCallerJwt: jwtMock,
-  getCallerClaims: claimsMock,
+  requireSuperAdminAAL2: authMock,
 }));
 
 vi.mock("@socios-ai/auth/admin", () => ({
@@ -18,15 +16,13 @@ vi.mock("@socios-ai/auth/admin", () => ({
 import { forceLogoutAction } from "../../app/_actions/force-logout";
 
 beforeEach(() => {
-  jwtMock.mockReset();
-  claimsMock.mockReset();
+  authMock.mockReset();
   forceMock.mockReset();
 });
 
 describe("forceLogoutAction", () => {
   it("super-admin → ok: true, wrapper called with targetUserId and right args", async () => {
-    claimsMock.mockResolvedValue({ super_admin: true });
-    jwtMock.mockResolvedValue("jwt-1");
+    authMock.mockResolvedValue({ claims: { super_admin: true, sub: "u1", aal: "aal2", exp: 9999999999 }, jwt: "jwt-1" });
     forceMock.mockResolvedValue(undefined);
 
     const result = await forceLogoutAction({
@@ -43,8 +39,7 @@ describe("forceLogoutAction", () => {
   });
 
   it("non-super-admin → FORBIDDEN, wrapper not called", async () => {
-    claimsMock.mockResolvedValue({ super_admin: false });
-    jwtMock.mockResolvedValue("jwt-1");
+    authMock.mockResolvedValue(null);
 
     const result = await forceLogoutAction({
       userId: "55555555-5555-5555-5555-555555555555",
@@ -56,8 +51,7 @@ describe("forceLogoutAction", () => {
   });
 
   it("short reason ('no') → VALIDATION error", async () => {
-    claimsMock.mockResolvedValue({ super_admin: true });
-    jwtMock.mockResolvedValue("jwt-1");
+    authMock.mockResolvedValue({ claims: { super_admin: true, sub: "u1", aal: "aal2", exp: 9999999999 }, jwt: "jwt-1" });
 
     const result = await forceLogoutAction({
       userId: "55555555-5555-5555-5555-555555555555",

@@ -1,7 +1,7 @@
 "use server";
 
 import { revokeMembership } from "@socios-ai/auth/admin";
-import { getCallerClaims, getCallerJwt } from "@/lib/auth";
+import { requireSuperAdminAAL2 } from "@/lib/auth";
 import { revokeMembershipSchema } from "@/lib/validation";
 
 export type RevokeMembershipResult =
@@ -12,11 +12,9 @@ export async function revokeMembershipAction(input: {
   membershipId: string;
   reason: string;
 }): Promise<RevokeMembershipResult> {
-  const claims = await getCallerClaims();
-  if (!claims?.super_admin) return { ok: false, error: "FORBIDDEN" };
-
-  const jwt = await getCallerJwt();
-  if (!jwt) return { ok: false, error: "FORBIDDEN" };
+  const auth = await requireSuperAdminAAL2();
+  if (!auth) return { ok: false, error: "FORBIDDEN" };
+  const jwt = auth.jwt;
 
   const parsed = revokeMembershipSchema.safeParse(input);
   if (!parsed.success) {

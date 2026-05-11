@@ -1,15 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-const { jwtMock, claimsMock, rpcMock, getCallerClientMock } = vi.hoisted(() => ({
-  jwtMock: vi.fn(),
-  claimsMock: vi.fn(),
+const { authMock, rpcMock, getCallerClientMock } = vi.hoisted(() => ({
+  authMock: vi.fn(),
   rpcMock: vi.fn(),
   getCallerClientMock: vi.fn(),
 }));
 
 vi.mock("../../lib/auth", () => ({
-  getCallerJwt: jwtMock,
-  getCallerClaims: claimsMock,
+  requireSuperAdminAAL2: authMock,
 }));
 
 vi.mock("@socios-ai/auth/admin", () => ({
@@ -19,8 +17,7 @@ vi.mock("@socios-ai/auth/admin", () => ({
 import { resetUserMfaAction } from "../../app/_actions/reset-user-mfa";
 
 beforeEach(() => {
-  jwtMock.mockReset();
-  claimsMock.mockReset();
+  authMock.mockReset();
   rpcMock.mockReset();
   getCallerClientMock.mockReset();
   getCallerClientMock.mockReturnValue({ rpc: rpcMock });
@@ -33,8 +30,7 @@ describe("resetUserMfaAction", () => {
   };
 
   it("super-admin happy path → ok with factorsDeleted from RPC", async () => {
-    claimsMock.mockResolvedValue({ super_admin: true });
-    jwtMock.mockResolvedValue("jwt-1");
+    authMock.mockResolvedValue({ claims: { super_admin: true, sub: "u1", aal: "aal2", exp: 9999999999 }, jwt: "jwt-1" });
     rpcMock.mockResolvedValue({ data: 3, error: null });
 
     const result = await resetUserMfaAction(validInput);
@@ -47,8 +43,7 @@ describe("resetUserMfaAction", () => {
   });
 
   it("RPC returns 0 (user had no factors) → ok with factorsDeleted: 0", async () => {
-    claimsMock.mockResolvedValue({ super_admin: true });
-    jwtMock.mockResolvedValue("jwt-1");
+    authMock.mockResolvedValue({ claims: { super_admin: true, sub: "u1", aal: "aal2", exp: 9999999999 }, jwt: "jwt-1" });
     rpcMock.mockResolvedValue({ data: 0, error: null });
 
     const result = await resetUserMfaAction(validInput);
@@ -57,8 +52,7 @@ describe("resetUserMfaAction", () => {
   });
 
   it("non-numeric data → ok with factorsDeleted: 0 (defensive)", async () => {
-    claimsMock.mockResolvedValue({ super_admin: true });
-    jwtMock.mockResolvedValue("jwt-1");
+    authMock.mockResolvedValue({ claims: { super_admin: true, sub: "u1", aal: "aal2", exp: 9999999999 }, jwt: "jwt-1" });
     rpcMock.mockResolvedValue({ data: null, error: null });
 
     const result = await resetUserMfaAction(validInput);
@@ -67,8 +61,7 @@ describe("resetUserMfaAction", () => {
   });
 
   it("non-super-admin → FORBIDDEN, RPC not called", async () => {
-    claimsMock.mockResolvedValue({ super_admin: false });
-    jwtMock.mockResolvedValue("jwt-1");
+    authMock.mockResolvedValue(null);
 
     const result = await resetUserMfaAction(validInput);
 
@@ -77,8 +70,7 @@ describe("resetUserMfaAction", () => {
   });
 
   it("missing JWT → FORBIDDEN", async () => {
-    claimsMock.mockResolvedValue({ super_admin: true });
-    jwtMock.mockResolvedValue(null);
+    authMock.mockResolvedValue(null);
 
     const result = await resetUserMfaAction(validInput);
 
@@ -87,8 +79,7 @@ describe("resetUserMfaAction", () => {
   });
 
   it("short reason → VALIDATION", async () => {
-    claimsMock.mockResolvedValue({ super_admin: true });
-    jwtMock.mockResolvedValue("jwt-1");
+    authMock.mockResolvedValue({ claims: { super_admin: true, sub: "u1", aal: "aal2", exp: 9999999999 }, jwt: "jwt-1" });
 
     const result = await resetUserMfaAction({ ...validInput, reason: "no" });
 
@@ -96,8 +87,7 @@ describe("resetUserMfaAction", () => {
   });
 
   it("invalid userId → VALIDATION", async () => {
-    claimsMock.mockResolvedValue({ super_admin: true });
-    jwtMock.mockResolvedValue("jwt-1");
+    authMock.mockResolvedValue({ claims: { super_admin: true, sub: "u1", aal: "aal2", exp: 9999999999 }, jwt: "jwt-1" });
 
     const result = await resetUserMfaAction({ ...validInput, userId: "x" });
 
@@ -105,8 +95,7 @@ describe("resetUserMfaAction", () => {
   });
 
   it("RPC returns self-reset error → API_ERROR with that message", async () => {
-    claimsMock.mockResolvedValue({ super_admin: true });
-    jwtMock.mockResolvedValue("jwt-1");
+    authMock.mockResolvedValue({ claims: { super_admin: true, sub: "u1", aal: "aal2", exp: 9999999999 }, jwt: "jwt-1" });
     rpcMock.mockResolvedValue({
       data: null,
       error: { message: "cannot reset your own MFA via this RPC" },

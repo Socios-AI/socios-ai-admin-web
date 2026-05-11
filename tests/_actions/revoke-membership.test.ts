@@ -1,14 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-const { jwtMock, claimsMock, revokeMock } = vi.hoisted(() => ({
-  jwtMock: vi.fn(),
-  claimsMock: vi.fn(),
+const { authMock, revokeMock } = vi.hoisted(() => ({
+  authMock: vi.fn(),
   revokeMock: vi.fn(),
 }));
 
 vi.mock("../../lib/auth", () => ({
-  getCallerJwt: jwtMock,
-  getCallerClaims: claimsMock,
+  requireSuperAdminAAL2: authMock,
 }));
 
 vi.mock("@socios-ai/auth/admin", () => ({
@@ -18,15 +16,13 @@ vi.mock("@socios-ai/auth/admin", () => ({
 import { revokeMembershipAction } from "../../app/_actions/revoke-membership";
 
 beforeEach(() => {
-  jwtMock.mockReset();
-  claimsMock.mockReset();
+  authMock.mockReset();
   revokeMock.mockReset();
 });
 
 describe("revokeMembershipAction", () => {
   it("super-admin + valid input → ok: true with revokedAt, wrapper called", async () => {
-    claimsMock.mockResolvedValue({ super_admin: true });
-    jwtMock.mockResolvedValue("jwt-1");
+    authMock.mockResolvedValue({ claims: { super_admin: true, sub: "u1", aal: "aal2", exp: 9999999999 }, jwt: "jwt-1" });
     revokeMock.mockResolvedValue({ revokedAt: "2026-04-23T00:00:00Z" });
 
     const result = await revokeMembershipAction({
@@ -47,8 +43,7 @@ describe("revokeMembershipAction", () => {
   });
 
   it("non-super-admin → FORBIDDEN, wrapper not called", async () => {
-    claimsMock.mockResolvedValue({ super_admin: false });
-    jwtMock.mockResolvedValue("jwt-1");
+    authMock.mockResolvedValue(null);
 
     const result = await revokeMembershipAction({
       membershipId: "44444444-4444-4444-4444-444444444444",
@@ -60,8 +55,7 @@ describe("revokeMembershipAction", () => {
   });
 
   it("short reason ('no') → VALIDATION error", async () => {
-    claimsMock.mockResolvedValue({ super_admin: true });
-    jwtMock.mockResolvedValue("jwt-1");
+    authMock.mockResolvedValue({ claims: { super_admin: true, sub: "u1", aal: "aal2", exp: 9999999999 }, jwt: "jwt-1" });
 
     const result = await revokeMembershipAction({
       membershipId: "44444444-4444-4444-4444-444444444444",

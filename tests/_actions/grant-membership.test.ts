@@ -1,14 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-const { jwtMock, claimsMock, grantMock } = vi.hoisted(() => ({
-  jwtMock: vi.fn(),
-  claimsMock: vi.fn(),
+const { authMock, grantMock } = vi.hoisted(() => ({
+  authMock: vi.fn(),
   grantMock: vi.fn(),
 }));
 
 vi.mock("../../lib/auth", () => ({
-  getCallerJwt: jwtMock,
-  getCallerClaims: claimsMock,
+  requireSuperAdminAAL2: authMock,
 }));
 
 vi.mock("@socios-ai/auth/admin", () => ({
@@ -18,15 +16,13 @@ vi.mock("@socios-ai/auth/admin", () => ({
 import { grantMembershipAction } from "../../app/_actions/grant-membership";
 
 beforeEach(() => {
-  jwtMock.mockReset();
-  claimsMock.mockReset();
+  authMock.mockReset();
   grantMock.mockReset();
 });
 
 describe("grantMembershipAction", () => {
   it("super-admin + valid input → ok: true with membershipId, wrapper called with right args", async () => {
-    claimsMock.mockResolvedValue({ super_admin: true });
-    jwtMock.mockResolvedValue("jwt-1");
+    authMock.mockResolvedValue({ claims: { super_admin: true, sub: "u1", aal: "aal2", exp: 9999999999 }, jwt: "jwt-1" });
     grantMock.mockResolvedValue({ membershipId: "m-1" });
 
     const result = await grantMembershipAction({
@@ -46,8 +42,7 @@ describe("grantMembershipAction", () => {
   });
 
   it("non-super-admin → FORBIDDEN, wrapper not called", async () => {
-    claimsMock.mockResolvedValue({ super_admin: false });
-    jwtMock.mockResolvedValue("jwt-1");
+    authMock.mockResolvedValue(null);
 
     const result = await grantMembershipAction({
       userId: "33333333-3333-3333-3333-333333333333",
@@ -60,8 +55,7 @@ describe("grantMembershipAction", () => {
   });
 
   it("roleSlug 'partner-admin' without orgId → VALIDATION error", async () => {
-    claimsMock.mockResolvedValue({ super_admin: true });
-    jwtMock.mockResolvedValue("jwt-1");
+    authMock.mockResolvedValue({ claims: { super_admin: true, sub: "u1", aal: "aal2", exp: 9999999999 }, jwt: "jwt-1" });
 
     const result = await grantMembershipAction({
       userId: "33333333-3333-3333-3333-333333333333",

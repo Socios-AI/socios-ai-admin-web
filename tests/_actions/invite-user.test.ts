@@ -1,14 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-const { jwtMock, claimsMock, createMock } = vi.hoisted(() => ({
-  jwtMock: vi.fn(),
-  claimsMock: vi.fn(),
+const { authMock, createMock } = vi.hoisted(() => ({
+  authMock: vi.fn(),
   createMock: vi.fn(),
 }));
 
 vi.mock("../../lib/auth", () => ({
-  getCallerJwt: jwtMock,
-  getCallerClaims: claimsMock,
+  requireSuperAdminAAL2: authMock,
 }));
 
 vi.mock("@socios-ai/auth/admin", () => ({
@@ -18,15 +16,13 @@ vi.mock("@socios-ai/auth/admin", () => ({
 import { inviteUserAction } from "../../app/_actions/invite-user";
 
 beforeEach(() => {
-  jwtMock.mockReset();
-  claimsMock.mockReset();
+  authMock.mockReset();
   createMock.mockReset();
 });
 
 describe("inviteUserAction", () => {
   it("happy path: super-admin caller, valid input → ok: true with userId and actionLink", async () => {
-    claimsMock.mockResolvedValue({ super_admin: true });
-    jwtMock.mockResolvedValue("jwt-1");
+    authMock.mockResolvedValue({ claims: { super_admin: true, sub: "u1", aal: "aal2", exp: 9999999999 }, jwt: "jwt-1" });
     createMock.mockResolvedValue({ userId: "user-abc", actionLink: "https://id.sociosai.com/set-password?token=xyz" });
 
     const result = await inviteUserAction({
@@ -48,8 +44,7 @@ describe("inviteUserAction", () => {
   });
 
   it("non-super-admin caller → FORBIDDEN, wrapper not called", async () => {
-    claimsMock.mockResolvedValue({ super_admin: false });
-    jwtMock.mockResolvedValue("jwt-1");
+    authMock.mockResolvedValue(null);
 
     const result = await inviteUserAction({
       email: "john@example.com",
@@ -63,8 +58,7 @@ describe("inviteUserAction", () => {
   });
 
   it("invalid email → VALIDATION error", async () => {
-    claimsMock.mockResolvedValue({ super_admin: true });
-    jwtMock.mockResolvedValue("jwt-1");
+    authMock.mockResolvedValue({ claims: { super_admin: true, sub: "u1", aal: "aal2", exp: 9999999999 }, jwt: "jwt-1" });
 
     const result = await inviteUserAction({
       email: "not-an-email",
@@ -77,8 +71,7 @@ describe("inviteUserAction", () => {
   });
 
   it("roleSlug 'partner-member' without orgId → VALIDATION error", async () => {
-    claimsMock.mockResolvedValue({ super_admin: true });
-    jwtMock.mockResolvedValue("jwt-1");
+    authMock.mockResolvedValue({ claims: { super_admin: true, sub: "u1", aal: "aal2", exp: 9999999999 }, jwt: "jwt-1" });
 
     const result = await inviteUserAction({
       email: "john@example.com",

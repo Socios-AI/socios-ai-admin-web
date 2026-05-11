@@ -1,7 +1,7 @@
 "use server";
 
 import { grantMembership } from "@socios-ai/auth/admin";
-import { getCallerClaims, getCallerJwt } from "@/lib/auth";
+import { requireSuperAdminAAL2 } from "@/lib/auth";
 import { grantMembershipSchema } from "@/lib/validation";
 
 export type GrantMembershipResult =
@@ -14,11 +14,9 @@ export async function grantMembershipAction(input: {
   roleSlug: string;
   orgId?: string;
 }): Promise<GrantMembershipResult> {
-  const claims = await getCallerClaims();
-  if (!claims?.super_admin) return { ok: false, error: "FORBIDDEN" };
-
-  const jwt = await getCallerJwt();
-  if (!jwt) return { ok: false, error: "FORBIDDEN" };
+  const auth = await requireSuperAdminAAL2();
+  if (!auth) return { ok: false, error: "FORBIDDEN" };
+  const jwt = auth.jwt;
 
   const parsed = grantMembershipSchema.safeParse(input);
   if (!parsed.success) {

@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { getCallerClient } from "@socios-ai/auth/admin";
-import { getCallerJwt, getCallerClaims } from "@/lib/auth";
+import { requireSuperAdminAAL2 } from "@/lib/auth";
 
 export type CreateOrgInvitationResult =
   | { ok: true; token: string; inviteUrl: string }
@@ -16,11 +16,9 @@ export async function createOrgInvitationAction(input: {
   roleSlug: "org_admin" | "org_user";
   expiresInDays?: number;
 }): Promise<CreateOrgInvitationResult> {
-  const claims = await getCallerClaims();
-  if (!claims?.super_admin) return { ok: false, error: "FORBIDDEN" };
-
-  const jwt = await getCallerJwt();
-  if (!jwt) return { ok: false, error: "FORBIDDEN" };
+  const auth = await requireSuperAdminAAL2();
+  if (!auth) return { ok: false, error: "FORBIDDEN" };
+  const jwt = auth.jwt;
 
   const email = input.email?.trim().toLowerCase();
   if (!email || !email.includes("@")) {

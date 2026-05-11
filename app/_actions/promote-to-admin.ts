@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { getCallerClient } from "@socios-ai/auth/admin";
-import { getCallerJwt, getCallerClaims } from "@/lib/auth";
+import { requireSuperAdminAAL2 } from "@/lib/auth";
 
 export type PromoteToAdminResult =
   | { ok: true }
@@ -12,11 +12,9 @@ export async function promoteToAdminAction(input: {
   userId: string;
   reason: string;
 }): Promise<PromoteToAdminResult> {
-  const claims = await getCallerClaims();
-  if (!claims?.super_admin) return { ok: false, error: "FORBIDDEN" };
-
-  const jwt = await getCallerJwt();
-  if (!jwt) return { ok: false, error: "FORBIDDEN" };
+  const auth = await requireSuperAdminAAL2();
+  if (!auth) return { ok: false, error: "FORBIDDEN" };
+  const jwt = auth.jwt;
 
   const userId = input.userId?.trim();
   const reason = input.reason?.trim();
