@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { getCallerClient } from "@socios-ai/auth/admin";
-import { getCallerJwt, getCallerClaims } from "@/lib/auth";
+import { requireSuperAdminAAL2 } from "@/lib/auth";
 
 export type RevokeAffiliateInvitationResult =
   | { ok: true }
@@ -15,11 +15,9 @@ export async function revokeAffiliateInvitationAction(input: {
   invitationId: string;
   reason?: string;
 }): Promise<RevokeAffiliateInvitationResult> {
-  const claims = await getCallerClaims();
-  if (!claims?.super_admin) return { ok: false, error: "FORBIDDEN" };
-
-  const jwt = await getCallerJwt();
-  if (!jwt) return { ok: false, error: "FORBIDDEN" };
+  const auth = await requireSuperAdminAAL2();
+  if (!auth) return { ok: false, error: "FORBIDDEN" };
+  const jwt = auth.jwt;
 
   const id = input.invitationId?.trim();
   if (!id) return { ok: false, error: "VALIDATION", message: "invitationId obrigatório" };

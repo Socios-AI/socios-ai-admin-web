@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { getCallerClient } from "@socios-ai/auth/admin";
-import { getCallerJwt, getCallerClaims } from "@/lib/auth";
+import { requireSuperAdminAAL2 } from "@/lib/auth";
 
 export type CreateAffiliateInvitationResult =
   | { ok: true; token: string; inviteUrl: string }
@@ -16,8 +16,8 @@ export async function createAffiliateInvitationAction(input: {
   source?: string;
   expiresInDays?: number;
 }): Promise<CreateAffiliateInvitationResult> {
-  const claims = await getCallerClaims();
-  if (!claims?.super_admin) return { ok: false, error: "FORBIDDEN" };
+  const auth = await requireSuperAdminAAL2();
+  if (!auth) return { ok: false, error: "FORBIDDEN" };
 
   const email = input.email?.trim().toLowerCase();
   const displayName = input.displayName?.trim();
@@ -25,8 +25,7 @@ export async function createAffiliateInvitationAction(input: {
     return { ok: false, error: "VALIDATION", message: "email e displayName são obrigatórios" };
   }
 
-  const jwt = await getCallerJwt();
-  if (!jwt) return { ok: false, error: "FORBIDDEN" };
+  const jwt = auth.jwt;
 
   const sb = getCallerClient({ callerJwt: jwt });
   const { data, error } = await sb.rpc("create_passive_affiliate", {

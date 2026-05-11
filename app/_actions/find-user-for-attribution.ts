@@ -1,7 +1,7 @@
 "use server";
 
 import { findUserByEmail, type FindUserResult } from "@/lib/data";
-import { getCallerClaims, getCallerJwt } from "@/lib/auth";
+import { requireSuperAdminAAL2 } from "@/lib/auth";
 
 export type FindUserForAttributionResult =
   | { ok: true; result: FindUserResult | null }
@@ -10,15 +10,14 @@ export type FindUserForAttributionResult =
 export async function findUserForAttributionAction(
   email: string,
 ): Promise<FindUserForAttributionResult> {
-  const claims = await getCallerClaims();
-  if (!claims?.super_admin) return { ok: false, error: "FORBIDDEN" };
+  const auth = await requireSuperAdminAAL2();
+  if (!auth) return { ok: false, error: "FORBIDDEN" };
 
   if (typeof email !== "string" || email.trim().length < 3) {
     return { ok: false, error: "VALIDATION", message: "Email inválido" };
   }
 
-  const jwt = await getCallerJwt();
-  if (!jwt) return { ok: false, error: "FORBIDDEN" };
+  const jwt = auth.jwt;
 
   try {
     const result = await findUserByEmail({ callerJwt: jwt, email });

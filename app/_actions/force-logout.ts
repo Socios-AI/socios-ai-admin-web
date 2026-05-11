@@ -1,7 +1,7 @@
 "use server";
 
 import { forceLogout } from "@socios-ai/auth/admin";
-import { getCallerClaims, getCallerJwt } from "@/lib/auth";
+import { requireSuperAdminAAL2 } from "@/lib/auth";
 import { forceLogoutSchema } from "@/lib/validation";
 
 export type ForceLogoutResult =
@@ -12,11 +12,9 @@ export async function forceLogoutAction(input: {
   userId: string;
   reason: string;
 }): Promise<ForceLogoutResult> {
-  const claims = await getCallerClaims();
-  if (!claims?.super_admin) return { ok: false, error: "FORBIDDEN" };
-
-  const jwt = await getCallerJwt();
-  if (!jwt) return { ok: false, error: "FORBIDDEN" };
+  const auth = await requireSuperAdminAAL2();
+  if (!auth) return { ok: false, error: "FORBIDDEN" };
+  const jwt = auth.jwt;
 
   const parsed = forceLogoutSchema.safeParse(input);
   if (!parsed.success) {

@@ -1,14 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-const { jwtMock, claimsMock, demoteMock } = vi.hoisted(() => ({
-  jwtMock: vi.fn(),
-  claimsMock: vi.fn(),
+const { authMock, demoteMock } = vi.hoisted(() => ({
+  authMock: vi.fn(),
   demoteMock: vi.fn(),
 }));
 
 vi.mock("../../lib/auth", () => ({
-  getCallerJwt: jwtMock,
-  getCallerClaims: claimsMock,
+  requireSuperAdminAAL2: authMock,
 }));
 
 vi.mock("@socios-ai/auth/admin", () => ({
@@ -18,15 +16,13 @@ vi.mock("@socios-ai/auth/admin", () => ({
 import { demoteUserAction } from "../../app/_actions/demote-user";
 
 beforeEach(() => {
-  jwtMock.mockReset();
-  claimsMock.mockReset();
+  authMock.mockReset();
   demoteMock.mockReset();
 });
 
 describe("demoteUserAction", () => {
   it("super-admin caller + valid input → ok: true, wrapper called with right args", async () => {
-    claimsMock.mockResolvedValue({ super_admin: true });
-    jwtMock.mockResolvedValue("jwt-1");
+    authMock.mockResolvedValue({ claims: { super_admin: true, sub: "u1", aal: "aal2", exp: 9999999999 }, jwt: "jwt-1" });
     demoteMock.mockResolvedValue(undefined);
 
     const result = await demoteUserAction({
@@ -43,8 +39,7 @@ describe("demoteUserAction", () => {
   });
 
   it("non-super-admin → FORBIDDEN, wrapper not called", async () => {
-    claimsMock.mockResolvedValue({ super_admin: false });
-    jwtMock.mockResolvedValue("jwt-1");
+    authMock.mockResolvedValue(null);
 
     const result = await demoteUserAction({
       userId: "22222222-2222-2222-2222-222222222222",
@@ -56,8 +51,7 @@ describe("demoteUserAction", () => {
   });
 
   it("short reason ('no') → VALIDATION error", async () => {
-    claimsMock.mockResolvedValue({ super_admin: true });
-    jwtMock.mockResolvedValue("jwt-1");
+    authMock.mockResolvedValue({ claims: { super_admin: true, sub: "u1", aal: "aal2", exp: 9999999999 }, jwt: "jwt-1" });
 
     const result = await demoteUserAction({
       userId: "22222222-2222-2222-2222-222222222222",

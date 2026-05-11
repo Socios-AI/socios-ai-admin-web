@@ -1,7 +1,7 @@
 "use server";
 
 import { createUserWithMembership } from "@socios-ai/auth/admin";
-import { getCallerClaims, getCallerJwt } from "@/lib/auth";
+import { requireSuperAdminAAL2 } from "@/lib/auth";
 import { inviteUserSchema } from "@/lib/validation";
 
 export type InviteUserResult =
@@ -15,11 +15,9 @@ export async function inviteUserAction(input: {
   roleSlug: string;
   orgId?: string;
 }): Promise<InviteUserResult> {
-  const claims = await getCallerClaims();
-  if (!claims?.super_admin) return { ok: false, error: "FORBIDDEN" };
-
-  const jwt = await getCallerJwt();
-  if (!jwt) return { ok: false, error: "FORBIDDEN" };
+  const auth = await requireSuperAdminAAL2();
+  if (!auth) return { ok: false, error: "FORBIDDEN" };
+  const jwt = auth.jwt;
 
   const parsed = inviteUserSchema.safeParse(input);
   if (!parsed.success) {
