@@ -17,6 +17,8 @@ export async function createResellerAction(input: {
   email: string;
   fullName: string;
   customCommissionPct?: number;
+  profile?: Record<string, unknown> | null;
+  payoutMethods?: Array<Record<string, unknown>>;
 }): Promise<CreateResellerResult> {
   const auth = await requireSuperAdminAAL2();
 
@@ -68,6 +70,25 @@ export async function createResellerAction(input: {
   if (partnerErr || !partner) {
     await sb.auth.admin.deleteUser(userId).catch(() => undefined);
     return { ok: false, error: "API_ERROR", message: partnerErr?.message ?? "insert partner falhou" };
+  }
+
+  if (input.profile) {
+    const { error: profErr } = await sb.rpc("partner_profile_upsert", {
+      p_partner_id: partner.id,
+      p_payload: input.profile,
+    });
+    if (profErr) {
+      return { ok: false, error: "API_ERROR", message: `profile: ${profErr.message}` };
+    }
+  }
+  for (const pm of input.payoutMethods ?? []) {
+    const { error: payErr } = await sb.rpc("partner_payout_upsert", {
+      p_partner_id: partner.id,
+      p_payload: pm,
+    });
+    if (payErr) {
+      return { ok: false, error: "API_ERROR", message: `payout: ${payErr.message}` };
+    }
   }
 
   await sb.from("audit_log").insert({
