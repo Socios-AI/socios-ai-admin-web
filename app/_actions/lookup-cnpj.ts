@@ -26,7 +26,7 @@ export async function lookupCnpjAction(cnpj: string): Promise<LookupResult<CnpjL
   try {
     const res = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${clean}`, {
       signal: AbortSignal.timeout(5000),
-      headers: { accept: "application/json" },
+      headers: { accept: "application/json", "user-agent": "SociosAI/1.0 (+https://sociosai.com)" },
     });
     if (!res.ok) return { ok: false, error: `BrasilAPI status ${res.status}` };
     const j = (await res.json()) as Record<string, unknown>;

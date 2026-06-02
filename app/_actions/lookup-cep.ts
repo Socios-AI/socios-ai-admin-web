@@ -19,7 +19,7 @@ export async function lookupCepAction(cep: string): Promise<LookupResult<CepLook
   try {
     const res = await fetch(`https://viacep.com.br/ws/${clean}/json/`, {
       signal: AbortSignal.timeout(5000),
-      headers: { accept: "application/json" },
+      headers: { accept: "application/json", "user-agent": "SociosAI/1.0 (+https://sociosai.com)" },
     });
     if (!res.ok) return { ok: false, error: `ViaCEP status ${res.status}` };
     const j = (await res.json()) as Record<string, unknown>;
