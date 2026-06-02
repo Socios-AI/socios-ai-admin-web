@@ -117,3 +117,11 @@ export const partnerPayoutSchema = z
 
 export type PartnerProfileInput = z.infer<typeof partnerProfileSchema>;
 export type PartnerPayoutInput = z.infer<typeof partnerPayoutSchema>;
+
+// Prefill gravado no convite (admin "preenche tudo"): perfil + métodos de payout.
+// Defesa server-side: o caminho de convite grava prefill_profile como JSONB; este
+// schema garante que phone E.164, documentos e payout passem antes de persistir.
+export const prefillProfileSchema = z.intersection(
+  partnerProfileSchema,
+  z.object({ payout_methods: z.array(partnerPayoutSchema).optional() }),
+);

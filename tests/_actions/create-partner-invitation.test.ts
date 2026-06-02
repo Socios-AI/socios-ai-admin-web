@@ -75,6 +75,25 @@ describe("createPartnerInvitationAction", () => {
     if (!r.ok) expect(r.error).toBe("VALIDATION");
   });
 
+  it("rejects invalid prefill before any side effect", async () => {
+    authMock.mockResolvedValue({ claims: { sub: "u", super_admin: true, aal: "aal2", exp: 9999999999 }, jwt: "test-jwt" });
+    const r = await createPartnerInvitationAction({
+      ...valid,
+      prefillProfile: {
+        country: "BR", person_type: "company", tax_id: "11.222.333/0001-81",
+        company_legal_name: "ACME LTDA", phone: "62 3292 5602", // não-E.164
+        payout_methods: [],
+      },
+    });
+    expect(r.ok).toBe(false);
+    if (!r.ok) {
+      expect(r.error).toBe("VALIDATION");
+      expect(r.message).toMatch(/prefill/);
+    }
+    expect(dbxMock).not.toHaveBeenCalled();
+    expect(stripeMock).not.toHaveBeenCalled();
+  });
+
   it("creates invitation in mock mode", async () => {
     authMock.mockResolvedValue({ claims: { sub: "u", super_admin: true, aal: "aal2", exp: 9999999999 }, jwt: "test-jwt" });
     const sb = buildSb();

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { lookupCnpjAction } from "@/app/_actions/lookup-cnpj";
 import { lookupCepAction } from "@/app/_actions/lookup-cep";
+import { PhoneField } from "./PhoneField";
 
 export type ProfileValue = {
   country: "BR" | "US";
@@ -173,7 +174,11 @@ export function PartnerProfileFields({
         </div>
       )}
 
-      <Field name="phone" labelText="Telefone" />
+      <PhoneField
+        valueE164={value.phone}
+        defaultCountry={value.country}
+        onChange={(e164) => onChange({ phone: e164 })}
+      />
       {value.cnpj_status && (
         <p className="text-xs text-muted-foreground">Situação cadastral (Receita): {value.cnpj_status}</p>
       )}
