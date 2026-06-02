@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { createPartnerInvitationAction } from "@/app/_actions/create-partner-invitation";
+import { PartnerProfileFields, emptyProfileValue, toProfilePayload, toPayoutPayload, type ProfileValue } from "./PartnerProfileFields";
 
 const ERROR_LABEL: Record<string, string> = {
   FORBIDDEN:             "Sem permissão.",
@@ -15,11 +16,17 @@ export function PartnerInvitationForm() {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<{ url: string; mocked: boolean } | null>(null);
+  const [profile, setProfile] = useState<ProfileValue>(emptyProfileValue);
 
   const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError(null); setSuccess(null);
     const fd = new FormData(e.currentTarget);
+    const payoutPayload = toPayoutPayload(profile);
+    const prefillProfile = {
+      ...toProfilePayload(profile),
+      payout_methods: payoutPayload ? [payoutPayload] : [],
+    };
     const payload = {
       email: String(fd.get("email") ?? "").trim(),
       fullName: String(fd.get("fullName") ?? "").trim(),
@@ -29,6 +36,7 @@ export function PartnerInvitationForm() {
       customCommissionPct: fd.get("customCommissionPct")
         ? Number(fd.get("customCommissionPct"))
         : undefined,
+      prefillProfile,
     };
     startTransition(async () => {
       const r = await createPartnerInvitationAction(payload);
@@ -76,6 +84,8 @@ export function PartnerInvitationForm() {
           <input id="expiresInDays" name="expiresInDays" type="number" min={1} max={60} defaultValue={30} className="w-full rounded-lg border border-input bg-background px-3 py-2" />
         </div>
       </div>
+      <PartnerProfileFields value={profile} onChange={(patch) => setProfile((p) => ({ ...p, ...patch }))} />
+
       {error && <p className="text-sm text-destructive">{error}</p>}
       {success && (
         <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
