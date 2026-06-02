@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   isValidCPF, isValidCNPJ, isValidABA, isValidEIN, isValidCEP, isValidZIP,
-  partnerProfileSchema, partnerPayoutSchema,
+  partnerProfileSchema, partnerPayoutSchema, prefillProfileSchema,
 } from "../../lib/partner-validation";
 
 describe("document validators", () => {
@@ -59,5 +59,29 @@ describe("partnerPayoutSchema", () => {
   });
   it("rejeita routing ABA inválido em bank_us", () => {
     expect(partnerPayoutSchema.safeParse({ method: "bank_us", routing_number: "021000020", account_number: "123", account_type: "checking" }).success).toBe(false);
+  });
+});
+
+describe("prefillProfileSchema", () => {
+  const validBrPj = {
+    country: "BR", person_type: "company", tax_id: "11.222.333/0001-81",
+    company_legal_name: "ACME LTDA", phone: "+556232925602",
+    address_postal_code: "01001-000", address_city: "São Paulo",
+    address_state: "SP", address_line1: "Praça da Sé", address_number: "1",
+    payout_methods: [{ method: "pix", pix_key: "+556232925602", pix_key_type: "phone" }],
+  };
+  it("aceita prefill BR PJ válido com payout", () => {
+    expect(prefillProfileSchema.safeParse(validBrPj).success).toBe(true);
+  });
+  it("rejeita telefone fora de E.164 (o bug original)", () => {
+    expect(prefillProfileSchema.safeParse({ ...validBrPj, phone: "62 3292 5602" }).success).toBe(false);
+  });
+  it("rejeita payout inválido (PIX sem chave)", () => {
+    expect(prefillProfileSchema.safeParse({ ...validBrPj, payout_methods: [{ method: "pix" }] }).success).toBe(false);
+  });
+  it("aceita prefill sem payout_methods", () => {
+    const { payout_methods, ...noPayout } = validBrPj;
+    void payout_methods;
+    expect(prefillProfileSchema.safeParse(noPayout).success).toBe(true);
   });
 });

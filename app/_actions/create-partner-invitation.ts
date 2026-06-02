@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { getSupabaseAdminClient } from "@socios-ai/auth/admin";
 import { requireSuperAdminAAL2 } from "@/lib/auth";
 import { createPartnerInvitationSchema } from "@/lib/validation";
+import { prefillProfileSchema } from "@/lib/partner-validation";
 import { createEnvelopeForLicense } from "@/lib/dropbox-sign-sync";
 import { createLicensePaymentLink } from "@/lib/stripe-connect-sync";
 
@@ -49,6 +50,15 @@ export async function createPartnerInvitationAction(
     return { ok: false, error: "VALIDATION", message: parsed.error.issues[0]?.message };
   }
   const data = parsed.data;
+
+  // Defesa server-side do prefill: valida antes de criar envelope/pagamento (fail-fast,
+  // sem efeitos colaterais). Bloqueia phone fora de E.164, documento/payout inválidos.
+  if (data.prefillProfile != null) {
+    const pf = prefillProfileSchema.safeParse(data.prefillProfile);
+    if (!pf.success) {
+      return { ok: false, error: "VALIDATION", message: `prefill: ${pf.error.issues[0]?.message ?? "perfil inválido"}` };
+    }
+  }
 
   const inviteToken = generateInviteToken();
   const tempInvitationId = randomUUID();
