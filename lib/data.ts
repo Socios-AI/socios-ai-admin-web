@@ -635,21 +635,21 @@ export async function searchUserIdsByEmail(args: {
 export async function resolveProfilesByIds(args: {
   callerJwt: string;
   ids: string[];
-}): Promise<Map<string, { email: string }>> {
+}): Promise<Map<string, { email: string; full_name: string | null }>> {
   const unique = Array.from(new Set(args.ids));
   if (unique.length === 0) return new Map();
 
   const sb = getCallerClient({ callerJwt: args.callerJwt });
   const { data, error } = await sb
     .from("profiles")
-    .select("id, email")
+    .select("id, email, full_name")
     .in("id", unique);
 
   if (error) throw new Error(`resolveProfilesByIds failed: ${error.message}`);
 
-  const map = new Map<string, { email: string }>();
-  for (const row of (data ?? []) as Array<{ id: string; email: string }>) {
-    map.set(row.id, { email: row.email });
+  const map = new Map<string, { email: string; full_name: string | null }>();
+  for (const row of (data ?? []) as Array<{ id: string; email: string; full_name: string | null }>) {
+    map.set(row.id, { email: row.email, full_name: row.full_name ?? null });
   }
   return map;
 }
@@ -913,6 +913,17 @@ export async function listReferralsForPartner(args: {
       currentSub: sub ? { planId: sub.plan_id, status: sub.status } : null,
     };
   });
+}
+
+// =============================================================
+// Phase 5+6 · Partner registration profile
+// =============================================================
+
+export async function getPartnerProfile(args: { callerJwt: string; partnerId: string }): Promise<unknown> {
+  const sb = getCallerClient({ callerJwt: args.callerJwt });
+  const { data, error } = await sb.rpc("partner_profile_get", { p_partner_id: args.partnerId });
+  if (error) throw new Error(`getPartnerProfile failed: ${error.message}`);
+  return data; // { profile, payout_methods } mascarado
 }
 
 export type FindUserResult = {

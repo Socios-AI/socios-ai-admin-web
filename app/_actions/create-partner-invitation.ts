@@ -103,6 +103,7 @@ export async function createPartnerInvitationAction(
       installments: data.installments,
       expires_at: expiresAt,
       status: "sent",
+      prefill_profile: (data as { prefillProfile?: unknown }).prefillProfile ?? null,
     })
     .select("id, invite_token")
     .single();

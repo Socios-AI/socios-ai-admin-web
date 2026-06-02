@@ -302,6 +302,7 @@ export const createPartnerInvitationSchema = z.object({
     .max(1, "Use formato decimal (0.5 = 50%)")
     .optional(),
   expiresInDays: z.number().int().min(1).max(60).default(30),
+  prefillProfile: z.unknown().optional(),
 });
 
 export const cancelPartnerInvitationSchema = z.object({

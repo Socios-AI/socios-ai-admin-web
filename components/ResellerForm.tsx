@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { createResellerAction } from "@/app/_actions/create-reseller";
+import { PartnerProfileFields, emptyProfileValue, toProfilePayload, toPayoutPayload, type ProfileValue } from "./PartnerProfileFields";
 
 export function ResellerForm() {
   const [pending, startTransition] = useTransition();
@@ -10,18 +11,22 @@ export function ResellerForm() {
   const [success, setSuccess] = useState<{ partnerId: string; recoveryEmailSent: boolean } | null>(
     null,
   );
+  const [profile, setProfile] = useState<ProfileValue>(emptyProfileValue);
 
   function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError(null);
     setSuccess(null);
     const fd = new FormData(e.currentTarget);
+    const payoutPayload = toPayoutPayload(profile);
     const payload = {
       email: String(fd.get("email") ?? "").trim(),
       fullName: String(fd.get("fullName") ?? "").trim(),
       customCommissionPct: fd.get("customCommissionPct")
         ? Number(fd.get("customCommissionPct"))
         : undefined,
+      profile: toProfilePayload(profile),
+      payoutMethods: payoutPayload ? [payoutPayload] : [],
     };
     startTransition(async () => {
       const res = await createResellerAction(payload);
@@ -104,6 +109,8 @@ export function ResellerForm() {
           se houver acordo específico.
         </p>
       </div>
+
+      <PartnerProfileFields value={profile} onChange={(patch) => setProfile((p) => ({ ...p, ...patch }))} />
 
       {error ? (
         <div role="alert" className="rounded-lg border border-red-300 bg-red-50 dark:bg-red-950 dark:border-red-800 p-3 text-sm">

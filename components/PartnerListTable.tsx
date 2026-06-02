@@ -27,7 +27,13 @@ function TierBadge({ tier }: { tier: PartnerRow["tier"] }) {
   );
 }
 
-export function PartnerListTable({ partners }: { partners: PartnerRow[] }) {
+export function PartnerListTable({
+  partners,
+  profiles,
+}: {
+  partners: PartnerRow[];
+  profiles: Map<string, { email: string; full_name: string | null }>;
+}) {
   if (partners.length === 0) {
     return (
       <div className="rounded-lg border border-border bg-card p-8 text-center text-sm text-muted-foreground">
@@ -42,23 +48,31 @@ export function PartnerListTable({ partners }: { partners: PartnerRow[] }) {
           <tr>
             <th className="px-4 py-3">Tier</th>
             <th className="px-4 py-3">Status</th>
-            <th className="px-4 py-3">User ID</th>
+            <th className="px-4 py-3">Nome</th>
+            <th className="px-4 py-3">Email</th>
             <th className="px-4 py-3">Comissão</th>
             <th className="px-4 py-3">Ativado em</th>
             <th className="px-4 py-3"></th>
           </tr>
         </thead>
         <tbody>
-          {partners.map((p) => (
+          {partners.map((p) => {
+            const profile = p.user_id ? profiles.get(p.user_id) : null;
+            return (
             <tr key={p.id} className="border-t border-border">
               <td className="px-4 py-3"><TierBadge tier={p.tier} /></td>
               <td className="px-4 py-3"><PartnerStatusBadge status={p.status} /></td>
-              <td className="px-4 py-3 font-mono text-xs">
-                {p.user_id ? (
-                  `${p.user_id.slice(0, 8)}...`
-                ) : (
+              <td className="px-4 py-3">
+                {!p.user_id ? (
                   <span className="italic text-muted-foreground">user removido</span>
+                ) : profile?.full_name ? (
+                  profile.full_name
+                ) : (
+                  <span className="text-muted-foreground">-</span>
                 )}
+              </td>
+              <td className="px-4 py-3">
+                {profile?.email ?? <span className="text-muted-foreground">-</span>}
               </td>
               <td className="px-4 py-3">{fmtPct(p.custom_commission_pct)}</td>
               <td className="px-4 py-3">{fmtDate(p.activated_at)}</td>
@@ -68,7 +82,8 @@ export function PartnerListTable({ partners }: { partners: PartnerRow[] }) {
                 </Link>
               </td>
             </tr>
-          ))}
+            );
+          })}
         </tbody>
       </table>
     </div>
