@@ -13,9 +13,20 @@ import {
   getPartner,
   listPartners,
   listAuditEvents,
+  resolveProfilesByIds,
   type AuditEvent,
   type AuditLogEntry,
+  type PartnerRow,
 } from "@/lib/data";
+
+type ProfileMap = Map<string, { email: string; full_name: string | null }>;
+
+// Rótulo legível pra um parceiro: nome > email > "(removido)" se user_id null.
+function partnerLabel(p: PartnerRow, profiles: ProfileMap): string {
+  if (!p.user_id) return `(removido) ${p.id.slice(0, 8)}`;
+  const profile = profiles.get(p.user_id);
+  return profile?.full_name || profile?.email || `(sem perfil) ${p.user_id.slice(0, 8)}`;
+}
 
 export const dynamic = "force-dynamic";
 
@@ -67,6 +78,14 @@ export default async function PartnerDetailPage({
   const allPartners = await listPartners({ callerJwt: jwt });
   const downstream = allPartners.filter((p) => p.introduced_by_partner_id === partner.id);
 
+  const profiles = await resolveProfilesByIds({
+    callerJwt: jwt,
+    ids: [partner, introducedBy, ...downstream].flatMap((p) =>
+      p?.user_id ? [p.user_id] : [],
+    ),
+  });
+  const partnerProfile = partner.user_id ? profiles.get(partner.user_id) : null;
+
   const auditResult = await listAuditEvents({
     callerJwt: jwt,
     filters: {},
@@ -89,8 +108,11 @@ export default async function PartnerDetailPage({
             ← Licenciados
           </Link>
           <h1 className="font-display font-semibold text-2xl mt-2">
-            {partner.user_id ? `${partner.user_id.slice(0, 8)}...` : "Parceiro órfão (user removido)"}
+            {partner.user_id ? partnerLabel(partner, profiles) : "Parceiro órfão (user removido)"}
           </h1>
+          {partnerProfile?.full_name && partnerProfile.email ? (
+            <p className="text-sm text-muted-foreground mt-1">{partnerProfile.email}</p>
+          ) : null}
           <p className="text-sm mt-1">
             <PartnerStatusBadge status={partner.status} />
           </p>
@@ -109,10 +131,18 @@ export default async function PartnerDetailPage({
       {activeTab === "identidade" && (
         <dl className="grid grid-cols-2 gap-x-8 gap-y-4 text-sm">
           <div>
-            <dt className="text-muted-foreground">User ID</dt>
-            <dd className="font-mono">
-              {partner.user_id ?? <span className="italic text-muted-foreground">removido</span>}
+            <dt className="text-muted-foreground">Nome</dt>
+            <dd>
+              {!partner.user_id ? (
+                <span className="italic text-muted-foreground">user removido</span>
+              ) : (
+                partnerProfile?.full_name || <span className="text-muted-foreground">-</span>
+              )}
             </dd>
+          </div>
+          <div>
+            <dt className="text-muted-foreground">Email</dt>
+            <dd>{partnerProfile?.email ?? <span className="text-muted-foreground">-</span>}</dd>
           </div>
           <div>
             <dt className="text-muted-foreground">Status</dt>
@@ -157,7 +187,7 @@ export default async function PartnerDetailPage({
                   href={`/partners/${introducedBy.id}`}
                   className="text-primary hover:underline"
                 >
-                  {introducedBy.user_id ? `${introducedBy.user_id.slice(0, 8)}...` : `(removido) ${introducedBy.id.slice(0, 8)}`}
+                  {partnerLabel(introducedBy, profiles)}
                 </Link>
               ) : (
                 "-"
@@ -178,7 +208,7 @@ export default async function PartnerDetailPage({
                       href={`/partners/${d.id}`}
                       className="text-primary hover:underline"
                     >
-                      {d.user_id ? `${d.user_id.slice(0, 8)}...` : `(removido) ${d.id.slice(0, 8)}`}
+                      {partnerLabel(d, profiles)}
                     </Link>
                   </li>
                 ))}

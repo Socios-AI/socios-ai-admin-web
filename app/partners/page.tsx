@@ -3,7 +3,12 @@ import { AdminShell } from "@/components/AdminShell";
 import { PartnerListTable } from "@/components/PartnerListTable";
 import { PartnerInvitationsList } from "@/components/PartnerInvitationsList";
 import { getCallerJwt } from "@/lib/auth";
-import { listPartners, listPartnerInvitations, type PartnerRow } from "@/lib/data";
+import {
+  listPartners,
+  listPartnerInvitations,
+  resolveProfilesByIds,
+  type PartnerRow,
+} from "@/lib/data";
 
 export const dynamic = "force-dynamic";
 
@@ -38,6 +43,11 @@ export default async function PartnersPage(props: {
     tierFilter === "all"
       ? allPartners
       : allPartners.filter((p) => p.tier === tierFilter);
+
+  const profiles = await resolveProfilesByIds({
+    callerJwt: jwt,
+    ids: partners.flatMap((p) => (p.user_id ? [p.user_id] : [])),
+  });
 
   const counts = {
     all: allPartners.length,
@@ -106,7 +116,7 @@ export default async function PartnersPage(props: {
           <FilterLink value="licensee" label="Licenciados" />
           <FilterLink value="reseller" label="Revendedores" />
         </div>
-        <PartnerListTable partners={partners} />
+        <PartnerListTable partners={partners} profiles={profiles} />
       </section>
     </AdminShell>
   );

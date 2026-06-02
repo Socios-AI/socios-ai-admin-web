@@ -23,22 +23,31 @@ const ROW = {
   updated_at: "2026-04-01T00:00:00Z",
 };
 
+const PROFILES = new Map([
+  ["u1", { email: "ana@x.com", full_name: "Ana Silva" }],
+]);
+
 describe("<PartnerListTable>", () => {
   it("renders empty state when no partners", () => {
-    render(<PartnerListTable partners={[]} />);
+    render(<PartnerListTable partners={[]} profiles={new Map()} />);
     expect(screen.getByText(/nenhum parceiro/i)).toBeInTheDocument();
   });
   it("renders rows with status badge", () => {
-    render(<PartnerListTable partners={[ROW]} />);
+    render(<PartnerListTable partners={[ROW]} profiles={PROFILES} />);
     expect(screen.getByText("Ativo")).toBeInTheDocument();
   });
+  it("renders partner name and email from profiles", () => {
+    render(<PartnerListTable partners={[ROW]} profiles={PROFILES} />);
+    expect(screen.getByText("Ana Silva")).toBeInTheDocument();
+    expect(screen.getByText("ana@x.com")).toBeInTheDocument();
+  });
   it("links to partner detail page", () => {
-    render(<PartnerListTable partners={[ROW]} />);
+    render(<PartnerListTable partners={[ROW]} profiles={PROFILES} />);
     const link = screen.getByRole("link", { name: /detalhes/i });
     expect(link).toHaveAttribute("href", "/partners/p1");
   });
   it("renders 'user removido' when user_id is null (FK SET NULL)", () => {
-    render(<PartnerListTable partners={[{ ...ROW, user_id: null }]} />);
+    render(<PartnerListTable partners={[{ ...ROW, user_id: null }]} profiles={new Map()} />);
     expect(screen.getByText(/user removido/i)).toBeInTheDocument();
   });
 });

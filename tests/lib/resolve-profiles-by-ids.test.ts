@@ -10,7 +10,7 @@ vi.mock("@socios-ai/auth/admin", () => ({
 
 import { resolveProfilesByIds } from "../../lib/data";
 
-function buildSb(rows: Array<{ id: string; email: string }> | null, error: { message: string } | null = null) {
+function buildSb(rows: Array<{ id: string; email: string; full_name?: string | null }> | null, error: { message: string } | null = null) {
   const inFn = vi.fn().mockResolvedValue({ data: rows, error });
   const select = vi.fn(() => ({ in: inFn }));
   const from = vi.fn(() => ({ select }));
@@ -28,17 +28,17 @@ describe("resolveProfilesByIds", () => {
     expect(callerClientMock).not.toHaveBeenCalled();
   });
 
-  it("returns Map of id → email for found profiles", async () => {
+  it("returns Map of id → {email, full_name} for found profiles", async () => {
     const sb = buildSb([
-      { id: "u1", email: "ana@x.com" },
-      { id: "u2", email: "joao@x.com" },
+      { id: "u1", email: "ana@x.com", full_name: "Ana Silva" },
+      { id: "u2", email: "joao@x.com", full_name: null },
     ]);
     callerClientMock.mockReturnValue({ from: sb.from });
 
     const result = await resolveProfilesByIds({ callerJwt: "jwt", ids: ["u1", "u2"] });
     expect(result.size).toBe(2);
-    expect(result.get("u1")).toEqual({ email: "ana@x.com" });
-    expect(result.get("u2")).toEqual({ email: "joao@x.com" });
+    expect(result.get("u1")).toEqual({ email: "ana@x.com", full_name: "Ana Silva" });
+    expect(result.get("u2")).toEqual({ email: "joao@x.com", full_name: null });
   });
 
   it("ids not in DB are absent from the Map", async () => {
