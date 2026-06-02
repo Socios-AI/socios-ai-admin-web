@@ -8,6 +8,7 @@ import { PartnerCommissionDialog } from "@/components/PartnerCommissionDialog";
 import { PartnerReferralsTab } from "@/components/PartnerReferralsTab";
 import { AttributeUserDialog } from "@/components/AttributeUserDialog";
 import { AuditList } from "@/components/AuditList";
+import { RequestCompletionButton } from "@/components/RequestCompletionButton";
 import { getCallerJwt } from "@/lib/auth";
 import {
   getPartner,
@@ -142,6 +143,9 @@ export default async function PartnerDetailPage({
 
       {activeTab === "identidade" && (
         <div className="space-y-8">
+          {/* Ação: pedir complemento de cadastro */}
+          <RequestCompletionButton partnerId={partner.id} />
+
           {/* Dados da plataforma */}
           <dl className="grid grid-cols-2 gap-x-8 gap-y-4 text-sm">
             <div>
