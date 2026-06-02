@@ -915,6 +915,17 @@ export async function listReferralsForPartner(args: {
   });
 }
 
+// =============================================================
+// Phase 5+6 · Partner registration profile
+// =============================================================
+
+export async function getPartnerProfile(args: { callerJwt: string; partnerId: string }): Promise<unknown> {
+  const sb = getCallerClient({ callerJwt: args.callerJwt });
+  const { data, error } = await sb.rpc("partner_profile_get", { p_partner_id: args.partnerId });
+  if (error) throw new Error(`getPartnerProfile failed: ${error.message}`);
+  return data; // { profile, payout_methods } mascarado
+}
+
 export type FindUserResult = {
   userId: string;
   email: string;
