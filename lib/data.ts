@@ -986,3 +986,32 @@ export async function findUserByEmail(args: {
     currentReferral: { partnerId: referral.source_partner_id, partnerLabel: label },
   };
 }
+
+// ============================================================
+// Fase 2 · Árvore/downline (list_partner_subtree RPC)
+// ============================================================
+export type SubtreeNode = {
+  partner_id: string;
+  parent_id: string | null;
+  depth: number;
+  role: "licenciado" | "representante" | "embaixador" | "afiliado";
+  status: string;
+  user_id: string | null;
+  rate_to_parent: number | null;
+  earned: Record<string, number>;
+  child_count: number;
+};
+
+export async function listPartnerSubtree(args: {
+  callerJwt: string;
+  rootPartnerId?: string | null;
+  maxDepth?: number | null;
+}): Promise<SubtreeNode[]> {
+  const sb = getCallerClient({ callerJwt: args.callerJwt });
+  const { data, error } = await sb.rpc("list_partner_subtree", {
+    p_root_partner_id: args.rootPartnerId ?? null,
+    p_max_depth: args.maxDepth ?? null,
+  });
+  if (error) throw new Error(`listPartnerSubtree failed: ${error.message}`);
+  return (data ?? []) as SubtreeNode[];
+}
