@@ -80,8 +80,10 @@ function buildSb(opts: SbOpts = {}) {
     opts.partner ? { data: opts.partner, error: null } : { data: null, error: null },
   );
 
+  const rpc = vi.fn(async () => ({ data: null, error: null }));
   return {
     auth: { admin: { listUsers } },
+    rpc,
     from: vi.fn((table: string) => {
       if (table === "audit_log") return { insert: audit };
       if (table === "partner_invitations")
@@ -103,6 +105,7 @@ function buildSb(opts: SbOpts = {}) {
     __partnerUpdate: partnerUpdate,
     __audit: audit,
     __listUsers: listUsers,
+    __rpc: rpc,
   };
 }
 
