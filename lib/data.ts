@@ -109,16 +109,20 @@ export async function getUser(args: { callerJwt: string; userId: string }): Prom
   };
 }
 
-export type AppRow = { slug: string; name: string };
+export type AppRow = { slug: string; name: string; role_catalog: Record<string, string> };
 
 export async function listApps(args: { callerJwt: string }): Promise<AppRow[]> {
   const sb = getCallerClient({ callerJwt: args.callerJwt });
   const { data, error } = await sb
     .from("apps")
-    .select("slug, name")
+    .select("slug, name, role_catalog")
     .order("name", { ascending: true });
   if (error) throw new Error(`listApps failed: ${error.message}`);
-  return (data ?? []) as AppRow[];
+  return (data ?? []).map((r: Record<string, unknown>) => ({
+    slug: r.slug as string,
+    name: r.name as string,
+    role_catalog: (r.role_catalog as Record<string, string> | null) ?? {},
+  }));
 }
 
 // =============================================================

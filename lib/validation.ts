@@ -8,31 +8,16 @@ export const reasonSchema = z
   .trim()
   .min(5, "Motivo precisa ter pelo menos 5 caracteres");
 
-export const inviteUserSchema = z
-  .object({
-    email: z.string().trim().email("Email inválido"),
-    fullName: z.string().trim().min(2, "Nome muito curto"),
-    appSlug: z.string().trim().min(1, "App é obrigatório"),
-    roleSlug: z.enum(roleSlugs, { required_error: "Role é obrigatória" }),
-    orgId: z.string().uuid("Org ID inválido").optional(),
-  })
-  .superRefine((val, ctx) => {
-    const def = ROLES.find((r) => r.slug === val.roleSlug);
-    if (def?.requiresOrg && !val.orgId) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["orgId"],
-        message: "Esta role exige org_id",
-      });
-    }
-    if (def && !def.requiresOrg && val.orgId) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["orgId"],
-        message: "Esta role não aceita org_id",
-      });
-    }
-  });
+// roleSlug é string genérica: a fonte da verdade é o role_catalog do app, validado
+// pela trigger no banco (role_slug not in apps.role_catalog). org_id é sempre opcional
+// (apps escopados por user_id, como autopro, não exigem org).
+export const inviteUserSchema = z.object({
+  email: z.string().trim().email("Email inválido"),
+  fullName: z.string().trim().min(2, "Nome muito curto"),
+  appSlug: z.string().trim().min(1, "App é obrigatório"),
+  roleSlug: z.string().trim().min(1, "Role é obrigatória"),
+  orgId: z.string().uuid("Org ID inválido").optional(),
+});
 
 export const userIdSchema = z.string().uuid("userId inválido");
 export const membershipIdSchema = z.string().uuid("membershipId inválido");

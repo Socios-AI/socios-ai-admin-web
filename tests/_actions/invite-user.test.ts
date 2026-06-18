@@ -70,16 +70,20 @@ describe("inviteUserAction", () => {
     expect(result).toMatchObject({ ok: false, error: "VALIDATION" });
   });
 
-  it("roleSlug 'partner-member' without orgId → VALIDATION error", async () => {
+  it("role sem orgId é aceito (org opcional; validade da role é checada no banco)", async () => {
     authMock.mockResolvedValue({ claims: { super_admin: true, sub: "u1", aal: "aal2", exp: 9999999999 }, jwt: "jwt-1" });
+    createMock.mockResolvedValue({ userId: "u2", actionLink: "https://id.sociosai.com/set-password?token=abc" });
 
     const result = await inviteUserAction({
       email: "john@example.com",
       fullName: "John Doe",
-      appSlug: "case-predictor",
-      roleSlug: "partner-member",
+      appSlug: "autopro",
+      roleSlug: "tenant-admin",
     });
 
-    expect(result).toMatchObject({ ok: false, error: "VALIDATION" });
+    expect(result).toEqual({ ok: true, userId: "u2", actionLink: "https://id.sociosai.com/set-password?token=abc" });
+    expect(createMock).toHaveBeenCalledWith(
+      expect.objectContaining({ roleSlug: "tenant-admin", orgId: undefined }),
+    );
   });
 });

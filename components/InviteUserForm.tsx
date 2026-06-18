@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useMemo, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { ROLES, roleRequiresOrg } from "@/lib/roles";
 import { inviteUserAction } from "@/app/_actions/invite-user";
 
-type Props = { apps: Array<{ slug: string; name: string }> };
+type AppOption = { slug: string; name: string; role_catalog: Record<string, string> };
+type Props = { apps: AppOption[] };
 
 export function InviteUserForm({ apps }: Props) {
   const router = useRouter();
@@ -14,28 +14,51 @@ export function InviteUserForm({ apps }: Props) {
   const [email, setEmail] = useState("");
   const [fullName, setFullName] = useState("");
   const [appSlug, setAppSlug] = useState(apps[0]?.slug ?? "");
-  const [roleSlug, setRoleSlug] = useState<string>("end-user");
+
+  // Roles vêm do role_catalog do app selecionado (fonte da verdade), não de lista fixa.
+  const roleOptions = useMemo(() => {
+    const app = apps.find((a) => a.slug === appSlug);
+    return Object.entries(app?.role_catalog ?? {}).map(([slug, label]) => ({ slug, label }));
+  }, [apps, appSlug]);
+
+  const [roleSlug, setRoleSlug] = useState<string>(roleOptions[0]?.slug ?? "");
   const [orgId, setOrgId] = useState("");
   const [actionLink, setActionLink] = useState<string | null>(null);
 
-  const requiresOrg = roleRequiresOrg(roleSlug);
+  function onAppChange(nextSlug: string) {
+    setAppSlug(nextSlug);
+    const app = apps.find((a) => a.slug === nextSlug);
+    const firstRole = Object.keys(app?.role_catalog ?? {})[0] ?? "";
+    setRoleSlug(firstRole);
+  }
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (!roleSlug) {
+      toast.error("Selecione uma role válida para este app.");
+      return;
+    }
     startTransition(async () => {
-      const res = await inviteUserAction({
-        email,
-        fullName,
-        appSlug,
-        roleSlug,
-        orgId: requiresOrg ? orgId : undefined,
-      });
-      if (!res.ok) {
-        toast.error(res.message ?? "Falha ao convidar usuário");
-        return;
+      try {
+        const res = await inviteUserAction({
+          email,
+          fullName,
+          appSlug,
+          roleSlug,
+          orgId: orgId.trim() ? orgId.trim() : undefined,
+        });
+        if (!res.ok) {
+          toast.error(res.message ?? `Falha ao convidar usuário (${res.error})`);
+          return;
+        }
+        toast.success("Usuário criado. Link de boas-vindas gerado.");
+        setActionLink(res.actionLink);
+      } catch {
+        // Sessão expirada: o server action é redirecionado pro login (cross-origin),
+        // que o browser bloqueia como "Failed to fetch". Em vez do erro, manda pro login.
+        const from = encodeURIComponent(window.location.href);
+        window.location.href = `https://id.sociosai.com/login?from=${from}`;
       }
-      toast.success("Usuário criado. Link de boas-vindas gerado.");
-      setActionLink(res.actionLink);
     });
   }
 
@@ -104,7 +127,7 @@ export function InviteUserForm({ apps }: Props) {
           id="app"
           required
           value={appSlug}
-          onChange={(e) => setAppSlug(e.target.value)}
+          onChange={(e) => onAppChange(e.target.value)}
           className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm"
         >
           {apps.map((a) => (
@@ -120,27 +143,32 @@ export function InviteUserForm({ apps }: Props) {
           value={roleSlug}
           onChange={(e) => setRoleSlug(e.target.value)}
           className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm"
+          disabled={roleOptions.length === 0}
         >
-          {ROLES.map((r) => (
-            <option key={r.slug} value={r.slug}>{r.label}</option>
-          ))}
+          {roleOptions.length === 0 ? (
+            <option value="">Este app não tem papéis no catálogo</option>
+          ) : (
+            roleOptions.map((r) => (
+              <option key={r.slug} value={r.slug}>{r.label} ({r.slug})</option>
+            ))
+          )}
         </select>
+        <p className="text-xs text-muted-foreground">Papéis vêm do catálogo do app selecionado.</p>
       </div>
-      {requiresOrg && (
-        <div className="space-y-1.5">
-          <label htmlFor="orgId" className="text-sm font-medium">Org ID (UUID)</label>
-          <input
-            id="orgId"
-            type="text"
-            required
-            value={orgId}
-            onChange={(e) => setOrgId(e.target.value)}
-            placeholder="00000000-0000-0000-0000-000000000000"
-            className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm font-mono"
-          />
-          <p className="text-xs text-muted-foreground">Esta role exige org_id.</p>
-        </div>
-      )}
+      <div className="space-y-1.5">
+        <label htmlFor="orgId" className="text-sm font-medium">Org ID (opcional)</label>
+        <input
+          id="orgId"
+          type="text"
+          value={orgId}
+          onChange={(e) => setOrgId(e.target.value)}
+          placeholder="00000000-0000-0000-0000-000000000000"
+          className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm font-mono"
+        />
+        <p className="text-xs text-muted-foreground">
+          Preencha só se o papel for escopado a um tenant/org específico.
+        </p>
+      </div>
       <button
         type="submit"
         disabled={pending}
