@@ -1075,3 +1075,33 @@ export async function listCommissionLedger(args: {
     };
   });
 }
+
+// ============================================================
+// Fase 2 · Catálogo · preços de taxa de entrada (entry_fee_prices)
+// ============================================================
+export type EntryFeePrice = {
+  id: string;
+  role: "licenciado" | "representante";
+  amount: number;
+  currency: string;
+  effective_from: string;
+  effective_to: string | null;
+};
+
+export async function listEntryFeePrices(args: { callerJwt: string }): Promise<EntryFeePrice[]> {
+  const sb = getCallerClient({ callerJwt: args.callerJwt });
+  const { data, error } = await sb
+    .from("entry_fee_prices")
+    .select("id, role, amount, currency, effective_from, effective_to")
+    .order("role", { ascending: true })
+    .order("effective_from", { ascending: false });
+  if (error) throw new Error(`listEntryFeePrices failed: ${error.message}`);
+  return (data ?? []).map((r: Record<string, unknown>) => ({
+    id: r.id as string,
+    role: r.role as EntryFeePrice["role"],
+    amount: Number(r.amount),
+    currency: r.currency as string,
+    effective_from: r.effective_from as string,
+    effective_to: (r.effective_to as string | null) ?? null,
+  }));
+}

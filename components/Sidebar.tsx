@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { LayoutDashboard, Users, Building2, AppWindow, Tag, Activity, FileText, Handshake, Megaphone, Network, Receipt, LogOut } from "lucide-react";
+import { LayoutDashboard, Users, Building2, AppWindow, Tag, Package, Activity, FileText, Handshake, Megaphone, Network, Receipt, LogOut } from "lucide-react";
 import { ThemeToggle } from "./ThemeToggle";
 
 const ITEMS = [
@@ -8,6 +8,7 @@ const ITEMS = [
   { href: "/orgs", label: "Organizações", Icon: Building2 },
   { href: "/apps", label: "Apps", Icon: AppWindow },
   { href: "/plans", label: "Planos", Icon: Tag },
+  { href: "/products", label: "Produtos & Taxas", Icon: Package },
   { href: "/partners", label: "Parceiros", Icon: Handshake },
   { href: "/tree", label: "Árvore da rede", Icon: Network },
   { href: "/commissions", label: "Comissões", Icon: Receipt },
