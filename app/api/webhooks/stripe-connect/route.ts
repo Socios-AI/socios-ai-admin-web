@@ -131,6 +131,31 @@ async function handleCheckoutSessionCompleted(
     },
   });
 
+  // Entry-fee commission: the USD 15k license cascades up the recruiter chain
+  // (the new partner pays, their upline earns). Idempotent on the session id.
+  // A failure here must not lose the created partner — log it for reprocessing.
+  if (insertedPartnerId && inv.license_amount_usd) {
+    const sessionId = (session.id as string | undefined) ?? null;
+    const { error: accrualError } = await sb.rpc("accrue_entry_fee_commission", {
+      p_payer_partner_id: insertedPartnerId,
+      p_gross: inv.license_amount_usd,
+      p_currency: "usd",
+      p_external_ref: (session.payment_intent as string | undefined) ?? null,
+      p_stripe_event_id: sessionId,
+    });
+    if (accrualError) {
+      await sb.from("audit_log").insert({
+        event_type: "partner.entry_fee_accrual_failed",
+        actor_user_id: null,
+        metadata: {
+          partner_id: insertedPartnerId,
+          session_id: sessionId,
+          error: accrualError.message,
+        },
+      });
+    }
+  }
+
   return NextResponse.json({ ok: true, partner_created: true });
 }
 
