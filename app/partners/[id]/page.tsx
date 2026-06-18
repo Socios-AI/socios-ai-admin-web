@@ -10,12 +10,14 @@ import { AttributeUserDialog } from "@/components/AttributeUserDialog";
 import { AuditList } from "@/components/AuditList";
 import { RequestCompletionButton } from "@/components/RequestCompletionButton";
 import { EdgeRateDialog } from "@/components/EdgeRateDialog";
+import { LedgerTable } from "@/components/LedgerTable";
 import { getCallerJwt } from "@/lib/auth";
 import {
   getPartner,
   getPartnerProfile,
   listPartners,
   listPartnerSubtree,
+  listCommissionLedger,
   listAuditEvents,
   resolveProfilesByIds,
   type AuditEvent,
@@ -90,6 +92,9 @@ export default async function PartnerDetailPage({
     subtree.filter((n) => n.partner_id !== partner.id).map((n) => [n.partner_id, n.rate_to_parent]),
   );
 
+  // Extrato deste parceiro (comissões em que ele é beneficiário)
+  const partnerLedger = await listCommissionLedger({ callerJwt: jwt, beneficiaryPartnerId: id });
+
   const profiles = await resolveProfilesByIds({
     callerJwt: jwt,
     ids: [partner, introducedBy, ...downstream].flatMap((p) =>
@@ -97,6 +102,7 @@ export default async function PartnerDetailPage({
     ),
   });
   const partnerProfile = partner.user_id ? profiles.get(partner.user_id) : null;
+  const partnerLedgerLabels = new Map<string, string>([[partner.id, partnerLabel(partner, profiles)]]);
 
   type RegistrationData = { profile: Record<string, unknown> | null; payout_methods: Array<Record<string, unknown>> };
   let registrationData: RegistrationData | null = null;
@@ -401,9 +407,7 @@ export default async function PartnerDetailPage({
       )}
 
       {activeTab === "comissoes" && (
-        <p className="text-sm text-muted-foreground">
-          Disponível a partir do K.4 (cálculo de comissão real).
-        </p>
+        <LedgerTable entries={partnerLedger} labels={partnerLedgerLabels} />
       )}
 
       {activeTab === "payouts" && (

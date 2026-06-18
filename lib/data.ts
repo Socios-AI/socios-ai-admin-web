@@ -1015,3 +1015,63 @@ export async function listPartnerSubtree(args: {
   if (error) throw new Error(`listPartnerSubtree failed: ${error.message}`);
   return (data ?? []) as SubtreeNode[];
 }
+
+// ============================================================
+// Fase 2 · Extrato (commission_ledger)
+// ============================================================
+export type LedgerEntry = {
+  id: string;
+  beneficiary_partner_id: string | null;
+  is_platform_root: boolean;
+  amount: number;
+  currency: string;
+  depth: number;
+  status: string;
+  owed_by: string;
+  owed_by_partner_id: string | null;
+  created_at: string;
+  occurred_at: string | null;
+  revenue_kind: string | null;
+};
+
+export async function listCommissionLedger(args: {
+  callerJwt: string;
+  beneficiaryPartnerId?: string | null;
+  status?: string | null;
+  currency?: string | null;
+  limit?: number;
+}): Promise<LedgerEntry[]> {
+  const sb = getCallerClient({ callerJwt: args.callerJwt });
+  let q = sb
+    .from("commission_ledger")
+    .select(
+      "id, beneficiary_partner_id, is_platform_root, amount, currency, depth, status, owed_by, owed_by_partner_id, created_at, commission_events(occurred_at, revenue_kind)",
+    )
+    .order("created_at", { ascending: false })
+    .limit(args.limit ?? 100);
+
+  if (args.beneficiaryPartnerId) q = q.eq("beneficiary_partner_id", args.beneficiaryPartnerId);
+  if (args.status && args.status !== "all") q = q.eq("status", args.status);
+  if (args.currency && args.currency !== "all") q = q.eq("currency", args.currency);
+
+  const { data, error } = await q;
+  if (error) throw new Error(`listCommissionLedger failed: ${error.message}`);
+
+  return (data ?? []).map((r: Record<string, unknown>) => {
+    const ev = r.commission_events as { occurred_at?: string; revenue_kind?: string } | null;
+    return {
+      id: r.id as string,
+      beneficiary_partner_id: (r.beneficiary_partner_id as string | null) ?? null,
+      is_platform_root: Boolean(r.is_platform_root),
+      amount: Number(r.amount),
+      currency: r.currency as string,
+      depth: r.depth as number,
+      status: r.status as string,
+      owed_by: r.owed_by as string,
+      owed_by_partner_id: (r.owed_by_partner_id as string | null) ?? null,
+      created_at: r.created_at as string,
+      occurred_at: ev?.occurred_at ?? null,
+      revenue_kind: ev?.revenue_kind ?? null,
+    };
+  });
+}
