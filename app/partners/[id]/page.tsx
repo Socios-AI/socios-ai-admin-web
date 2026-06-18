@@ -9,11 +9,13 @@ import { PartnerReferralsTab } from "@/components/PartnerReferralsTab";
 import { AttributeUserDialog } from "@/components/AttributeUserDialog";
 import { AuditList } from "@/components/AuditList";
 import { RequestCompletionButton } from "@/components/RequestCompletionButton";
+import { EdgeRateDialog } from "@/components/EdgeRateDialog";
 import { getCallerJwt } from "@/lib/auth";
 import {
   getPartner,
   getPartnerProfile,
   listPartners,
+  listPartnerSubtree,
   listAuditEvents,
   resolveProfilesByIds,
   type AuditEvent,
@@ -35,6 +37,7 @@ export const dynamic = "force-dynamic";
 const TABS = [
   { key: "identidade", label: "Identidade" },
   { key: "indicacoes", label: "Indicações" },
+  { key: "taxas", label: "Taxas" },
   { key: "comissoes", label: "Comissões" },
   { key: "payouts", label: "Payouts" },
   { key: "auditoria", label: "Auditoria" },
@@ -79,6 +82,13 @@ export default async function PartnerDetailPage({
     : null;
   const allPartners = await listPartners({ callerJwt: jwt });
   const downstream = allPartners.filter((p) => p.introduced_by_partner_id === partner.id);
+
+  // Taxas: subárvore depth 1 = este parceiro (depth 0, taxa de entrada que recebe) + filhos diretos.
+  const subtree = await listPartnerSubtree({ callerJwt: jwt, rootPartnerId: id, maxDepth: 1 });
+  const selfNode = subtree.find((n) => n.partner_id === partner.id);
+  const childRateById = new Map(
+    subtree.filter((n) => n.partner_id !== partner.id).map((n) => [n.partner_id, n.rate_to_parent]),
+  );
 
   const profiles = await resolveProfilesByIds({
     callerJwt: jwt,
@@ -331,6 +341,62 @@ export default async function PartnerDetailPage({
             </div>
             <PartnerReferralsTab partnerId={partner.id} callerJwt={jwt} />
           </section>
+        </div>
+      )}
+
+      {activeTab === "taxas" && (
+        <div className="space-y-6 text-sm">
+          <div className="rounded-lg border border-border bg-muted/30 p-4">
+            <p className="text-muted-foreground">Taxa que este parceiro recebe do nível acima</p>
+            <p className="text-lg font-medium tabular-nums mt-1">
+              {selfNode?.rate_to_parent == null
+                ? "não definida (0% até cadastrar)"
+                : `${(selfNode.rate_to_parent * 100).toFixed(1)}% do que chega ao pai desce até ele`}
+            </p>
+          </div>
+
+          <div>
+            <h2 className="font-semibold mb-3">Taxas de repasse aos diretos ({downstream.length})</h2>
+            {downstream.length === 0 ? (
+              <p className="text-muted-foreground">Nenhum parceiro direto.</p>
+            ) : (
+              <div className="overflow-x-auto rounded-lg border border-border bg-card">
+                <table className="w-full text-sm">
+                  <thead className="bg-muted/50 text-left text-xs uppercase tracking-wide text-muted-foreground">
+                    <tr>
+                      <th className="px-4 py-3">Parceiro</th>
+                      <th className="px-4 py-3">Taxa de repasse</th>
+                      <th className="px-4 py-3"></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {downstream.map((d) => {
+                      const rate = childRateById.get(d.id) ?? null;
+                      return (
+                        <tr key={d.id} className="border-t border-border">
+                          <td className="px-4 py-3">{partnerLabel(d, profiles)}</td>
+                          <td className="px-4 py-3 tabular-nums">
+                            {rate == null ? (
+                              <span className="text-muted-foreground">não def. (0%)</span>
+                            ) : (
+                              `${(rate * 100).toFixed(1)}%`
+                            )}
+                          </td>
+                          <td className="px-4 py-3">
+                            <EdgeRateDialog
+                              childPartnerId={d.id}
+                              childLabel={partnerLabel(d, profiles)}
+                              currentRate={rate}
+                            />
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
         </div>
       )}
 

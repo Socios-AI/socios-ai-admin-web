@@ -332,6 +332,14 @@ export const updatePartnerCommissionSchema = z.object({
   reason: reasonSchema,
 });
 
+export const setEdgeRateSchema = z.object({
+  childPartnerId: partnerIdSchema,
+  rate: z.number().min(0).max(1, "Use formato decimal (0.5 = 50%)"),
+  revenueKind: z.enum(["subscription", "entry_fee"]).default("subscription"),
+});
+
+export type SetEdgeRateInput = z.infer<typeof setEdgeRateSchema>;
+
 export type CreatePartnerInvitationInput = z.infer<typeof createPartnerInvitationSchema>;
 export type CancelPartnerInvitationInput = z.infer<typeof cancelPartnerInvitationSchema>;
 export type SuspendPartnerInput = z.infer<typeof suspendPartnerSchema>;
