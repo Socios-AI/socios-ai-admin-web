@@ -1,10 +1,39 @@
 import Link from "next/link";
 import { AdminShell } from "@/components/AdminShell";
-import { PartnerInvitationForm } from "@/components/PartnerInvitationForm";
+import { PartnerInvitationForm, type Recruiter } from "@/components/PartnerInvitationForm";
+import { getCallerJwt } from "@/lib/auth";
+import { listPartnerSubtree, resolveProfilesByIds } from "@/lib/data";
 
 export const dynamic = "force-dynamic";
 
-export default function NewPartnerPage() {
+const ROLE_LABEL: Record<string, string> = {
+  licenciado: "Licenciado",
+  representante: "Representante",
+  embaixador: "Embaixador",
+  afiliado: "Afiliado",
+};
+
+export default async function NewPartnerPage() {
+  const jwt = await getCallerJwt();
+
+  let recruiters: Recruiter[] = [];
+  if (jwt) {
+    // Pré-ordenado por DFS: indentamos por depth pra mostrar a hierarquia atual.
+    const nodes = await listPartnerSubtree({ callerJwt: jwt, rootPartnerId: null });
+    const profiles = await resolveProfilesByIds({
+      callerJwt: jwt,
+      ids: nodes.flatMap((n) => (n.user_id ? [n.user_id] : [])),
+    });
+    recruiters = nodes
+      .filter((n) => n.status === "active")
+      .map((n) => {
+        const p = n.user_id ? profiles.get(n.user_id) : undefined;
+        const name = p?.full_name || p?.email || "(sem usuário)";
+        const indent = "— ".repeat(n.depth);
+        return { id: n.partner_id, label: `${indent}${name} · ${ROLE_LABEL[n.role] ?? n.role}` };
+      });
+  }
+
   return (
     <AdminShell>
       <header className="mb-6">
@@ -15,7 +44,7 @@ export default function NewPartnerPage() {
           Em modo mock, ambos retornam URLs simuladas para desenvolvimento.
         </p>
       </header>
-      <PartnerInvitationForm />
+      <PartnerInvitationForm recruiters={recruiters} />
     </AdminShell>
   );
 }

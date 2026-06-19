@@ -12,11 +12,15 @@ const ERROR_LABEL: Record<string, string> = {
   API_ERROR:             "Erro na API.",
 };
 
-export function PartnerInvitationForm() {
+export type Recruiter = { id: string; label: string };
+type Props = { recruiters?: Recruiter[] };
+
+export function PartnerInvitationForm({ recruiters = [] }: Props) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<{ url: string; mocked: boolean } | null>(null);
   const [profile, setProfile] = useState<ProfileValue>(emptyProfileValue);
+  const [introducedByPartnerId, setIntroducedByPartnerId] = useState("");
 
   const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -36,6 +40,7 @@ export function PartnerInvitationForm() {
       customCommissionPct: fd.get("customCommissionPct")
         ? Number(fd.get("customCommissionPct"))
         : undefined,
+      introducedByPartnerId: introducedByPartnerId || undefined,
       prefillProfile,
     };
     startTransition(async () => {
@@ -58,6 +63,26 @@ export function PartnerInvitationForm() {
         <label htmlFor="fullName" className="block text-sm font-medium mb-1">Nome completo</label>
         <input id="fullName" name="fullName" type="text" required minLength={2} className="w-full rounded-lg border border-input bg-background px-3 py-2" />
       </div>
+      {recruiters.length > 0 && (
+        <div>
+          <label htmlFor="introducedByPartnerId" className="block text-sm font-medium mb-1">Recrutador (quem indicou)</label>
+          <select
+            id="introducedByPartnerId"
+            name="introducedByPartnerId"
+            value={introducedByPartnerId}
+            onChange={(e) => setIntroducedByPartnerId(e.target.value)}
+            className="w-full rounded-lg border border-input bg-background px-3 py-2"
+          >
+            <option value="">Sócios AI (raiz)</option>
+            {recruiters.map((r) => (
+              <option key={r.id} value={r.id}>{r.label}</option>
+            ))}
+          </select>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Define sob quem o novo parceiro entra na árvore. Deixe na raiz se a Sócios AI licenciou direto.
+          </p>
+        </div>
+      )}
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label htmlFor="licenseAmountUsd" className="block text-sm font-medium mb-1">Valor da licença (USD)</label>
