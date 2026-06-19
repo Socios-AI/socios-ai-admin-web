@@ -1109,3 +1109,79 @@ export async function listEntryFeePrices(args: { callerJwt: string }): Promise<E
     effective_to: (r.effective_to as string | null) ?? null,
   }));
 }
+
+// ============================================================
+// Atribuição manual de venda a parceiro (alimenta a cascata de comissão)
+// ============================================================
+export type AttributableSubscription = {
+  id: string;
+  status: string;
+  appSlug: string | null;
+  planName: string | null;
+  currency: string | null;
+  customer: string; // email do user, ou nome/slug da org, ou id curto
+  startedAt: string;
+  attributedToUserId: string | null;
+  attributedLabel: string | null; // email do parceiro atribuído, ou null
+  attributionRule: string | null;
+};
+
+/** Assinaturas ativas/trial, com a atribuição atual resolvida, pra tela de
+ *  atribuição manual. O motor de comissão credita por attributed_to_user_id. */
+export async function listSubscriptionsForAttribution(args: {
+  callerJwt: string;
+}): Promise<AttributableSubscription[]> {
+  const sb = getCallerClient({ callerJwt: args.callerJwt });
+  const { data, error } = await sb
+    .from("subscriptions")
+    .select(
+      "id, status, user_id, org_id, started_at, attributed_to_user_id, attribution_rule, plans:plans(name, currency, plan_apps:plan_apps(app_slug))",
+    )
+    .in("status", ["active", "trialing"])
+    .order("started_at", { ascending: false })
+    .limit(200);
+  if (error) throw new Error(`listSubscriptionsForAttribution failed: ${error.message}`);
+  const rows = (data ?? []) as Record<string, unknown>[];
+
+  const userIds = rows.flatMap((r) =>
+    [r.user_id, r.attributed_to_user_id].filter(Boolean) as string[],
+  );
+  const profiles = await resolveProfilesByIds({ callerJwt: args.callerJwt, ids: userIds });
+
+  const orgIds = Array.from(new Set(rows.map((r) => r.org_id).filter(Boolean) as string[]));
+  const orgNames = new Map<string, string>();
+  if (orgIds.length > 0) {
+    const { data: orgs, error: orgErr } = await sb.from("orgs").select("id, name, slug").in("id", orgIds);
+    if (orgErr) throw new Error(`listSubscriptionsForAttribution (orgs) failed: ${orgErr.message}`);
+    for (const o of (orgs ?? []) as Array<{ id: string; name: string | null; slug: string | null }>) {
+      orgNames.set(o.id, o.name || o.slug || o.id.slice(0, 8));
+    }
+  }
+
+  return rows.map((r) => {
+    const plan = r.plans as {
+      name?: string;
+      currency?: string;
+      plan_apps?: Array<{ app_slug: string }>;
+    } | null;
+    const userId = (r.user_id as string | null) ?? null;
+    const orgId = (r.org_id as string | null) ?? null;
+    const attrId = (r.attributed_to_user_id as string | null) ?? null;
+    const userEmail = userId ? profiles.get(userId)?.email : undefined;
+    const customer =
+      userEmail ||
+      (orgId ? orgNames.get(orgId) ?? orgId.slice(0, 8) : (r.id as string).slice(0, 8));
+    return {
+      id: r.id as string,
+      status: r.status as string,
+      appSlug: plan?.plan_apps?.[0]?.app_slug ?? null,
+      planName: plan?.name ?? null,
+      currency: plan?.currency ?? null,
+      customer,
+      startedAt: r.started_at as string,
+      attributedToUserId: attrId,
+      attributedLabel: attrId ? profiles.get(attrId)?.email ?? attrId.slice(0, 8) : null,
+      attributionRule: (r.attribution_rule as string | null) ?? null,
+    };
+  });
+}
