@@ -4,6 +4,8 @@ import { useState, useMemo, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { inviteUserAction } from "@/app/_actions/invite-user";
+import { PartnerPicker } from "@/components/PartnerPicker";
+import type { PartnerSearchRow } from "@/app/_actions/search-partners";
 
 type AppOption = { slug: string; name: string; role_catalog: Record<string, string> };
 type Props = { apps: AppOption[] };
@@ -23,6 +25,7 @@ export function InviteUserForm({ apps }: Props) {
 
   const [roleSlug, setRoleSlug] = useState<string>(roleOptions[0]?.slug ?? "");
   const [orgId, setOrgId] = useState("");
+  const [indicante, setIndicante] = useState<PartnerSearchRow | null>(null);
   const [actionLink, setActionLink] = useState<string | null>(null);
 
   function onAppChange(nextSlug: string) {
@@ -46,6 +49,7 @@ export function InviteUserForm({ apps }: Props) {
           appSlug,
           roleSlug,
           orgId: orgId.trim() ? orgId.trim() : undefined,
+          introducedByPartnerId: indicante?.partnerId,
         });
         if (!res.ok) {
           toast.error(res.message ?? `Falha ao convidar usuário (${res.error})`);
@@ -169,6 +173,7 @@ export function InviteUserForm({ apps }: Props) {
           Preencha só se o papel for escopado a um tenant/org específico.
         </p>
       </div>
+      <PartnerPicker value={indicante} onChange={setIndicante} />
       <button
         type="submit"
         disabled={pending}
