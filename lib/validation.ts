@@ -17,6 +17,7 @@ export const inviteUserSchema = z.object({
   appSlug: z.string().trim().min(1, "App é obrigatório"),
   roleSlug: z.string().trim().min(1, "Role é obrigatória"),
   orgId: z.string().uuid("Org ID inválido").optional(),
+  introducedByPartnerId: z.string().uuid("Parceiro inválido").optional(),
 });
 
 export const userIdSchema = z.string().uuid("userId inválido");
