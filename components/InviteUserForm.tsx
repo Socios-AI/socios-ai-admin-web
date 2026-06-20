@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { inviteUserAction } from "@/app/_actions/invite-user";
 import { PartnerPicker } from "@/components/PartnerPicker";
 import type { PartnerSearchRow } from "@/app/_actions/search-partners";
+import { deriveAdminRoleSlug } from "@/lib/admin-role-slug";
 
 type AppOption = { slug: string; name: string; role_catalog: Record<string, string> };
 type Props = { apps: AppOption[] };
@@ -17,10 +18,16 @@ export function InviteUserForm({ apps }: Props) {
   const [fullName, setFullName] = useState("");
   const [appSlug, setAppSlug] = useState(apps[0]?.slug ?? "");
 
-  // Roles vêm do role_catalog do app selecionado (fonte da verdade), não de lista fixa.
+  // Esta tela cadastra somente quem ADMINISTRA a conta: derivamos o papel de
+  // admin do app (tenant-admin > <app>-admin > org_admin) e não expomos os
+  // demais papéis (member etc.). Membros comuns são adicionados depois pelo
+  // próprio admin dentro do app.
   const roleOptions = useMemo(() => {
     const app = apps.find((a) => a.slug === appSlug);
-    return Object.entries(app?.role_catalog ?? {}).map(([slug, label]) => ({ slug, label }));
+    const catalog = app?.role_catalog ?? {};
+    const adminSlug = deriveAdminRoleSlug(catalog, appSlug);
+    if (!adminSlug) return [];
+    return [{ slug: adminSlug, label: catalog[adminSlug] ?? adminSlug }];
   }, [apps, appSlug]);
 
   const [roleSlug, setRoleSlug] = useState<string>(roleOptions[0]?.slug ?? "");
@@ -31,8 +38,8 @@ export function InviteUserForm({ apps }: Props) {
   function onAppChange(nextSlug: string) {
     setAppSlug(nextSlug);
     const app = apps.find((a) => a.slug === nextSlug);
-    const firstRole = Object.keys(app?.role_catalog ?? {})[0] ?? "";
-    setRoleSlug(firstRole);
+    const adminSlug = deriveAdminRoleSlug(app?.role_catalog ?? {}, nextSlug) ?? "";
+    setRoleSlug(adminSlug);
   }
 
   function handleSubmit(e: React.FormEvent) {
@@ -150,14 +157,16 @@ export function InviteUserForm({ apps }: Props) {
           disabled={roleOptions.length === 0}
         >
           {roleOptions.length === 0 ? (
-            <option value="">Este app não tem papéis no catálogo</option>
+            <option value="">Este app não tem papel de admin no catálogo</option>
           ) : (
             roleOptions.map((r) => (
               <option key={r.slug} value={r.slug}>{r.label} ({r.slug})</option>
             ))
           )}
         </select>
-        <p className="text-xs text-muted-foreground">Papéis vêm do catálogo do app selecionado.</p>
+        <p className="text-xs text-muted-foreground">
+          Esta tela cadastra apenas o administrador da conta. Membros comuns são adicionados depois pelo próprio admin dentro do app.
+        </p>
       </div>
       <div className="space-y-1.5">
         <label htmlFor="orgId" className="text-sm font-medium">Org ID (opcional)</label>
