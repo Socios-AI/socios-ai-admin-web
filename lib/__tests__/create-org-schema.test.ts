@@ -29,4 +29,8 @@ describe("createOrgSchema", () => {
   it("rejects a bad slug", () => {
     expect(createOrgSchema.safeParse({ ...base, tenantSlug: "X" }).success).toBe(false);
   });
+
+  it("rejects a 2-char slug (DB requires min 3)", () => {
+    expect(createOrgSchema.safeParse({ ...base, tenantSlug: "ab" }).success).toBe(false);
+  });
 });
