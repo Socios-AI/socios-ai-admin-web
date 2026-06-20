@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useRef } from "react";
 import { createOrgWithIntroducerAction } from "@/app/_actions/create-org-with-introducer";
 import { searchPartnersAction, type PartnerSearchRow } from "@/app/_actions/search-partners";
 
@@ -29,6 +29,8 @@ export function CreateOrgForm({ apps }: { apps: AppOption[] }) {
   const [selectedPartner, setSelectedPartner] = useState<PartnerSearchRow | null>(null);
   const [searching, setSearching] = useState(false);
 
+  const searchSeq = useRef(0);
+
   const [pending, startTransition] = useTransition();
   const [message, setMessage] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
 
@@ -37,6 +39,7 @@ export function CreateOrgForm({ apps }: { apps: AppOption[] }) {
   const requiresNiche = !!nicheCatalog && Object.keys(nicheCatalog).length > 0;
 
   async function runSearch(q: string) {
+    const seq = ++searchSeq.current;
     setPartnerQuery(q);
     setSelectedPartner(null);
     if (q.trim().length < 2) {
@@ -45,6 +48,7 @@ export function CreateOrgForm({ apps }: { apps: AppOption[] }) {
     }
     setSearching(true);
     const res = await searchPartnersAction(q);
+    if (seq !== searchSeq.current) return; // resposta obsoleta, ignora
     setSearching(false);
     setPartnerResults(res.ok ? res.partners : []);
   }
@@ -107,7 +111,7 @@ export function CreateOrgForm({ apps }: { apps: AppOption[] }) {
       </div>
 
       <div>
-        <label htmlFor="adminEmail" className="block text-sm font-medium">Email do responsavel</label>
+        <label htmlFor="adminEmail" className="block text-sm font-medium">Email do responsável</label>
         <input id="adminEmail" type="email" value={adminEmail}
           onChange={(e) => setAdminEmail(e.target.value)} required
           className="mt-1 w-full rounded border px-3 py-2" />
