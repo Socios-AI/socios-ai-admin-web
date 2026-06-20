@@ -355,3 +355,24 @@ export const transferReferralSchema = z.object({
 export type AttributeReferralInput = z.infer<typeof attributeReferralSchema>;
 export type RevokeReferralInput = z.infer<typeof revokeReferralSchema>;
 export type TransferReferralInput = z.infer<typeof transferReferralSchema>;
+
+// =============================================================
+// Cadastro de cliente (tenant) com indicante · /orgs/new
+// =============================================================
+const ORG_SLUG_PATTERN = /^[a-z0-9][a-z0-9-]{0,46}[a-z0-9]$/;
+
+export const createOrgSchema = z.object({
+  appSlug: z.string().trim().min(1, "App é obrigatório"),
+  tenantName: z.string().trim().min(2, "Nome muito curto").max(100, "Nome muito longo"),
+  tenantSlug: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .regex(ORG_SLUG_PATTERN, "Slug deve ser minúsculo, alfanumérico com hífens (2-48)"),
+  adminEmail: z.string().trim().toLowerCase().email("Email inválido"),
+  niche: z.string().trim().min(1).optional(),
+  introducedByPartnerId: z.string().uuid("Parceiro inválido").optional(),
+  expiresInDays: z.number().int().min(1).max(30).optional(),
+});
+
+export type CreateOrgInput = z.infer<typeof createOrgSchema>;
