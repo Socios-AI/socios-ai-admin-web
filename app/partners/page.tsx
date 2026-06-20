@@ -87,16 +87,22 @@ export default async function PartnersPage(props: {
         </div>
         <div className="flex gap-2">
           <Link
-            href="/partners/new"
+            href="/partners/invite?role=licenciado"
             className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
           >
             Novo licenciado
           </Link>
           <Link
-            href="/partners/new/reseller"
+            href="/partners/invite?role=representante"
             className="rounded-lg border border-border bg-secondary px-4 py-2 text-sm font-medium hover:bg-secondary/80"
           >
             Novo revendedor
+          </Link>
+          <Link
+            href="/partners/invite?role=embaixador"
+            className="rounded-lg border border-border bg-secondary px-4 py-2 text-sm font-medium hover:bg-secondary/80"
+          >
+            Novo embaixador
           </Link>
         </div>
       </header>
