@@ -377,3 +377,16 @@ export const createOrgSchema = z.object({
 });
 
 export type CreateOrgInput = z.infer<typeof createOrgSchema>;
+
+// =============================================================
+// Convite de parceiro unificado · /partners/invite
+// =============================================================
+export const createPartnerInviteSchema = z.object({
+  email: z.string().trim().email("Email inválido"),
+  fullName: z.string().trim().min(2, "Nome muito curto"),
+  targetRole: z.enum(["licenciado", "representante", "embaixador"]),
+  introducedByPartnerId: z.string().uuid("Parceiro inválido").optional(),
+  expiresInDays: z.number().int().min(1).max(30).optional(),
+});
+
+export type CreatePartnerInviteInput = z.infer<typeof createPartnerInviteSchema>;
