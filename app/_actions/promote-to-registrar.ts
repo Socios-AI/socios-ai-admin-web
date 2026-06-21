@@ -1,0 +1,33 @@
+"use server";
+
+import { revalidatePath } from "next/cache";
+import { getCallerClient } from "@socios-ai/auth/admin";
+import { requireSuperAdminAAL2 } from "@/lib/auth";
+
+export type PromoteToRegistrarResult =
+  | { ok: true }
+  | { ok: false; error: "FORBIDDEN" | "VALIDATION" | "API_ERROR"; message?: string };
+
+// Gate na action é super_admin+AAL2; o RPC promote_to_registrar exige is_owner(),
+// então só owner consegue de fato (não-owner recebe API_ERROR do banco).
+export async function promoteToRegistrarAction(input: {
+  userId: string;
+  reason: string;
+}): Promise<PromoteToRegistrarResult> {
+  const auth = await requireSuperAdminAAL2();
+  if (!auth) return { ok: false, error: "FORBIDDEN" };
+
+  const userId = input.userId?.trim();
+  const reason = input.reason?.trim();
+  if (!userId) return { ok: false, error: "VALIDATION", message: "userId obrigatório" };
+  if (!reason || reason.length < 5) {
+    return { ok: false, error: "VALIDATION", message: "Motivo precisa ter pelo menos 5 caracteres" };
+  }
+
+  const sb = getCallerClient({ callerJwt: auth.jwt });
+  const { error } = await sb.rpc("promote_to_registrar", { p_user_id: userId, p_reason: reason });
+  if (error) return { ok: false, error: "API_ERROR", message: error.message };
+
+  revalidatePath(`/users/${userId}`);
+  return { ok: true };
+}

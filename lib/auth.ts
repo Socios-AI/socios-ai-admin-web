@@ -7,6 +7,7 @@ export type SuperAdminClaims = {
   sub: string;
   email?: string;
   super_admin: boolean;
+  tier?: string | null;
   aal?: string;
   exp?: number;
   memberships?: MembershipClaim[];
@@ -65,6 +66,31 @@ export async function requireSuperAdminAAL2(): Promise<
   if (typeof claims.exp !== "number" || claims.exp <= nowSec) return null;
   if (claims.super_admin !== true) return null;
   if (claims.aal !== "aal2") return null;
+
+  return { claims, jwt };
+}
+
+/**
+ * Gate para as Server Actions de CADASTRO (convite de parceiro, busca de
+ * indicante, criação de tenant). Aprova super_admin (owner/admin) OU o papel
+ * "cadastrador" (tier `registrar`), sempre exigindo exp válido e AAL2.
+ *
+ * As demais actions (financeiro/config) continuam em `requireSuperAdminAAL2`,
+ * então um registrar que faça POST direto nelas recebe FORBIDDEN.
+ */
+export async function requireRegistrarOrAdminAAL2(): Promise<
+  { claims: SuperAdminClaims; jwt: string } | null
+> {
+  const jwt = await getCallerJwt();
+  if (!jwt) return null;
+
+  const claims = decodeJwtPayload<SuperAdminClaims>(jwt);
+  if (!claims) return null;
+
+  const nowSec = Math.floor(Date.now() / 1000);
+  if (typeof claims.exp !== "number" || claims.exp <= nowSec) return null;
+  if (claims.aal !== "aal2") return null;
+  if (claims.super_admin !== true && claims.tier !== "registrar") return null;
 
   return { claims, jwt };
 }

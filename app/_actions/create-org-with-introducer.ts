@@ -1,7 +1,7 @@
 "use server";
 
 import { getCallerClient } from "@socios-ai/auth/admin";
-import { requireSuperAdminAAL2 } from "@/lib/auth";
+import { requireRegistrarOrAdminAAL2 } from "@/lib/auth";
 import { createOrgSchema } from "@/lib/validation";
 import { deriveAdminRoleSlug } from "@/lib/admin-role-slug";
 import { resolveNicheHost } from "@/lib/niche-domain";
@@ -29,7 +29,7 @@ export type CreateOrgResult =
   | { ok: false; error: "FORBIDDEN" | "VALIDATION" | "API_ERROR"; message?: string };
 
 export async function createOrgWithIntroducerAction(input: unknown): Promise<CreateOrgResult> {
-  const auth = await requireSuperAdminAAL2();
+  const auth = await requireRegistrarOrAdminAAL2();
   if (!auth) return { ok: false, error: "FORBIDDEN" };
 
   const parsed = createOrgSchema.safeParse(input);

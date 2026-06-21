@@ -12,6 +12,8 @@ import { promoteToOwnerAction } from "@/app/_actions/promote-to-owner";
 import { promoteToAdminAction } from "@/app/_actions/promote-to-admin";
 import { demoteOwnerAction } from "@/app/_actions/demote-owner";
 import { demoteAdminAction } from "@/app/_actions/demote-admin";
+import { promoteToRegistrarAction } from "@/app/_actions/promote-to-registrar";
+import { demoteRegistrarAction } from "@/app/_actions/demote-registrar";
 
 type Props = {
   userId: string;
@@ -26,13 +28,16 @@ type Mode =
   | { kind: "reset-mfa" }
   | { kind: "promote-owner" }
   | { kind: "promote-admin" }
+  | { kind: "promote-registrar" }
   | { kind: "demote-owner" }
-  | { kind: "demote-admin" };
+  | { kind: "demote-admin" }
+  | { kind: "demote-registrar" };
 
 const TIER_LABEL: Record<PlatformTier, string> = {
   owner: "Owner",
   admin: "Admin",
   affiliate: "Afiliado",
+  registrar: "Cadastrador",
 };
 
 function tierLabelOrFallback(tier: PlatformTier | null): string {
@@ -102,6 +107,24 @@ export function GlobalUserActions({ userId, email, tier }: Props) {
               className="rounded-lg bg-primary text-primary-foreground px-3 py-1.5 text-sm font-medium hover:opacity-90"
             >
               Promover a Admin
+            </button>
+          )}
+          {tier === null && (
+            <button
+              type="button"
+              onClick={() => setMode({ kind: "promote-registrar" })}
+              className="rounded-lg bg-primary text-primary-foreground px-3 py-1.5 text-sm font-medium hover:opacity-90"
+            >
+              Promover a Cadastrador
+            </button>
+          )}
+          {tier === "registrar" && (
+            <button
+              type="button"
+              onClick={() => setMode({ kind: "demote-registrar" })}
+              className="rounded-lg bg-destructive text-destructive-foreground px-3 py-1.5 text-sm font-medium hover:opacity-90"
+            >
+              Demover Cadastrador
             </button>
           )}
           {tier === "owner" && (
@@ -219,6 +242,31 @@ export function GlobalUserActions({ userId, email, tier }: Props) {
         onCancel={close}
         onConfirm={(reason) =>
           handle(promoteToAdminAction({ userId, reason }), "Promovido a Admin")
+        }
+      />
+
+      <ConfirmDialog
+        open={mode.kind === "promote-registrar"}
+        title={`Promover ${email} a Cadastrador`}
+        description="Cadastrador pode registrar parceiros (licenciado/representante/embaixador) e tenants de cliente no admin, SEM ver dados financeiros nem configurações. Apenas owners podem promover cadastradores."
+        confirmLabel="Promover a Cadastrador"
+        requireReason
+        onCancel={close}
+        onConfirm={(reason) =>
+          handle(promoteToRegistrarAction({ userId, reason }), "Promovido a Cadastrador")
+        }
+      />
+
+      <ConfirmDialog
+        open={mode.kind === "demote-registrar"}
+        title={`Demover Cadastrador ${email}`}
+        description="Esta conta deixará de ser cadastradora imediatamente e perderá o acesso ao admin."
+        confirmLabel="Demover Cadastrador"
+        destructive
+        requireReason
+        onCancel={close}
+        onConfirm={(reason) =>
+          handle(demoteRegistrarAction({ userId, reason }), "Cadastrador demovido")
         }
       />
 

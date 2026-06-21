@@ -1,7 +1,7 @@
 "use server";
 
 import { getCallerClient } from "@socios-ai/auth/admin";
-import { requireSuperAdminAAL2 } from "@/lib/auth";
+import { requireRegistrarOrAdminAAL2 } from "@/lib/auth";
 
 export type PartnerSearchRow = {
   partnerId: string;
@@ -15,7 +15,7 @@ export type SearchPartnersResult =
   | { ok: false; error: "FORBIDDEN" | "API_ERROR"; message?: string };
 
 export async function searchPartnersAction(query: string): Promise<SearchPartnersResult> {
-  const auth = await requireSuperAdminAAL2();
+  const auth = await requireRegistrarOrAdminAAL2();
   if (!auth) return { ok: false, error: "FORBIDDEN" };
 
   const q = (query ?? "").trim();

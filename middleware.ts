@@ -30,6 +30,19 @@ function buildRedirect(req: NextRequest, target: string): NextResponse {
 
 const STATIC_RE = /^\/_next\/static|^\/_next\/image|^\/favicon\.ico|^\/brand|^\/forbidden|\.svg$|\.png$/;
 
+// Allowlist de rotas pro papel "cadastrador" (tier `registrar`): só cadastro de
+// parceiros e tenants + leitura de lista/árvore (sem financeiro/config). Tudo
+// que não casar aqui vira /forbidden. As Server Actions fazem POST na própria
+// rota da página, então allowlistar as páginas cobre as actions (ex.: o convite
+// e a busca de indicante na /partners/invite, a criação de tenant na /orgs/new).
+// Bloqueados de propósito: /partners/<id> e /orgs/<id> (têm dados financeiros).
+export function isRegistrarAllowed(pathname: string): boolean {
+  if (pathname === "/partners" || pathname === "/orgs" || pathname === "/tree") return true;
+  if (pathname === "/partners/invite" || pathname.startsWith("/partners/invite/")) return true;
+  if (pathname === "/orgs/new" || pathname.startsWith("/orgs/new/")) return true;
+  return false;
+}
+
 // Default-deny middleware. Decode-only on access_token (no Edge-incompatible
 // supabase/ssr or remote JWKS fetch). Token freshness is enforced via the
 // `exp` claim; if the JWT is expired, user is bounced to login. Server
@@ -55,6 +68,7 @@ export async function middleware(req: NextRequest) {
 
   const payload = decodeJwtPayload<{
     super_admin?: boolean;
+    tier?: string;
     mfa_enrolled?: boolean;
     aal?: string;
     exp?: number;
@@ -71,21 +85,36 @@ export async function middleware(req: NextRequest) {
     return buildRedirect(req, ID_LOGIN_URL);
   }
 
-  // Non-admins always get /forbidden, regardless of MFA status.
-  if (payload.super_admin !== true) {
+  const isSuper = payload.super_admin === true;
+  const isRegistrar = payload.tier === "registrar";
+
+  // Quem não é super_admin nem cadastrador → /forbidden, independente de MFA.
+  if (!isSuper && !isRegistrar) {
     const rewriteUrl = req.nextUrl.clone();
     rewriteUrl.pathname = "/forbidden";
     return NextResponse.rewrite(rewriteUrl);
   }
 
-  // Admin without MFA enrollment → bounce to enroll on id.sociosai.com.
+  // MFA é obrigatório pra qualquer ator do admin (super_admin OU cadastrador).
   if (payload.mfa_enrolled !== true) {
     return buildRedirect(req, "https://id.sociosai.com/mfa-enroll");
   }
 
-  // Admin enrolled but session is aal1 → bounce to challenge for AAL2.
+  // Enrolled mas sessão aal1 → bounce pro challenge (AAL2).
   if (payload.aal !== "aal2") {
     return buildRedirect(req, "https://id.sociosai.com/mfa-challenge");
+  }
+
+  // Cadastrador (sem ser super_admin): default-deny com allowlist de rotas.
+  if (isRegistrar && !isSuper) {
+    if (req.nextUrl.pathname === "/") {
+      return NextResponse.redirect(new URL("/partners", req.url), { status: 307 });
+    }
+    if (!isRegistrarAllowed(req.nextUrl.pathname)) {
+      const rewriteUrl = req.nextUrl.clone();
+      rewriteUrl.pathname = "/forbidden";
+      return NextResponse.rewrite(rewriteUrl);
+    }
   }
 
   // /login is not a real route on this app (login lives on id.sociosai.com).

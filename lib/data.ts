@@ -781,7 +781,7 @@ export type PartnerInvitationRow = {
   created_at: string;
 };
 
-export type PlatformTier = "owner" | "admin" | "affiliate";
+export type PlatformTier = "owner" | "admin" | "affiliate" | "registrar";
 
 // Lê o tier ativo de platform_actors (mais alto se múltiplos · owner > admin > affiliate).
 // Retorna null se o user não tem nenhum tier ativo.
@@ -801,6 +801,7 @@ export async function getUserTier(args: {
   if (tiers.includes("owner")) return "owner";
   if (tiers.includes("admin")) return "admin";
   if (tiers.includes("affiliate")) return "affiliate";
+  if (tiers.includes("registrar")) return "registrar";
   return null;
 }
 

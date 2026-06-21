@@ -2,7 +2,8 @@ import Link from "next/link";
 import { AdminShell } from "@/components/AdminShell";
 import { PartnerListTable } from "@/components/PartnerListTable";
 import { PartnerInvitationsList } from "@/components/PartnerInvitationsList";
-import { getCallerJwt } from "@/lib/auth";
+import { RegistrarPartnersView } from "@/components/RegistrarPartnersView";
+import { getCallerJwt, getCallerClaims } from "@/lib/auth";
 import {
   listPartners,
   listPartnerInvitations,
@@ -24,6 +25,16 @@ export default async function PartnersPage(props: {
   const { tier: tierParam } = await props.searchParams;
   const rawTier = Array.isArray(tierParam) ? tierParam[0] : tierParam;
   const tierFilter: TierFilter = isTierFilter(rawTier) ? rawTier : "all";
+
+  // Cadastrador (registrar, não super_admin): view curada sem financeiro.
+  const claims = await getCallerClaims();
+  if (claims?.tier === "registrar" && claims?.super_admin !== true) {
+    return (
+      <AdminShell>
+        <RegistrarPartnersView />
+      </AdminShell>
+    );
+  }
 
   const jwt = await getCallerJwt();
   if (!jwt) {

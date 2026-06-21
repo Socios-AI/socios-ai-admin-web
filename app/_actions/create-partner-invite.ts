@@ -3,7 +3,7 @@
 import { randomBytes, randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { getSupabaseAdminClient } from "@socios-ai/auth/admin";
-import { requireSuperAdminAAL2 } from "@/lib/auth";
+import { requireRegistrarOrAdminAAL2 } from "@/lib/auth";
 import { createPartnerInviteSchema } from "@/lib/validation";
 
 export type CreatePartnerInviteResult =
@@ -11,7 +11,7 @@ export type CreatePartnerInviteResult =
   | { ok: false; error: "FORBIDDEN" | "VALIDATION" | "API_ERROR"; message?: string };
 
 export async function createPartnerInviteAction(input: unknown): Promise<CreatePartnerInviteResult> {
-  const auth = await requireSuperAdminAAL2();
+  const auth = await requireRegistrarOrAdminAAL2();
   if (!auth) return { ok: false, error: "FORBIDDEN" };
 
   const parsed = createPartnerInviteSchema.safeParse(input);

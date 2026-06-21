@@ -2,15 +2,17 @@ import Link from "next/link";
 import { LayoutDashboard, Users, Building2, AppWindow, Tag, Package, Activity, FileText, Handshake, Megaphone, Network, Receipt, Target, LogOut } from "lucide-react";
 import { ThemeToggle } from "./ThemeToggle";
 
+// `registrarVisible`: itens que o papel "cadastrador" (tier registrar) enxerga.
+// Bate com a allowlist da middleware (/orgs, /partners, /tree).
 const ITEMS = [
   { href: "/", label: "Dashboard", Icon: LayoutDashboard },
   { href: "/users", label: "Usuários", Icon: Users },
-  { href: "/orgs", label: "Organizações", Icon: Building2 },
+  { href: "/orgs", label: "Organizações", Icon: Building2, registrarVisible: true },
   { href: "/apps", label: "Apps", Icon: AppWindow },
   { href: "/plans", label: "Planos", Icon: Tag },
   { href: "/products", label: "Produtos & Taxas", Icon: Package },
-  { href: "/partners", label: "Parceiros", Icon: Handshake },
-  { href: "/tree", label: "Árvore da rede", Icon: Network },
+  { href: "/partners", label: "Parceiros", Icon: Handshake, registrarVisible: true },
+  { href: "/tree", label: "Árvore da rede", Icon: Network, registrarVisible: true },
   { href: "/commissions", label: "Comissões", Icon: Receipt },
   { href: "/attributions", label: "Atribuição de vendas", Icon: Target },
   { href: "/affiliates", label: "Afiliados", Icon: Megaphone },
@@ -18,7 +20,8 @@ const ITEMS = [
   { href: "/audit", label: "Auditoria", Icon: FileText },
 ];
 
-export function Sidebar() {
+export function Sidebar({ isRegistrar = false }: { isRegistrar?: boolean }) {
+  const items = isRegistrar ? ITEMS.filter((i) => i.registrarVisible) : ITEMS;
   return (
     <aside className="w-56 shrink-0 border-r border-sidebar-border h-screen sticky top-0 p-4 flex flex-col gap-1 bg-sidebar-background text-sidebar-foreground">
       {/* Brand lockup · skill socios-ai-design-system */}
@@ -34,7 +37,7 @@ export function Sidebar() {
         </div>
       </div>
       <nav className="flex-1 space-y-1">
-        {ITEMS.map(({ href, label, Icon, disabled }) =>
+        {items.map(({ href, label, Icon, disabled }) =>
           disabled ? (
             <div
               key={href}
