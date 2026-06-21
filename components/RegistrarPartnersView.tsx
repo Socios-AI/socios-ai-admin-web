@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { listPartnersForRegistrar, listInvitesForRegistrar } from "@/lib/data-registrar";
+import { RegistrarInviteCancelButton } from "./RegistrarInviteCancelButton";
 
 const ROLE_LABEL: Record<string, string> = {
   licenciado: "Licenciado",
@@ -68,6 +69,7 @@ export async function RegistrarPartnersView() {
                   <th className="px-3 py-2 text-left font-medium">E-mail</th>
                   <th className="px-3 py-2 text-left font-medium">Papel</th>
                   <th className="px-3 py-2 text-left font-medium">Expira</th>
+                  <th className="px-3 py-2 text-right font-medium">Ações</th>
                 </tr>
               </thead>
               <tbody>
@@ -78,6 +80,9 @@ export async function RegistrarPartnersView() {
                     <td className="px-3 py-2">{i.targetRole ? ROLE_LABEL[i.targetRole] ?? i.targetRole : "—"}</td>
                     <td className="px-3 py-2 text-muted-foreground">
                       {new Date(i.expiresAt).toLocaleDateString("pt-BR")}
+                    </td>
+                    <td className="px-3 py-2 text-right">
+                      <RegistrarInviteCancelButton invitationId={i.id} email={i.email} />
                     </td>
                   </tr>
                 ))}

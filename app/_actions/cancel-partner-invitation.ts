@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { getSupabaseAdminClient } from "@socios-ai/auth/admin";
-import { requireSuperAdminAAL2 } from "@/lib/auth";
+import { requireRegistrarOrAdminAAL2 } from "@/lib/auth";
 import { cancelPartnerInvitationSchema } from "@/lib/validation";
 
 export type CancelPartnerInvitationResult =
@@ -18,7 +18,7 @@ const NON_REVOCABLE = new Set(["converted", "revoked", "expired"]);
 export async function cancelPartnerInvitationAction(
   input: unknown,
 ): Promise<CancelPartnerInvitationResult> {
-  const auth = await requireSuperAdminAAL2();
+  const auth = await requireRegistrarOrAdminAAL2();
 
   if (!auth) return { ok: false, error: "FORBIDDEN" };
 

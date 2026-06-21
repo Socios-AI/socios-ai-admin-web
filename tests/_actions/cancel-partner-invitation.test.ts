@@ -5,7 +5,7 @@ const { authMock, adminClientMock } = vi.hoisted(() => ({
   adminClientMock: vi.fn(),
 }));
 
-vi.mock("../../lib/auth", () => ({ requireSuperAdminAAL2: authMock }));
+vi.mock("../../lib/auth", () => ({ requireRegistrarOrAdminAAL2: authMock }));
 vi.mock("@socios-ai/auth/admin", () => ({ getSupabaseAdminClient: adminClientMock }));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 
