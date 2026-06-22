@@ -438,6 +438,8 @@ export async function listUserSubscriptions(args: {
 export type OrgListing = {
   orgId: string;
   appSlug: string;
+  name: string | null;
+  slug: string | null;
   activeMembers: number;
   firstSeen: string;
   lastActivity: string;
@@ -474,6 +476,8 @@ export async function listOrgs(args: {
       groups.set(key, {
         orgId: r.org_id,
         appSlug: r.app_slug,
+        name: null,
+        slug: null,
         activeMembers: isActive ? 1 : 0,
         firstSeen: r.granted_at,
         lastActivity: r.granted_at,
@@ -485,10 +489,32 @@ export async function listOrgs(args: {
     if (r.granted_at > existing.lastActivity) existing.lastActivity = r.granted_at;
   }
 
-  return [...groups.values()]
+  const listed = [...groups.values()]
     .filter((g) => g.activeMembers > 0)
     .sort((a, b) => (a.lastActivity < b.lastActivity ? 1 : -1))
     .slice(0, 100);
+
+  // Enriquece com nome/slug legível (a listagem mostrava só o UUID truncado).
+  const orgIds = [...new Set(listed.map((g) => g.orgId))];
+  if (orgIds.length > 0) {
+    const { data: orgRows, error: orgErr } = await sb
+      .from("orgs")
+      .select("id, name, slug")
+      .in("id", orgIds);
+    if (orgErr) throw new Error(`listOrgs (orgs) failed: ${orgErr.message}`);
+    const byId = new Map(
+      ((orgRows ?? []) as Array<{ id: string; name: string | null; slug: string | null }>).map(
+        (o) => [o.id, o] as const,
+      ),
+    );
+    for (const g of listed) {
+      const o = byId.get(g.orgId);
+      g.name = o?.name ?? null;
+      g.slug = o?.slug ?? null;
+    }
+  }
+
+  return listed;
 }
 
 // =============================================================

@@ -30,7 +30,11 @@ function makeThenable(result: { data: unknown; error: unknown }) {
   };
 }
 
-function buildSb(rows: Array<Record<string, unknown>>, filteredRows?: Array<Record<string, unknown>>) {
+function buildSb(
+  rows: Array<Record<string, unknown>>,
+  filteredRows?: Array<Record<string, unknown>>,
+  orgRows: Array<Record<string, unknown>> = [],
+) {
   // The terminal node after .not(...) — awaitable + chainable to .eq()
   const eqResolved = vi.fn(() => makeThenable({ data: filteredRows ?? rows, error: null }));
 
@@ -39,13 +43,16 @@ function buildSb(rows: Array<Record<string, unknown>>, filteredRows?: Array<Reco
     { eq: eqResolved },
   );
 
-  const selectReturn = { not: vi.fn(() => notReturn) };
+  // app_memberships chain: select(...).not(...).[eq(...)]
+  const membershipSelect = { not: vi.fn(() => notReturn) };
+  // orgs chain: select(...).in(...)
+  const orgsSelect = { in: vi.fn(() => makeThenable({ data: orgRows, error: null })) };
 
-  return {
-    from: vi.fn(() => ({ select: vi.fn(() => selectReturn) })),
-    eqResolved,
-    notReturn,
-  };
+  const from = vi.fn((table: string) => ({
+    select: vi.fn(() => (table === "orgs" ? orgsSelect : membershipSelect)),
+  }));
+
+  return { from, eqResolved, notReturn };
 }
 
 const baseRow = (overrides: Partial<Record<string, unknown>>) => ({
@@ -127,6 +134,31 @@ describe("listOrgs", () => {
     callerClientMock.mockReturnValue({ from });
 
     await expect(listOrgs({ callerJwt: "jwt" })).rejects.toThrow(/RLS denied/);
+  });
+
+  it("enriches rows with org name and slug from the orgs table", async () => {
+    const sb = buildSb(
+      [baseRow({ org_id: "org-A", app_slug: "case-predictor" })],
+      undefined,
+      [{ id: "org-A", name: "Clínica Giselle", slug: "clinica-giselle" }],
+    );
+    callerClientMock.mockReturnValue({ from: sb.from });
+
+    const result = await listOrgs({ callerJwt: "jwt" });
+    expect(result[0]).toMatchObject({
+      orgId: "org-A",
+      name: "Clínica Giselle",
+      slug: "clinica-giselle",
+    });
+  });
+
+  it("falls back to null name/slug when the org row is missing", async () => {
+    const sb = buildSb([baseRow({ org_id: "org-A" })], undefined, []);
+    callerClientMock.mockReturnValue({ from: sb.from });
+
+    const result = await listOrgs({ callerJwt: "jwt" });
+    expect(result[0].name).toBeNull();
+    expect(result[0].slug).toBeNull();
   });
 
   it("sorts results by lastActivity descending", async () => {

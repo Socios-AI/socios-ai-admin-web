@@ -26,8 +26,8 @@ export function OrgListTable({ orgs }: { orgs: OrgListing[] }) {
       <table className="w-full text-sm">
         <thead className="bg-muted/50 text-muted-foreground text-left">
           <tr>
+            <th className="px-4 py-3 font-medium">Cliente</th>
             <th className="px-4 py-3 font-medium">App</th>
-            <th className="px-4 py-3 font-medium">Org ID</th>
             <th className="px-4 py-3 font-medium">Membros ativos</th>
             <th className="px-4 py-3 font-medium">Primeira atividade</th>
             <th className="px-4 py-3 font-medium">Última atividade</th>
@@ -40,10 +40,13 @@ export function OrgListTable({ orgs }: { orgs: OrgListing[] }) {
               key={`${o.orgId}-${o.appSlug}`}
               className={i % 2 === 0 ? "bg-background" : "bg-muted/20"}
             >
-              <td className="px-4 py-3">{o.appSlug}</td>
-              <td className="px-4 py-3 font-mono" title={o.orgId}>
-                {shortId(o.orgId)}
+              <td className="px-4 py-3">
+                <div className="font-medium text-foreground">{o.name ?? "Sem nome"}</div>
+                <div className="text-xs text-muted-foreground font-mono" title={o.orgId}>
+                  {o.slug ? `${o.slug} · ${shortId(o.orgId)}` : shortId(o.orgId)}
+                </div>
               </td>
+              <td className="px-4 py-3">{o.appSlug}</td>
               <td className="px-4 py-3">{o.activeMembers}</td>
               <td className="px-4 py-3 text-muted-foreground">{formatDateTime(o.firstSeen)}</td>
               <td className="px-4 py-3 text-muted-foreground">{formatDateTime(o.lastActivity)}</td>

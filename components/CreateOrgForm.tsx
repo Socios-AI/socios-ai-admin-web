@@ -17,6 +17,9 @@ const ROLE_LABEL: Record<string, string> = {
   afiliado: "Afiliado",
 };
 
+const FIELD_CLASS =
+  "mt-1 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring";
+
 export function CreateOrgForm({ apps }: { apps: AppOption[] }) {
   const [appSlug, setAppSlug] = useState(apps[0]?.slug ?? "");
   const [tenantName, setTenantName] = useState("");
@@ -87,7 +90,7 @@ export function CreateOrgForm({ apps }: { apps: AppOption[] }) {
           id="appSlug"
           value={appSlug}
           onChange={(e) => setAppSlug(e.target.value)}
-          className="mt-1 w-full rounded border px-3 py-2"
+          className={FIELD_CLASS}
           required
         >
           {apps.map((a) => (
@@ -99,7 +102,7 @@ export function CreateOrgForm({ apps }: { apps: AppOption[] }) {
       <div>
         <label htmlFor="tenantName" className="block text-sm font-medium">Nome do cliente</label>
         <input id="tenantName" value={tenantName} onChange={(e) => setTenantName(e.target.value)}
-          minLength={2} maxLength={100} required className="mt-1 w-full rounded border px-3 py-2" />
+          minLength={2} maxLength={100} required className={FIELD_CLASS} />
       </div>
 
       <div>
@@ -107,21 +110,21 @@ export function CreateOrgForm({ apps }: { apps: AppOption[] }) {
         <input id="tenantSlug" value={tenantSlug}
           onChange={(e) => setTenantSlug(e.target.value.toLowerCase())}
           pattern="[a-z0-9](?:[a-z0-9-]{1,46}[a-z0-9])?" required
-          className="mt-1 w-full rounded border px-3 py-2" />
+          className={FIELD_CLASS} />
       </div>
 
       <div>
         <label htmlFor="adminEmail" className="block text-sm font-medium">Email do responsável</label>
         <input id="adminEmail" type="email" value={adminEmail}
           onChange={(e) => setAdminEmail(e.target.value)} required
-          className="mt-1 w-full rounded border px-3 py-2" />
+          className={FIELD_CLASS} />
       </div>
 
       {requiresNiche && (
         <div>
           <label htmlFor="niche" className="block text-sm font-medium">Nicho</label>
           <select id="niche" value={niche} onChange={(e) => setNiche(e.target.value)} required
-            className="mt-1 w-full rounded border px-3 py-2">
+            className={FIELD_CLASS}>
             <option value="">Selecione...</option>
             {Object.entries(nicheCatalog!).map(([slug, label]) => (
               <option key={slug} value={slug}>{label}</option>
@@ -152,7 +155,7 @@ export function CreateOrgForm({ apps }: { apps: AppOption[] }) {
             <input id="partnerQuery" value={partnerQuery}
               onChange={(e) => runSearch(e.target.value)}
               placeholder="Buscar por nome ou email do parceiro"
-              className="mt-1 w-full rounded border px-3 py-2" />
+              className={FIELD_CLASS} />
             {searching && <p className="mt-1 text-xs text-muted-foreground">Buscando...</p>}
             {partnerResults.length > 0 && (
               <ul className="mt-1 max-h-48 overflow-auto rounded border">
