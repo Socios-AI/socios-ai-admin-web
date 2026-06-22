@@ -9,12 +9,16 @@ export type ToggleAppFlagResult =
   | { ok: true }
   | { ok: false; error: "FORBIDDEN" | "VALIDATION" | "NOT_FOUND" | "API_ERROR"; message?: string };
 
-const FLAG_TO_EVENT: Record<"active" | "accepts_new_subscriptions", { onTrue: string; onFalse: string }> = {
+const FLAG_TO_EVENT: Record<
+  "active" | "accepts_new_subscriptions" | "billing_paused",
+  { onTrue: string; onFalse: string }
+> = {
   active: { onTrue: "app.activated", onFalse: "app.deactivated" },
   accepts_new_subscriptions: {
     onTrue: "app.subscriptions_opened",
     onFalse: "app.subscriptions_closed",
   },
+  billing_paused: { onTrue: "app.billing_paused", onFalse: "app.billing_resumed" },
 };
 
 export async function toggleAppFlagAction(input: unknown): Promise<ToggleAppFlagResult> {
@@ -33,7 +37,7 @@ export async function toggleAppFlagAction(input: unknown): Promise<ToggleAppFlag
 
   const { data: existing, error: existingError } = await sb
     .from("apps")
-    .select("slug, active, accepts_new_subscriptions")
+    .select("slug, active, accepts_new_subscriptions, billing_paused")
     .eq("slug", slug)
     .maybeSingle();
   if (existingError) return { ok: false, error: "API_ERROR", message: existingError.message };

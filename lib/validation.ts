@@ -101,7 +101,7 @@ export const updateAppSchema = z.object({
 
 export const toggleAppFlagSchema = z.object({
   slug: appSlugSchema,
-  flag: z.enum(["active", "accepts_new_subscriptions"]),
+  flag: z.enum(["active", "accepts_new_subscriptions", "billing_paused"]),
   value: z.boolean(),
   reason: z.string().trim().min(5, "Motivo precisa ter pelo menos 5 caracteres"),
 });

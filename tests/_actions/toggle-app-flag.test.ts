@@ -19,7 +19,12 @@ vi.mock("next/cache", () => ({
 
 import { toggleAppFlagAction } from "../../app/_actions/toggle-app-flag";
 
-type AppRow = { slug: string; active: boolean; accepts_new_subscriptions: boolean } | null;
+type AppRow = {
+  slug: string;
+  active: boolean;
+  accepts_new_subscriptions: boolean;
+  billing_paused: boolean;
+} | null;
 
 function buildSupabase(existing: AppRow, updateError: { message: string } | null = null) {
   const auditInsert = vi.fn().mockResolvedValue({ error: null });
@@ -45,7 +50,7 @@ beforeEach(() => {
 describe("toggleAppFlagAction", () => {
   it("happy path: super-admin flips active=false with reason", async () => {
     authMock.mockResolvedValue({ claims: { super_admin: true, sub: "super-1", aal: "aal2", exp: 9999999999 }, jwt: "test-jwt" });
-    const harness = buildSupabase({ slug: "case-pred", active: true, accepts_new_subscriptions: true });
+    const harness = buildSupabase({ slug: "case-pred", active: true, accepts_new_subscriptions: true, billing_paused: false });
     adminClientMock.mockReturnValue({ from: harness.fromMock });
 
     const result = await toggleAppFlagAction({
@@ -64,7 +69,7 @@ describe("toggleAppFlagAction", () => {
 
   it("toggle accepts_new_subscriptions=false uses subscriptions_closed event", async () => {
     authMock.mockResolvedValue({ claims: { super_admin: true, sub: "super-1", aal: "aal2", exp: 9999999999 }, jwt: "test-jwt" });
-    const harness = buildSupabase({ slug: "case-pred", active: true, accepts_new_subscriptions: true });
+    const harness = buildSupabase({ slug: "case-pred", active: true, accepts_new_subscriptions: true, billing_paused: false });
     adminClientMock.mockReturnValue({ from: harness.fromMock });
 
     await toggleAppFlagAction({
@@ -76,6 +81,42 @@ describe("toggleAppFlagAction", () => {
 
     expect(harness.auditInsert).toHaveBeenCalledWith(
       expect.objectContaining({ event_type: "app.subscriptions_closed" }),
+    );
+  });
+
+  it("pause billing: billing_paused=true uses billing_paused event", async () => {
+    authMock.mockResolvedValue({ claims: { super_admin: true, sub: "super-1", aal: "aal2", exp: 9999999999 }, jwt: "test-jwt" });
+    const harness = buildSupabase({ slug: "scrapleads", active: true, accepts_new_subscriptions: true, billing_paused: false });
+    adminClientMock.mockReturnValue({ from: harness.fromMock });
+
+    const result = await toggleAppFlagAction({
+      slug: "scrapleads",
+      flag: "billing_paused",
+      value: true,
+      reason: "Stripe fora do ar; liberando cadastros sem cobrança",
+    });
+
+    expect(result).toEqual({ ok: true });
+    expect(harness.updateMock).toHaveBeenCalledWith({ billing_paused: true });
+    expect(harness.auditInsert).toHaveBeenCalledWith(
+      expect.objectContaining({ event_type: "app.billing_paused", app_slug: "scrapleads" }),
+    );
+  });
+
+  it("resume billing: billing_paused=false uses billing_resumed event", async () => {
+    authMock.mockResolvedValue({ claims: { super_admin: true, sub: "super-1", aal: "aal2", exp: 9999999999 }, jwt: "test-jwt" });
+    const harness = buildSupabase({ slug: "scrapleads", active: true, accepts_new_subscriptions: true, billing_paused: true });
+    adminClientMock.mockReturnValue({ from: harness.fromMock });
+
+    await toggleAppFlagAction({
+      slug: "scrapleads",
+      flag: "billing_paused",
+      value: false,
+      reason: "Stripe resolvido; religando a cobrança",
+    });
+
+    expect(harness.auditInsert).toHaveBeenCalledWith(
+      expect.objectContaining({ event_type: "app.billing_resumed" }),
     );
   });
 

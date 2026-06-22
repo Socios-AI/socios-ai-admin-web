@@ -6,7 +6,7 @@ import { toggleAppFlagAction } from "@/app/_actions/toggle-app-flag";
 
 export type AppFlagToggleProps = {
   slug: string;
-  flag: "active" | "accepts_new_subscriptions";
+  flag: "active" | "accepts_new_subscriptions" | "billing_paused";
   current: boolean;
   label: string;
   description: string;

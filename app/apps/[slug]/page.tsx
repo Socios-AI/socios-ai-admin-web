@@ -97,6 +97,13 @@ export default async function AppDetailPage(props: {
                   label="Ativo"
                   description="Bloqueia tudo. Use para sunset definitivo. Usuários atuais perdem acesso na próxima rotação de token."
                 />
+                <AppFlagToggle
+                  slug={app.slug}
+                  flag="billing_paused"
+                  current={app.billing_paused}
+                  label="Cobrança pausada"
+                  description="Pausa a tela de pagamento: novos clientes entram sem pagar. Ao religar, quem está sem assinatura cai na tela de pagamento no próximo login. (A trava de cada app é ligada à parte.)"
+                />
               </div>
             </section>
 
