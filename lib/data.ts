@@ -140,6 +140,7 @@ export type AppDetail = {
   status: AppStatus;
   active: boolean;
   accepts_new_subscriptions: boolean;
+  billing_paused: boolean;
   responsible_user_id: string | null;
   metadata: Record<string, unknown>;
   role_catalog: Record<string, unknown>;
@@ -156,7 +157,7 @@ export async function listAppsCatalog(args: { callerJwt: string }): Promise<AppC
   const { data, error } = await sb
     .from("apps")
     .select(
-      "slug, name, description, public_url, icon_url, status, active, accepts_new_subscriptions, responsible_user_id, metadata, role_catalog, created_at, updated_at, app_memberships:app_memberships(count)",
+      "slug, name, description, public_url, icon_url, status, active, accepts_new_subscriptions, billing_paused, responsible_user_id, metadata, role_catalog, created_at, updated_at, app_memberships:app_memberships(count)",
     )
     .order("created_at", { ascending: false });
   if (error) throw new Error(`listAppsCatalog failed: ${error.message}`);
@@ -170,6 +171,7 @@ export async function listAppsCatalog(args: { callerJwt: string }): Promise<AppC
     status: row.status as AppStatus,
     active: row.active as boolean,
     accepts_new_subscriptions: row.accepts_new_subscriptions as boolean,
+    billing_paused: row.billing_paused as boolean,
     responsible_user_id: (row.responsible_user_id as string | null) ?? null,
     metadata: (row.metadata as Record<string, unknown>) ?? {},
     role_catalog: (row.role_catalog as Record<string, unknown>) ?? {},
@@ -184,7 +186,7 @@ export async function getApp(args: { callerJwt: string; slug: string }): Promise
   const { data, error } = await sb
     .from("apps")
     .select(
-      "slug, name, description, public_url, icon_url, status, active, accepts_new_subscriptions, responsible_user_id, metadata, role_catalog, created_at, updated_at",
+      "slug, name, description, public_url, icon_url, status, active, accepts_new_subscriptions, billing_paused, responsible_user_id, metadata, role_catalog, created_at, updated_at",
     )
     .eq("slug", args.slug)
     .maybeSingle();
@@ -199,6 +201,7 @@ export async function getApp(args: { callerJwt: string; slug: string }): Promise
     status: data.status as AppStatus,
     active: data.active,
     accepts_new_subscriptions: data.accepts_new_subscriptions,
+    billing_paused: data.billing_paused,
     responsible_user_id: data.responsible_user_id ?? null,
     metadata: data.metadata ?? {},
     role_catalog: data.role_catalog ?? {},

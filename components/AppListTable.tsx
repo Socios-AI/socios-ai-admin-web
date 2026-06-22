@@ -32,6 +32,7 @@ export function AppListTable({ rows }: { rows: AppCatalogRow[] }) {
             <th className="px-4 py-3 font-medium">App</th>
             <th className="px-4 py-3 font-medium">Status</th>
             <th className="px-4 py-3 font-medium">Aceita novos</th>
+            <th className="px-4 py-3 font-medium">Cobrança</th>
             <th className="px-4 py-3 font-medium">Ativo</th>
             <th className="px-4 py-3 font-medium">Memberships</th>
           </tr>
@@ -53,6 +54,7 @@ export function AppListTable({ rows }: { rows: AppCatalogRow[] }) {
                 </span>
               </td>
               <td className="px-4 py-3">{row.accepts_new_subscriptions ? "Sim" : "Não"}</td>
+              <td className="px-4 py-3">{row.billing_paused ? "Pausada" : "Ativa"}</td>
               <td className="px-4 py-3">{row.active ? "Sim" : "Não"}</td>
               <td className="px-4 py-3">{row.membership_count}</td>
             </tr>
