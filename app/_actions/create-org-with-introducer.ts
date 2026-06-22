@@ -3,6 +3,7 @@
 import { getCallerClient } from "@socios-ai/auth/admin";
 import { requireRegistrarOrAdminAAL2 } from "@/lib/auth";
 import { createOrgSchema } from "@/lib/validation";
+import { generateOrgSlug } from "@/lib/org-slug";
 import { deriveAdminRoleSlug } from "@/lib/admin-role-slug";
 import { resolveNicheHost } from "@/lib/niche-domain";
 import { tenantOnboardingInvitationEmail } from "@/lib/email-templates/tenant-onboarding-invitation";
@@ -64,10 +65,14 @@ export async function createOrgWithIntroducerAction(input: unknown): Promise<Cre
     return { ok: false, error: "VALIDATION", message: `app '${data.appSlug}' não tem admin role no role_catalog` };
   }
 
+  // Slug derivado do nome (admin não informa mais). Sufixo aleatório garante
+  // unicidade contra a constraint UNIQUE de orgs.slug.
+  const tenantSlug = generateOrgSlug(data.tenantName);
+
   // Cria a org carimbando o indicante explícito (super_admin override).
   const { data: orgIdRaw, error: orgErr } = await sb.rpc("create_org_for_app", {
     p_name: data.tenantName,
-    p_slug: data.tenantSlug,
+    p_slug: tenantSlug,
     p_app_slug: data.appSlug,
     p_admin_user_id: null,
     p_niche: data.niche ?? null,
@@ -155,7 +160,7 @@ export async function createOrgWithIntroducerAction(input: unknown): Promise<Cre
       appSlug: data.appSlug,
       appName,
       tenantName: data.tenantName,
-      tenantSlug: data.tenantSlug,
+      tenantSlug,
       adminEmail: data.adminEmail,
       inviteToken,
       inviteUrl,

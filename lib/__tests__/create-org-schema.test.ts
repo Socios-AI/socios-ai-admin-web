@@ -5,11 +5,10 @@ describe("createOrgSchema", () => {
   const base = {
     appSlug: "beauty",
     tenantName: "Clinica X",
-    tenantSlug: "clinica-x",
     adminEmail: "dono@clinica.com",
   };
 
-  it("accepts a valid payload without introducer", () => {
+  it("accepts a valid payload without introducer (no slug needed)", () => {
     expect(createOrgSchema.safeParse(base).success).toBe(true);
   });
 
@@ -26,11 +25,13 @@ describe("createOrgSchema", () => {
     expect(r.success).toBe(false);
   });
 
-  it("rejects a bad slug", () => {
-    expect(createOrgSchema.safeParse({ ...base, tenantSlug: "X" }).success).toBe(false);
+  it("rejects a too-short tenant name", () => {
+    expect(createOrgSchema.safeParse({ ...base, tenantName: "X" }).success).toBe(false);
   });
 
-  it("rejects a 2-char slug (DB requires min 3)", () => {
-    expect(createOrgSchema.safeParse({ ...base, tenantSlug: "ab" }).success).toBe(false);
+  it("drops tenantSlug if passed (no longer part of the schema)", () => {
+    const r = createOrgSchema.safeParse({ ...base, tenantSlug: "WHATEVER!!" });
+    expect(r.success).toBe(true);
+    if (r.success) expect("tenantSlug" in r.data).toBe(false);
   });
 });

@@ -23,7 +23,6 @@ const FIELD_CLASS =
 export function CreateOrgForm({ apps }: { apps: AppOption[] }) {
   const [appSlug, setAppSlug] = useState(apps[0]?.slug ?? "");
   const [tenantName, setTenantName] = useState("");
-  const [tenantSlug, setTenantSlug] = useState("");
   const [adminEmail, setAdminEmail] = useState("");
   const [niche, setNiche] = useState("");
 
@@ -63,7 +62,6 @@ export function CreateOrgForm({ apps }: { apps: AppOption[] }) {
       const res = await createOrgWithIntroducerAction({
         appSlug,
         tenantName,
-        tenantSlug,
         adminEmail,
         niche: requiresNiche ? niche : undefined,
         introducedByPartnerId: selectedPartner?.partnerId,
@@ -103,14 +101,6 @@ export function CreateOrgForm({ apps }: { apps: AppOption[] }) {
         <label htmlFor="tenantName" className="block text-sm font-medium">Nome do cliente</label>
         <input id="tenantName" value={tenantName} onChange={(e) => setTenantName(e.target.value)}
           minLength={2} maxLength={100} required className={FIELD_CLASS} />
-      </div>
-
-      <div>
-        <label htmlFor="tenantSlug" className="block text-sm font-medium">Slug (URL)</label>
-        <input id="tenantSlug" value={tenantSlug}
-          onChange={(e) => setTenantSlug(e.target.value.toLowerCase())}
-          pattern="[a-z0-9](?:[a-z0-9-]{1,46}[a-z0-9])?" required
-          className={FIELD_CLASS} />
       </div>
 
       <div>
