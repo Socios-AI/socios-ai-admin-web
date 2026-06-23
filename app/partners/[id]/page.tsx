@@ -275,14 +275,14 @@ export default async function PartnerDetailPage({
                     <dt className="text-muted-foreground">Endereço</dt>
                     <dd>
                       {[
-                        registrationData.profile?.address_street,
+                        registrationData.profile?.address_line1,
                         registrationData.profile?.address_number,
                         registrationData.profile?.address_complement,
-                        registrationData.profile?.address_neighborhood,
+                        registrationData.profile?.address_district,
                         registrationData.profile?.address_city,
                         registrationData.profile?.address_state,
-                        registrationData.profile?.address_zip,
-                        registrationData.profile?.address_country,
+                        registrationData.profile?.address_postal_code,
+                        registrationData.profile?.country,
                       ]
                         .filter(Boolean)
                         .join(", ") || "-"}
