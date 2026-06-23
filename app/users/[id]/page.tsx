@@ -84,7 +84,7 @@ export default async function UserDetailPage(props: {
               : "rounded-full bg-muted text-muted-foreground px-3 py-1 text-sm font-medium whitespace-nowrap"
           }
         >
-          {tier === "owner" ? "Owner" : tier === "admin" ? "Admin" : tier === "affiliate" ? "Afiliado" : "Sem tier"}
+          {tier === "owner" ? "Owner" : tier === "admin" ? "Admin" : tier === "affiliate" ? "Afiliado" : tier === "registrar" ? "Cadastrador" : "Sem tier"}
         </span>
       </header>
 

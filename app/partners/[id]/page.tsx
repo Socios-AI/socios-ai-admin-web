@@ -9,6 +9,7 @@ import { PartnerReferralsTab } from "@/components/PartnerReferralsTab";
 import { AttributeUserDialog } from "@/components/AttributeUserDialog";
 import { AuditList } from "@/components/AuditList";
 import { RequestCompletionButton } from "@/components/RequestCompletionButton";
+import { PartnerEditForm } from "@/components/PartnerEditForm";
 import { EdgeRateDialog } from "@/components/EdgeRateDialog";
 import { LedgerTable } from "@/components/LedgerTable";
 import { getCallerJwt } from "@/lib/auth";
@@ -61,11 +62,12 @@ export default async function PartnerDetailPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ tab?: string }>;
+  searchParams: Promise<{ tab?: string; edit?: string }>;
 }) {
   const { id } = await params;
-  const { tab } = await searchParams;
+  const { tab, edit } = await searchParams;
   const activeTab = tab && TABS.some((t) => t.key === tab) ? tab : "identidade";
+  const editMode = edit === "1";
 
   const jwt = await getCallerJwt();
   if (!jwt) {
@@ -157,10 +159,27 @@ export default async function PartnerDetailPage({
 
       <TabNav items={TABS} active={activeTab} />
 
-      {activeTab === "identidade" && (
+      {activeTab === "identidade" && editMode && (
+        <PartnerEditForm
+          partnerId={partner.id}
+          initialFullName={partnerProfile?.full_name ?? ""}
+          initialEmail={partnerProfile?.email ?? ""}
+          initialProfile={registrationData?.profile ?? null}
+        />
+      )}
+
+      {activeTab === "identidade" && !editMode && (
         <div className="space-y-8">
-          {/* Ação: pedir complemento de cadastro */}
-          <RequestCompletionButton partnerId={partner.id} />
+          {/* Ações: editar cadastro · pedir complemento */}
+          <div className="flex items-center gap-2">
+            <Link
+              href={`/partners/${partner.id}?tab=identidade&edit=1`}
+              className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90"
+            >
+              Editar cadastro
+            </Link>
+            <RequestCompletionButton partnerId={partner.id} />
+          </div>
 
           {/* Dados da plataforma */}
           <dl className="grid grid-cols-2 gap-x-8 gap-y-4 text-sm">

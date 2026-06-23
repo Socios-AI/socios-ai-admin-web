@@ -551,6 +551,8 @@ export type OrgSubscription = {
 export type OrgDetail = {
   orgId: string;
   appSlug: string;
+  name: string | null;
+  slug: string | null;
   members: OrgMember[];
   subscriptions: OrgSubscription[];
 };
@@ -588,6 +590,13 @@ export async function loadOrg(args: {
     .order("started_at", { ascending: false });
   if (subErr) throw new Error(`loadOrg (subs) failed: ${subErr.message}`);
 
+  const { data: orgRow, error: orgErr } = await sb
+    .from("orgs")
+    .select("name, slug")
+    .eq("id", args.orgId)
+    .maybeSingle();
+  if (orgErr) throw new Error(`loadOrg (org) failed: ${orgErr.message}`);
+
   const subscriptions: OrgSubscription[] = (subRows ?? []).map((row: Record<string, unknown>) => {
     const metadata = (row.metadata ?? {}) as { notes?: string };
     const plan = row.plans as {
@@ -622,6 +631,8 @@ export async function loadOrg(args: {
   return {
     orgId: args.orgId,
     appSlug: args.appSlug,
+    name: (orgRow?.name as string | null) ?? null,
+    slug: (orgRow?.slug as string | null) ?? null,
     members: members.map((m) => ({
       membershipId: m.id,
       userId: m.user_id,

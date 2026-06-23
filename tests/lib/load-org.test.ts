@@ -27,6 +27,7 @@ function buildSb(opts: {
   membersError?: { message: string } | null;
   subs?: Array<Record<string, unknown>>;
   subsError?: { message: string } | null;
+  org?: { name: string | null; slug: string | null } | null;
 }) {
   // members chain: select(...).eq(org_id).eq(app_slug).is(revoked_at, null) → awaitable
   const memberResult = makeThenable({
@@ -47,10 +48,18 @@ function buildSb(opts: {
   const subEq = vi.fn(() => ({ order: subOrder }));
   const subSelect = vi.fn(() => ({ eq: subEq }));
 
+  // orgs chain: select("name, slug").eq(id).maybeSingle()
+  const orgMaybeSingle = vi.fn(() =>
+    Promise.resolve({ data: opts.org ?? { name: "Acme", slug: "acme" }, error: null }),
+  );
+  const orgEq = vi.fn(() => ({ maybeSingle: orgMaybeSingle }));
+  const orgSelect = vi.fn(() => ({ eq: orgEq }));
+
   return {
     from: vi.fn((table: string) => {
       if (table === "app_memberships") return { select: memberSelect };
       if (table === "subscriptions") return { select: subSelect };
+      if (table === "orgs") return { select: orgSelect };
       throw new Error(`unexpected table ${table}`);
     }),
   };
@@ -119,5 +128,7 @@ describe("loadOrg", () => {
     });
     expect(result!.subscriptions).toHaveLength(1);
     expect(result!.subscriptions[0]).toMatchObject({ id: "s1", status: "active" });
+    expect(result!.name).toBe("Acme");
+    expect(result!.slug).toBe("acme");
   });
 });

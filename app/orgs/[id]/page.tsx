@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { AdminShell } from "@/components/AdminShell";
 import { OrgPlansSection } from "@/components/OrgPlansSection";
+import { OrgEditDialog } from "@/components/OrgEditDialog";
 import { getCallerJwt } from "@/lib/auth";
 import { loadOrg, listPlansCatalog } from "@/lib/data";
 
@@ -51,15 +52,21 @@ export default async function OrgDetailPage(props: {
 
   return (
     <AdminShell>
-      <header className="mb-6">
-        <h1 className="font-display font-semibold text-2xl">
-          <span className="font-mono">{org.orgId.slice(0, 8)}</span>
-          <span className="ml-2 text-base text-muted-foreground">no app {org.appSlug}</span>
-        </h1>
-        <p className="text-muted-foreground text-sm">
-          {org.members.length}{" "}
-          {org.members.length === 1 ? "membro ativo" : "membros ativos"}
-        </p>
+      <header className="mb-6 flex items-start justify-between gap-4">
+        <div>
+          <h1 className="font-display font-semibold text-2xl">
+            {org.name ?? <span className="font-mono">{org.orgId.slice(0, 8)}</span>}
+            <span className="ml-2 text-base text-muted-foreground">no app {org.appSlug}</span>
+          </h1>
+          <p className="text-muted-foreground text-sm font-mono">
+            {org.slug ? `${org.slug} · ` : ""}{org.orgId.slice(0, 8)}
+          </p>
+          <p className="text-muted-foreground text-sm">
+            {org.members.length}{" "}
+            {org.members.length === 1 ? "membro ativo" : "membros ativos"}
+          </p>
+        </div>
+        <OrgEditDialog orgId={org.orgId} initialName={org.name ?? ""} />
       </header>
 
       <section className="mb-8">
