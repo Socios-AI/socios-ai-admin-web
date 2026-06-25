@@ -180,9 +180,9 @@ export default async function PartnerDetailPage({
               Editar cadastro
             </Link>
             <RequestCompletionButton partnerId={partner.id} />
-            {(partner as { role?: string | null }).role === "representante" &&
-            (partner as { entry_fee_amount?: number | null }).entry_fee_amount != null &&
-            (partner as { entry_fee_paid_at?: string | null }).entry_fee_paid_at == null ? (
+            {partner.role === "representante" &&
+            partner.entry_fee_amount != null &&
+            partner.entry_fee_paid_at == null ? (
               <MarkEntryFeePaidButton partnerId={partner.id} />
             ) : null}
           </div>
