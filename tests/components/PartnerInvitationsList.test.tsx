@@ -29,4 +29,16 @@ describe("<PartnerInvitationsList>", () => {
     expect(screen.getByText("jane@example.com")).toBeInTheDocument();
     expect(screen.getByText(/sent/i)).toBeInTheDocument();
   });
+  it("renders the license amount with installments when present", () => {
+    render(<PartnerInvitationsList invitations={[{ ...INV, license_amount_usd: 10000, installments: 3 }]} />);
+    expect(screen.getByText(/\$10,000\.00 \(3x\)/)).toBeInTheDocument();
+  });
+  it("renders '-' instead of crashing when license_amount_usd is null", () => {
+    // Regression: a representante/embaixador invite has no license fee, so
+    // license_amount_usd is null. fmtUsd(null) used to throw "Cannot read
+    // properties of null (reading 'toLocaleString')" and 500'd /partners.
+    render(<PartnerInvitationsList invitations={[{ ...INV, license_amount_usd: null }]} />);
+    expect(screen.getByText("jane@example.com")).toBeInTheDocument();
+    expect(screen.getByText("-")).toBeInTheDocument();
+  });
 });

@@ -5,7 +5,8 @@ function fmtDate(s: string | null): string {
   return new Date(s).toLocaleDateString("pt-BR");
 }
 
-function fmtUsd(n: number): string {
+function fmtUsd(n: number | null): string {
+  if (n == null) return "-";
   return n.toLocaleString("en-US", { style: "currency", currency: "USD" });
 }
 
@@ -35,7 +36,9 @@ export function PartnerInvitationsList({ invitations }: { invitations: PartnerIn
               <td className="px-4 py-3">{i.email}</td>
               <td className="px-4 py-3">{i.full_name}</td>
               <td className="px-4 py-3 text-xs uppercase tracking-wide text-muted-foreground">{i.status}</td>
-              <td className="px-4 py-3">{fmtUsd(i.license_amount_usd)} ({i.installments}x)</td>
+              <td className="px-4 py-3">
+                {i.license_amount_usd == null ? "-" : `${fmtUsd(i.license_amount_usd)} (${i.installments}x)`}
+              </td>
               <td className="px-4 py-3">{fmtDate(i.expires_at)}</td>
             </tr>
           ))}
