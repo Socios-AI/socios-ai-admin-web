@@ -813,7 +813,8 @@ export type PartnerInvitationRow = {
   contract_envelope_id: string | null;
   payment_link_url: string | null;
   custom_commission_pct: number | null;
-  license_amount_usd: number;
+  // Null for invitations without a license fee (e.g. representante / embaixador).
+  license_amount_usd: number | null;
   installments: number;
   expires_at: string;
   consumed_at: string | null;
