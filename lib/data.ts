@@ -788,6 +788,7 @@ export type PartnerRow = {
   user_id: string | null;
   status: "pending_contract" | "pending_payment" | "pending_kyc" | "active" | "suspended" | "terminated";
   tier: "licensee" | "reseller";
+  role: "licenciado" | "representante" | "embaixador" | "afiliado" | null;
   introduced_by_partner_id: string | null;
   custom_commission_pct: number | null;
   stripe_connect_account_id: string | null;
@@ -799,6 +800,9 @@ export type PartnerRow = {
   activated_at: string | null;
   suspended_at: string | null;
   termination_reason: string | null;
+  // Postgres numeric columns are serialized as strings by the JS driver.
+  entry_fee_amount: string | null;
+  entry_fee_paid_at: string | null;
   metadata: Record<string, unknown>;
   created_at: string;
   updated_at: string;

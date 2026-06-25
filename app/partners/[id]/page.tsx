@@ -9,6 +9,7 @@ import { PartnerReferralsTab } from "@/components/PartnerReferralsTab";
 import { AttributeUserDialog } from "@/components/AttributeUserDialog";
 import { AuditList } from "@/components/AuditList";
 import { RequestCompletionButton } from "@/components/RequestCompletionButton";
+import { MarkEntryFeePaidButton } from "@/components/MarkEntryFeePaidButton";
 import { PartnerEditForm } from "@/components/PartnerEditForm";
 import { EdgeRateDialog } from "@/components/EdgeRateDialog";
 import { LedgerTable } from "@/components/LedgerTable";
@@ -179,6 +180,11 @@ export default async function PartnerDetailPage({
               Editar cadastro
             </Link>
             <RequestCompletionButton partnerId={partner.id} />
+            {partner.role === "representante" &&
+            partner.entry_fee_amount != null &&
+            partner.entry_fee_paid_at == null ? (
+              <MarkEntryFeePaidButton partnerId={partner.id} />
+            ) : null}
           </div>
 
           {/* Dados da plataforma */}

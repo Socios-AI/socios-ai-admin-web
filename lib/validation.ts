@@ -385,3 +385,11 @@ export const createPartnerInviteSchema = z.object({
 });
 
 export type CreatePartnerInviteInput = z.infer<typeof createPartnerInviteSchema>;
+
+// =============================================================
+// Plan C1 · Mark entry fee paid
+// =============================================================
+
+export const markEntryFeePaidSchema = z.object({
+  partnerId: z.string().uuid(),
+});
