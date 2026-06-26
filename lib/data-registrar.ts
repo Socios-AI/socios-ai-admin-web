@@ -9,6 +9,7 @@
 // Regra: NUNCA adicionar colunas financeiras aos selects abaixo.
 
 import { getSupabaseAdminClient } from "@socios-ai/auth/admin";
+import { deriveAdminRoleSlug } from "@/lib/admin-role-slug";
 
 export type RegistrarPartner = {
   id: string;
@@ -37,6 +38,15 @@ export type RegistrarOrg = {
   slug: string;
   niche: string | null;
   createdAt: string;
+};
+
+export type RegistrarOrgDetail = {
+  id: string;
+  name: string;
+  slug: string;
+  niche: string | null;
+  createdAt: string;
+  members: Array<{ appSlug: string; roleSlug: string; userId: string | null; email: string | null; isAdmin: boolean; grantedAt: string }>;
 };
 
 export type RegistrarTreeNode = {
@@ -132,6 +142,67 @@ export async function listOrgsForRegistrar(): Promise<RegistrarOrg[]> {
       createdAt: String(r.created_at),
     };
   });
+}
+
+// Detalhe curado de uma org pro cadastrador: nome/slug/nicho + membros por app.
+// SEM nenhuma leitura de subscriptions/plans (regra do arquivo: nada financeiro).
+export async function loadOrgForRegistrar(orgId: string): Promise<RegistrarOrgDetail | null> {
+  const sb = getSupabaseAdminClient();
+
+  const { data: org, error: orgErr } = await sb
+    .from("orgs")
+    .select("id, name, slug, metadata, created_at")
+    .eq("id", orgId)
+    .maybeSingle();
+  if (orgErr) throw new Error(`loadOrgForRegistrar (org) failed: ${orgErr.message}`);
+  if (!org) return null;
+
+  const { data: memberRows, error: memErr } = await sb
+    .from("app_memberships")
+    // SELECT explícito · SEM nenhuma coluna financeira.
+    .select("app_slug, role_slug, user_id, granted_at")
+    .eq("org_id", orgId)
+    .is("revoked_at", null);
+  if (memErr) throw new Error(`loadOrgForRegistrar (members) failed: ${memErr.message}`);
+
+  const rows = (memberRows ?? []) as Array<{
+    app_slug: string;
+    role_slug: string;
+    user_id: string | null;
+    granted_at: string;
+  }>;
+  const names = await resolveNames(rows.flatMap((r) => (r.user_id ? [String(r.user_id)] : [])));
+
+  // Role de admin por app, pra marcar qual membro é o admin editável.
+  const appSlugs = [...new Set(rows.map((r) => r.app_slug))];
+  const adminRoleByApp = new Map<string, string | null>();
+  if (appSlugs.length > 0) {
+    const { data: appRows } = await sb.from("apps").select("slug, role_catalog").in("slug", appSlugs);
+    for (const a of (appRows ?? []) as Array<{ slug: string; role_catalog: unknown }>) {
+      const rc = (a.role_catalog && typeof a.role_catalog === "object"
+        ? a.role_catalog
+        : {}) as Record<string, string>;
+      adminRoleByApp.set(String(a.slug), deriveAdminRoleSlug(rc, String(a.slug)));
+    }
+  }
+
+  const meta = (org.metadata && typeof org.metadata === "object" ? org.metadata : {}) as Record<string, unknown>;
+
+  return {
+    id: String(org.id),
+    name: String(org.name),
+    slug: String(org.slug),
+    niche: (meta.niche as string | null) ?? null,
+    createdAt: String(org.created_at),
+    members: rows.map((r) => ({
+      appSlug: String(r.app_slug),
+      roleSlug: String(r.role_slug),
+      userId: r.user_id ? String(r.user_id) : null,
+      email: r.user_id ? (names.get(String(r.user_id))?.email ?? null) : null,
+      isAdmin: adminRoleByApp.get(String(r.app_slug)) === String(r.role_slug),
+      grantedAt: String(r.granted_at),
+    })),
+  };
 }
 
 // Árvore computada a partir de introduced_by_partner_id (sem tocar no RPC de
