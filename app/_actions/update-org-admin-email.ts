@@ -1,6 +1,6 @@
 "use server";
 
-import { getSupabaseAdminClient } from "@socios-ai/auth/admin";
+import { getSupabaseAdminClient, getCallerClient } from "@socios-ai/auth/admin";
 import { requireRegistrarOrAdminAAL2 } from "@/lib/auth";
 import { deriveAdminRoleSlug } from "@/lib/admin-role-slug";
 import { resolveNicheHost } from "@/lib/niche-domain";
@@ -19,11 +19,11 @@ export type UpdateOrgAdminEmailResult =
   | { ok: false; error: "FORBIDDEN" | "VALIDATION" | "API_ERROR"; message?: string };
 
 // Edita o e-mail de login do admin de um tenant (org) num app. O registrar NÃO
-// envia user_id: resolvemos o admin no servidor (apps.role_catalog +
-// app_memberships) pra ele não conseguir mirar um usuário arbitrário. Se o
-// e-mail mudou: troca o login (GoTrue + profiles), MANTÉM a membership atual
-// (não revoga) e dispara um novo convite de admin pro novo e-mail. Gate:
-// requireRegistrarOrAdminAAL2.
+// envia user_id: resolvemos o admin no servidor. Trava de escalonamento: nunca
+// troca o e-mail de um super_admin. Se o e-mail mudou: dispara um novo convite
+// (org_admin_invite via CALLER client, pois o RPC rejeita service_role) ANTES de
+// trocar o login, pra um convite que falhe não deixar estado parcial; mantém a
+// membership atual. Gate: requireRegistrarOrAdminAAL2.
 export async function updateOrgAdminEmailAction(input: unknown): Promise<UpdateOrgAdminEmailResult> {
   const auth = await requireRegistrarOrAdminAAL2();
   if (!auth) return { ok: false, error: "FORBIDDEN" };
@@ -53,7 +53,7 @@ export async function updateOrgAdminEmailAction(input: unknown): Promise<UpdateO
     return { ok: false, error: "VALIDATION", message: `app '${appSlug}' não tem admin role` };
   }
 
-  // Org: nome + nicho (pro e-mail e pra resolver o host do link).
+  // Org: nome + nicho.
   const { data: orgRow, error: orgErr } = await sb
     .from("orgs")
     .select("name, metadata")
@@ -80,26 +80,29 @@ export async function updateOrgAdminEmailAction(input: unknown): Promise<UpdateO
     return { ok: false, error: "VALIDATION", message: "admin do tenant não encontrado" };
   }
 
-  // E-mail atual (com tratamento de erro de leitura).
-  const { data: cur, error: curErr } = await sb.from("profiles").select("email").eq("id", userId).maybeSingle();
+  // E-mail atual + flag de super_admin do alvo (uma leitura).
+  const { data: cur, error: curErr } = await sb
+    .from("profiles")
+    .select("email, is_super_admin")
+    .eq("id", userId)
+    .maybeSingle();
   if (curErr) return { ok: false, error: "API_ERROR", message: curErr.message };
-  const currentEmail = ((cur?.email as string | null) ?? "").toLowerCase();
 
-  // Nada mudou → no-op (não troca login nem reenvia convite).
+  // Trava de escalonamento: registrar nunca troca o e-mail de um super_admin.
+  if (cur?.is_super_admin === true) {
+    return { ok: false, error: "FORBIDDEN" };
+  }
+
+  const currentEmail = ((cur?.email as string | null) ?? "").toLowerCase();
   if (currentEmail === email) {
     return { ok: true, emailSent: false };
   }
 
-  // Troca o login (já confirmado) e o profiles. Mantém a membership atual.
-  const { error: uErr } = await sb.auth.admin.updateUserById(userId, { email, email_confirm: true });
-  if (uErr) return { ok: false, error: "API_ERROR", message: `email: ${uErr.message}` };
-
-  const { error: profErr } = await sb.from("profiles").update({ email }).eq("id", userId);
-  if (profErr) return { ok: false, error: "API_ERROR", message: profErr.message };
-
-  // Novo convite de admin pro novo e-mail (acesso atual mantido até aceitar).
+  // Convite PRIMEIRO, via caller client (o RPC rejeita service_role). Se falhar,
+  // nada foi alterado ainda (sem estado parcial).
   const expiresInDays = 7;
-  const { data: inviteTokenRaw, error: inviteErr } = await sb.rpc("org_admin_invite", {
+  const sbCaller = getCallerClient({ callerJwt: auth.jwt });
+  const { data: inviteTokenRaw, error: inviteErr } = await sbCaller.rpc("org_admin_invite", {
     p_org_id: orgId,
     p_email: email,
     p_role_slug: adminRoleSlug,
@@ -115,6 +118,13 @@ export async function updateOrgAdminEmailAction(input: unknown): Promise<UpdateO
   }
   const inviteToken = inviteTokenRaw;
 
+  // Troca o login (service-role; GoTrue admin). Mantém a membership atual.
+  const { error: uErr } = await sb.auth.admin.updateUserById(userId, { email, email_confirm: true });
+  if (uErr) return { ok: false, error: "API_ERROR", message: `email: ${uErr.message}` };
+  const { error: profErr } = await sb.from("profiles").update({ email }).eq("id", userId);
+  if (profErr) return { ok: false, error: "API_ERROR", message: profErr.message };
+
+  // E-mail de onboarding (best-effort).
   const expiresAt = new Date(Date.now() + expiresInDays * 24 * 60 * 60 * 1000).toISOString();
   const appPublicUrl = appRow.public_url ? String(appRow.public_url) : null;
   const appFallback = appPublicUrl ?? process.env.NEXT_PUBLIC_PARTNERS_ORIGIN ?? "https://partners.sociosai.com";
