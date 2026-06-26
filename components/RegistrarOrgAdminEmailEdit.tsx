@@ -22,6 +22,7 @@ export function RegistrarOrgAdminEmailEdit({
         <button
           type="button"
           onClick={() => { setEmail(initialEmail); setError(null); setEditing(true); }}
+          aria-label={`Editar e-mail do admin (${appSlug})`}
           className="text-primary hover:underline text-xs"
         >
           Editar
@@ -50,6 +51,7 @@ export function RegistrarOrgAdminEmailEdit({
           type="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter") save(); if (e.key === "Escape") setEditing(false); }}
           className="rounded-lg border border-input bg-background px-2 py-1 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
           autoFocus
         />

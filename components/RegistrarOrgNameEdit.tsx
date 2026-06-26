@@ -47,6 +47,7 @@ export function RegistrarOrgNameEdit({ orgId, initialName }: { orgId: string; in
           id="org-name"
           value={name}
           onChange={(e) => setName(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter") save(); if (e.key === "Escape") setEditing(false); }}
           minLength={2}
           maxLength={200}
           className="rounded-lg border border-input bg-background px-3 py-1.5 text-lg text-foreground focus:outline-none focus:ring-2 focus:ring-ring"

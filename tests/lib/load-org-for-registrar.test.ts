@@ -70,6 +70,7 @@ function buildSb(opts: {
     },
     tables,
     memSelect,
+    appsSelect,
     orgSelectColsString: () => orgSelectColsString,
     memSelectColsString: () => memSelectColsString,
   };
@@ -175,5 +176,19 @@ describe("loadOrgForRegistrar", () => {
     adminClientMock.mockReturnValue(sb);
 
     await expect(loadOrgForRegistrar("org-1")).rejects.toThrow(/loadOrgForRegistrar \(members\)/);
+  });
+
+  it("apps select reads only slug + role_catalog (no financial columns)", async () => {
+    const { sb, appsSelect } = buildSb({
+      org: ORG,
+      members: [
+        { app_slug: "beauty", role_slug: "tenant-admin", user_id: "u1", granted_at: "2026-06-02T00:00:00.000Z" },
+      ],
+      profiles: [{ id: "u1", full_name: "Giselle", email: "giselle@x.com" }],
+      appsRows: [{ slug: "beauty", role_catalog: { "tenant-admin": "Admin" } }],
+    });
+    adminClientMock.mockReturnValue(sb);
+    await loadOrgForRegistrar("org-1");
+    expect(appsSelect).toHaveBeenCalledWith("slug, role_catalog");
   });
 });

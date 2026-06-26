@@ -46,7 +46,7 @@ export async function RegistrarOrgsView() {
                     </Link>
                   </td>
                   <td className="px-3 py-2 text-muted-foreground">{o.slug}</td>
-                  <td className="px-3 py-2 text-muted-foreground">{o.niche ?? "—"}</td>
+                  <td className="px-3 py-2 text-muted-foreground">{o.niche ?? "(sem nicho)"}</td>
                   <td className="px-3 py-2 text-muted-foreground">
                     {new Date(o.createdAt).toLocaleDateString("pt-BR")}
                   </td>
