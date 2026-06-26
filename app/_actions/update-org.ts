@@ -1,7 +1,7 @@
 "use server";
 
 import { getSupabaseAdminClient } from "@socios-ai/auth/admin";
-import { requireSuperAdminAAL2 } from "@/lib/auth";
+import { requireRegistrarOrAdminAAL2 } from "@/lib/auth";
 import { z } from "zod";
 
 const schema = z.object({
@@ -14,10 +14,11 @@ export type UpdateOrgResult =
   | { ok: false; error: "FORBIDDEN" | "VALIDATION" | "API_ERROR"; message?: string };
 
 // Edição do nome do cliente (org). RLS de orgs bloqueia UPDATE pra authenticated,
-// então usamos service-role; o gate é requireSuperAdminAAL2. O slug é interno
-// (auto-gerado) e não é editável aqui.
+// então usamos service-role; o gate é requireRegistrarOrAdminAAL2 (super_admin OU
+// cadastrador, ambos com AAL2). Só edita o nome (campo não-financeiro). O slug é
+// interno (auto-gerado) e não é editável aqui.
 export async function updateOrgAction(input: unknown): Promise<UpdateOrgResult> {
-  const auth = await requireSuperAdminAAL2();
+  const auth = await requireRegistrarOrAdminAAL2();
   if (!auth) return { ok: false, error: "FORBIDDEN" };
 
   const parsed = schema.safeParse(input);
