@@ -9,6 +9,7 @@ function buildSb(opts: {
   org?: { id: string; name: string; slug: string; metadata: unknown; created_at: string } | null;
   members?: Array<Record<string, unknown>>;
   profiles?: Array<{ id: string; full_name: string | null; email: string | null }>;
+  appsRows?: Array<{ slug: string; role_catalog: Record<string, string> }>;
   orgError?: { message: string } | null;
   membersError?: { message: string } | null;
 }) {
@@ -44,6 +45,14 @@ function buildSb(opts: {
     return { eq: memEq };
   });
 
+  // apps: select("slug, role_catalog").in("slug", [...]) → awaitable
+  const appsResult = Promise.resolve({
+    data: (opts.appsRows ?? [{ slug: "beauty", role_catalog: { "tenant-admin": "Admin" } }]),
+    error: null,
+  });
+  const appsIn = vi.fn(() => appsResult);
+  const appsSelect = vi.fn(() => ({ in: appsIn }));
+
   // profiles (via resolveNames): select(...).in("id", ids)
   const profIn = vi.fn(() => Promise.resolve({ data: opts.profiles ?? [], error: null }));
   const profSelect = vi.fn(() => ({ in: profIn }));
@@ -52,6 +61,7 @@ function buildSb(opts: {
     sb: {
       from: vi.fn((table: string) => {
         tables.push(table);
+        if (table === "apps") return { select: appsSelect };
         if (table === "orgs") return { select: orgSelect };
         if (table === "app_memberships") return { select: memSelect };
         if (table === "profiles") return { select: profSelect };
@@ -89,6 +99,7 @@ describe("loadOrgForRegistrar", () => {
         { app_slug: "beauty", role_slug: "tenant-admin", user_id: "u1", granted_at: "2026-06-02T00:00:00.000Z" },
       ],
       profiles: [{ id: "u1", full_name: "Giselle", email: "giselle@x.com" }],
+      appsRows: [{ slug: "beauty", role_catalog: { "tenant-admin": "Admin" } }],
     });
     adminClientMock.mockReturnValue(sb);
 
@@ -97,8 +108,23 @@ describe("loadOrgForRegistrar", () => {
     expect(r!.name).toBe("Clínica Giselle");
     expect(r!.niche).toBe("beauty");
     expect(r!.members).toEqual([
-      { appSlug: "beauty", roleSlug: "tenant-admin", email: "giselle@x.com", grantedAt: "2026-06-02T00:00:00.000Z" },
+      { appSlug: "beauty", roleSlug: "tenant-admin", userId: "u1", email: "giselle@x.com", isAdmin: true, grantedAt: "2026-06-02T00:00:00.000Z" },
     ]);
+  });
+
+  it("marks non-admin members as isAdmin false", async () => {
+    const { sb } = buildSb({
+      org: ORG,
+      members: [
+        { app_slug: "beauty", role_slug: "stylist", user_id: "u2", granted_at: "2026-06-03T00:00:00.000Z" },
+      ],
+      profiles: [{ id: "u2", full_name: "Sty", email: "sty@x.com" }],
+      appsRows: [{ slug: "beauty", role_catalog: { "tenant-admin": "Admin" } }],
+    });
+    adminClientMock.mockReturnValue(sb);
+    const r = await loadOrgForRegistrar("org-1");
+    expect(r!.members[0].isAdmin).toBe(false);
+    expect(r!.members[0].userId).toBe("u2");
   });
 
   it("never queries financial tables", async () => {

@@ -9,6 +9,7 @@
 // Regra: NUNCA adicionar colunas financeiras aos selects abaixo.
 
 import { getSupabaseAdminClient } from "@socios-ai/auth/admin";
+import { deriveAdminRoleSlug } from "@/lib/admin-role-slug";
 
 export type RegistrarPartner = {
   id: string;
@@ -45,7 +46,7 @@ export type RegistrarOrgDetail = {
   slug: string;
   niche: string | null;
   createdAt: string;
-  members: Array<{ appSlug: string; roleSlug: string; email: string | null; grantedAt: string }>;
+  members: Array<{ appSlug: string; roleSlug: string; userId: string | null; email: string | null; isAdmin: boolean; grantedAt: string }>;
 };
 
 export type RegistrarTreeNode = {
@@ -172,6 +173,19 @@ export async function loadOrgForRegistrar(orgId: string): Promise<RegistrarOrgDe
   }>;
   const names = await resolveNames(rows.flatMap((r) => (r.user_id ? [String(r.user_id)] : [])));
 
+  // Role de admin por app, pra marcar qual membro é o admin editável.
+  const appSlugs = [...new Set(rows.map((r) => r.app_slug))];
+  const adminRoleByApp = new Map<string, string | null>();
+  if (appSlugs.length > 0) {
+    const { data: appRows } = await sb.from("apps").select("slug, role_catalog").in("slug", appSlugs);
+    for (const a of (appRows ?? []) as Array<{ slug: string; role_catalog: unknown }>) {
+      const rc = (a.role_catalog && typeof a.role_catalog === "object"
+        ? a.role_catalog
+        : {}) as Record<string, string>;
+      adminRoleByApp.set(String(a.slug), deriveAdminRoleSlug(rc, String(a.slug)));
+    }
+  }
+
   const meta = (org.metadata && typeof org.metadata === "object" ? org.metadata : {}) as Record<string, unknown>;
 
   return {
@@ -183,7 +197,9 @@ export async function loadOrgForRegistrar(orgId: string): Promise<RegistrarOrgDe
     members: rows.map((r) => ({
       appSlug: String(r.app_slug),
       roleSlug: String(r.role_slug),
+      userId: r.user_id ? String(r.user_id) : null,
       email: r.user_id ? (names.get(String(r.user_id))?.email ?? null) : null,
+      isAdmin: adminRoleByApp.get(String(r.app_slug)) === String(r.role_slug),
       grantedAt: String(r.granted_at),
     })),
   };
