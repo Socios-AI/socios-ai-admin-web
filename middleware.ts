@@ -35,7 +35,9 @@ const STATIC_RE = /^\/_next\/static|^\/_next\/image|^\/favicon\.ico|^\/brand|^\/
 // que não casar aqui vira /forbidden. As Server Actions fazem POST na própria
 // rota da página, então allowlistar as páginas cobre as actions (ex.: o convite
 // e a busca de indicante na /partners/invite, a criação de tenant na /orgs/new).
-// Bloqueados de propósito: /partners/<id> e /orgs/<id> (têm dados financeiros).
+// Bloqueados de propósito: /partners/<id> e /users/<id> (dados financeiros/admin).
+// /orgs/<id> (segmento único) é liberado; a página renderiza view curada sem
+// financeiro pro registrar e as sub-rotas (mais de um segmento) ficam bloqueadas.
 export function isRegistrarAllowed(pathname: string): boolean {
   if (pathname === "/partners" || pathname === "/orgs" || pathname === "/tree") return true;
   if (pathname === "/partners/invite" || pathname.startsWith("/partners/invite/")) return true;
