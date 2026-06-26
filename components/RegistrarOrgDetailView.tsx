@@ -22,7 +22,7 @@ export async function RegistrarOrgDetailView({ orgId }: { orgId: string }) {
             {org.slug} · {org.id.slice(0, 8)}
           </p>
           <p className="text-muted-foreground text-sm">
-            Nicho: {org.niche ?? "—"} · criado em {formatDate(org.createdAt)}
+            Nicho: {org.niche ?? "(sem nicho)"} · criado em {formatDate(org.createdAt)}
           </p>
         </div>
         <OrgEditDialog orgId={org.id} initialName={org.name} />
