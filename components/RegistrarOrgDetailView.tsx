@@ -46,7 +46,7 @@ export async function RegistrarOrgDetailView({ orgId }: { orgId: string }) {
                   <td className="py-2">{m.appSlug}</td>
                   <td className="py-2">{m.roleSlug}</td>
                   <td className="py-2">
-                    {m.isAdmin && m.userId ? (
+                    {m.isAdmin && m.userId && m.appCanInvite ? (
                       <RegistrarOrgAdminEmailEdit orgId={org.id} appSlug={m.appSlug} initialEmail={m.email ?? ""} />
                     ) : (
                       m.email ?? <span className="text-muted-foreground">sem email</span>
