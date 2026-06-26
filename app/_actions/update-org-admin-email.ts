@@ -3,6 +3,7 @@
 import { getSupabaseAdminClient, getCallerClient } from "@socios-ai/auth/admin";
 import { requireRegistrarOrAdminAAL2 } from "@/lib/auth";
 import { deriveAdminRoleSlug } from "@/lib/admin-role-slug";
+import { appCanReceiveOrgInvite } from "@/lib/org-invite-base";
 import { resolveNicheHost } from "@/lib/niche-domain";
 import { tenantOnboardingInvitationEmail } from "@/lib/email-templates/tenant-onboarding-invitation";
 import { sendViaResend } from "@/lib/email-resend";
@@ -44,6 +45,9 @@ export async function updateOrgAdminEmailAction(input: unknown): Promise<UpdateO
     .maybeSingle();
   if (appErr) return { ok: false, error: "API_ERROR", message: appErr.message };
   if (!appRow) return { ok: false, error: "VALIDATION", message: `app '${appSlug}' não encontrado` };
+  if (!appCanReceiveOrgInvite(appSlug, appRow.public_url as string | null)) {
+    return { ok: false, error: "VALIDATION", message: `app '${appSlug}' não tem onboarding; selecione um app válido (não o platform)` };
+  }
   const roleCatalog =
     appRow.role_catalog && typeof appRow.role_catalog === "object"
       ? (appRow.role_catalog as Record<string, string>)
