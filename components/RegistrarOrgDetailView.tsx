@@ -1,31 +1,29 @@
 import { notFound } from "next/navigation";
-import { OrgEditDialog } from "@/components/OrgEditDialog";
+import { RegistrarOrgNameEdit } from "@/components/RegistrarOrgNameEdit";
+import { RegistrarOrgAdminEmailEdit } from "@/components/RegistrarOrgAdminEmailEdit";
 import { loadOrgForRegistrar } from "@/lib/data-registrar";
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString("pt-BR");
 }
 
-// Detalhe curado do cadastrador: nome (editável) + membros read-only.
-// Sem seção Planos, sem cifras, sem link "Gerenciar via usuário" (/users/<id>
-// é bloqueado pro registrar).
+// Detalhe curado do cadastrador: nome editável (inline) + membros read-only,
+// com o e-mail do admin editável inline. Sem seção Planos, sem cifras, sem link
+// "Gerenciar via usuário" (/users/<id> é bloqueado pro registrar).
 export async function RegistrarOrgDetailView({ orgId }: { orgId: string }) {
   const org = await loadOrgForRegistrar(orgId);
   if (!org) notFound();
 
   return (
     <>
-      <header className="mb-6 flex items-start justify-between gap-4">
-        <div>
-          <h1 className="font-display font-semibold text-2xl">{org.name}</h1>
-          <p className="text-muted-foreground text-sm font-mono">
-            {org.slug} · {org.id.slice(0, 8)}
-          </p>
-          <p className="text-muted-foreground text-sm">
-            Nicho: {org.niche ?? "(sem nicho)"} · criado em {formatDate(org.createdAt)}
-          </p>
-        </div>
-        <OrgEditDialog orgId={org.id} initialName={org.name} />
+      <header className="mb-6">
+        <RegistrarOrgNameEdit orgId={org.id} initialName={org.name} />
+        <p className="text-muted-foreground text-sm font-mono mt-1">
+          {org.slug} · {org.id.slice(0, 8)}
+        </p>
+        <p className="text-muted-foreground text-sm">
+          Nicho: {org.niche ?? "(sem nicho)"} · criado em {formatDate(org.createdAt)}
+        </p>
       </header>
 
       <section>
@@ -48,7 +46,11 @@ export async function RegistrarOrgDetailView({ orgId }: { orgId: string }) {
                   <td className="py-2">{m.appSlug}</td>
                   <td className="py-2">{m.roleSlug}</td>
                   <td className="py-2">
-                    {m.email ?? <span className="text-muted-foreground">sem email</span>}
+                    {m.isAdmin && m.userId ? (
+                      <RegistrarOrgAdminEmailEdit orgId={org.id} appSlug={m.appSlug} initialEmail={m.email ?? ""} />
+                    ) : (
+                      m.email ?? <span className="text-muted-foreground">sem email</span>
+                    )}
                   </td>
                   <td className="py-2">{formatDate(m.grantedAt)}</td>
                 </tr>
