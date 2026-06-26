@@ -9,6 +9,7 @@ describe("isRegistrarAllowed · allowlist do cadastrador (registrar)", () => {
       "/partners/invite/whatever",
       "/orgs",
       "/orgs/new",
+      "/orgs/abc-123", // detalhe da org (cadastro, view curada sem financeiro)
       "/tree",
     ]) {
       expect(isRegistrarAllowed(p)).toBe(true);
@@ -28,7 +29,7 @@ describe("isRegistrarAllowed · allowlist do cadastrador (registrar)", () => {
       "/affiliates",
       "/audit",
       "/partners/abc-123", // detalhe do parceiro (dados financeiros)
-      "/orgs/abc-123", // detalhe da org
+      "/orgs/abc-123/billing", // sub-rota extra de org não é liberada
       "/partnersfoo", // não casa prefixo solto
     ]) {
       expect(isRegistrarAllowed(p)).toBe(false);

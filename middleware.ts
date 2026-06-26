@@ -40,6 +40,9 @@ export function isRegistrarAllowed(pathname: string): boolean {
   if (pathname === "/partners" || pathname === "/orgs" || pathname === "/tree") return true;
   if (pathname === "/partners/invite" || pathname.startsWith("/partners/invite/")) return true;
   if (pathname === "/orgs/new" || pathname.startsWith("/orgs/new/")) return true;
+  // Detalhe de org (cadastro do cliente). A página renderiza uma view curada
+  // sem financeiro pro registrar; segmento único só (não casa sub-rotas).
+  if (/^\/orgs\/[^/]+$/.test(pathname)) return true;
   return false;
 }
 
