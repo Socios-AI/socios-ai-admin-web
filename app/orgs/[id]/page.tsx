@@ -3,7 +3,8 @@ import { notFound, redirect } from "next/navigation";
 import { AdminShell } from "@/components/AdminShell";
 import { OrgPlansSection } from "@/components/OrgPlansSection";
 import { OrgEditDialog } from "@/components/OrgEditDialog";
-import { getCallerJwt } from "@/lib/auth";
+import { RegistrarOrgDetailView } from "@/components/RegistrarOrgDetailView";
+import { getCallerJwt, getCallerClaims } from "@/lib/auth";
 import { loadOrg, listPlansCatalog } from "@/lib/data";
 
 export const dynamic = "force-dynamic";
@@ -17,6 +18,18 @@ export default async function OrgDetailPage(props: {
   searchParams: Promise<{ app?: string | string[] }>;
 }) {
   const { id } = await props.params;
+
+  // Cadastrador (registrar, não super_admin): view curada sem financeiro,
+  // org-cêntrica (não precisa de ?app=).
+  const claims = await getCallerClaims();
+  if (claims?.tier === "registrar" && claims?.super_admin !== true) {
+    return (
+      <AdminShell>
+        <RegistrarOrgDetailView orgId={id} />
+      </AdminShell>
+    );
+  }
+
   const { app: appParam } = await props.searchParams;
   const appSlug = Array.isArray(appParam) ? appParam[0] : appParam;
   if (!appSlug) {

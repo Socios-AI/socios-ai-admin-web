@@ -40,7 +40,11 @@ export async function RegistrarOrgsView() {
             ) : (
               orgs.map((o) => (
                 <tr key={o.id} className="border-t border-border">
-                  <td className="px-3 py-2 font-medium">{o.name}</td>
+                  <td className="px-3 py-2 font-medium">
+                    <Link href={`/orgs/${o.id}`} className="text-primary hover:underline">
+                      {o.name}
+                    </Link>
+                  </td>
                   <td className="px-3 py-2 text-muted-foreground">{o.slug}</td>
                   <td className="px-3 py-2 text-muted-foreground">{o.niche ?? "—"}</td>
                   <td className="px-3 py-2 text-muted-foreground">
