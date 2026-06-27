@@ -19,9 +19,10 @@ function buildSb({
   adminUserId = "user-1",
   currentEmail = "old@x.com",
   isSuperAdmin = false,
-}: { adminUserId?: string | null; currentEmail?: string; isSuperAdmin?: boolean } = {}) {
+  appPublicUrl = "https://beauty.x",
+}: { adminUserId?: string | null; currentEmail?: string; isSuperAdmin?: boolean; appPublicUrl?: string | null } = {}) {
   const appMaybe = vi.fn().mockResolvedValue({
-    data: { name: "Beauty", public_url: "https://beauty.x", role_catalog: { "tenant-admin": "Admin" }, metadata: {} },
+    data: { name: "Beauty", public_url: appPublicUrl, role_catalog: { "tenant-admin": "Admin" }, metadata: {} },
     error: null,
   });
   const orgMaybe = vi.fn().mockResolvedValue({ data: { name: "Clínica X", metadata: { niche: "beauty" } }, error: null });
@@ -146,6 +147,27 @@ describe("updateOrgAdminEmailAction", () => {
     const r = await updateOrgAdminEmailAction(valid);
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.error).toBe("FORBIDDEN");
+  });
+
+  it("VALIDATION e nada enviado quando o app é platform / sem public_url", async () => {
+    authMock.mockResolvedValue(registrarAuth);
+    // platform slug: guard trips on slug even with a public_url
+    const parts1 = buildSb({ currentEmail: "old@x.com" });
+    wire(parts1);
+    const r1 = await updateOrgAdminEmailAction({ orgId: valid.orgId, appSlug: "platform", email: "new@x.com" });
+    expect(r1.ok).toBe(false);
+    if (!r1.ok) expect(r1.error).toBe("VALIDATION");
+    expect(parts1.updateUserById).not.toHaveBeenCalled();
+    expect(parts1.rpc).not.toHaveBeenCalled();
+
+    // null public_url: guard trips on missing url
+    const parts2 = buildSb({ currentEmail: "old@x.com", appPublicUrl: null });
+    wire(parts2);
+    const r2 = await updateOrgAdminEmailAction(valid);
+    expect(r2.ok).toBe(false);
+    if (!r2.ok) expect(r2.error).toBe("VALIDATION");
+    expect(parts2.updateUserById).not.toHaveBeenCalled();
+    expect(parts2.rpc).not.toHaveBeenCalled();
   });
 
   it("best-effort email: ok with emailSent false when send throws", async () => {

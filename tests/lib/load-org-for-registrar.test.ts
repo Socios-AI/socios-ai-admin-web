@@ -9,7 +9,7 @@ function buildSb(opts: {
   org?: { id: string; name: string; slug: string; metadata: unknown; created_at: string } | null;
   members?: Array<Record<string, unknown>>;
   profiles?: Array<{ id: string; full_name: string | null; email: string | null }>;
-  appsRows?: Array<{ slug: string; role_catalog: Record<string, string> }>;
+  appsRows?: Array<{ slug: string; role_catalog: Record<string, string>; public_url?: string | null }>;
   orgError?: { message: string } | null;
   membersError?: { message: string } | null;
 }) {
@@ -47,7 +47,7 @@ function buildSb(opts: {
 
   // apps: select("slug, role_catalog").in("slug", [...]) → awaitable
   const appsResult = Promise.resolve({
-    data: (opts.appsRows ?? [{ slug: "beauty", role_catalog: { "tenant-admin": "Admin" } }]),
+    data: (opts.appsRows ?? [{ slug: "beauty", role_catalog: { "tenant-admin": "Admin" }, public_url: "https://beauty.sociosai.com" }]),
     error: null,
   });
   const appsIn = vi.fn(() => appsResult);
@@ -100,7 +100,7 @@ describe("loadOrgForRegistrar", () => {
         { app_slug: "beauty", role_slug: "tenant-admin", user_id: "u1", granted_at: "2026-06-02T00:00:00.000Z" },
       ],
       profiles: [{ id: "u1", full_name: "Giselle", email: "giselle@x.com" }],
-      appsRows: [{ slug: "beauty", role_catalog: { "tenant-admin": "Admin" } }],
+      appsRows: [{ slug: "beauty", role_catalog: { "tenant-admin": "Admin" }, public_url: "https://beauty.sociosai.com" }],
     });
     adminClientMock.mockReturnValue(sb);
 
@@ -109,7 +109,7 @@ describe("loadOrgForRegistrar", () => {
     expect(r!.name).toBe("Clínica Giselle");
     expect(r!.niche).toBe("beauty");
     expect(r!.members).toEqual([
-      { appSlug: "beauty", roleSlug: "tenant-admin", userId: "u1", email: "giselle@x.com", isAdmin: true, grantedAt: "2026-06-02T00:00:00.000Z" },
+      { appSlug: "beauty", roleSlug: "tenant-admin", userId: "u1", email: "giselle@x.com", isAdmin: true, appCanInvite: true, grantedAt: "2026-06-02T00:00:00.000Z" },
     ]);
   });
 
@@ -178,17 +178,31 @@ describe("loadOrgForRegistrar", () => {
     await expect(loadOrgForRegistrar("org-1")).rejects.toThrow(/loadOrgForRegistrar \(members\)/);
   });
 
-  it("apps select reads only slug + role_catalog (no financial columns)", async () => {
+  it("apps select reads slug + role_catalog + public_url (no financial columns)", async () => {
     const { sb, appsSelect } = buildSb({
       org: ORG,
       members: [
         { app_slug: "beauty", role_slug: "tenant-admin", user_id: "u1", granted_at: "2026-06-02T00:00:00.000Z" },
       ],
       profiles: [{ id: "u1", full_name: "Giselle", email: "giselle@x.com" }],
-      appsRows: [{ slug: "beauty", role_catalog: { "tenant-admin": "Admin" } }],
+      appsRows: [{ slug: "beauty", role_catalog: { "tenant-admin": "Admin" }, public_url: "https://beauty.sociosai.com" }],
     });
     adminClientMock.mockReturnValue(sb);
     await loadOrgForRegistrar("org-1");
-    expect(appsSelect).toHaveBeenCalledWith("slug, role_catalog");
+    expect(appsSelect).toHaveBeenCalledWith("slug, role_catalog, public_url");
+  });
+
+  it("appCanInvite is false for platform app (null public_url)", async () => {
+    const { sb } = buildSb({
+      org: ORG,
+      members: [
+        { app_slug: "platform", role_slug: "org_admin", user_id: "u3", granted_at: "2026-06-04T00:00:00.000Z" },
+      ],
+      profiles: [{ id: "u3", full_name: "Admin", email: "admin@x.com" }],
+      appsRows: [{ slug: "platform", role_catalog: { "org_admin": "Admin" }, public_url: null }],
+    });
+    adminClientMock.mockReturnValue(sb);
+    const r = await loadOrgForRegistrar("org-1");
+    expect(r!.members[0].appCanInvite).toBe(false);
   });
 });

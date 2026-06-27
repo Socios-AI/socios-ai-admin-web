@@ -8,6 +8,7 @@ import { deriveAdminRoleSlug } from "@/lib/admin-role-slug";
 import { resolveNicheHost } from "@/lib/niche-domain";
 import { tenantOnboardingInvitationEmail } from "@/lib/email-templates/tenant-onboarding-invitation";
 import { sendViaResend } from "@/lib/email-resend";
+import { appCanReceiveOrgInvite } from "@/lib/org-invite-base";
 
 export type CreateOrgResult =
   | {
@@ -55,6 +56,10 @@ export async function createOrgWithIntroducerAction(input: unknown): Promise<Cre
   }
   const appName = String(appRow.name);
   const appPublicUrl = appRow.public_url ? String(appRow.public_url) : null;
+
+  if (!appCanReceiveOrgInvite(data.appSlug, appPublicUrl)) {
+    return { ok: false, error: "VALIDATION", message: `app '${data.appSlug}' não tem onboarding; selecione um app válido (não o platform)` };
+  }
 
   const roleCatalog =
     appRow.role_catalog && typeof appRow.role_catalog === "object"
