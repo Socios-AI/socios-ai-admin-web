@@ -74,46 +74,37 @@ export async function createOrgWithIntroducerAction(input: unknown): Promise<Cre
   // unicidade contra a constraint UNIQUE de orgs.slug.
   const tenantSlug = generateOrgSlug(data.tenantName);
 
-  // Cria a org carimbando o indicante explícito (super_admin override).
-  const { data: orgIdRaw, error: orgErr } = await sb.rpc("create_org_for_app", {
+  // Cria a org + convite do dono ATOMICAMENTE. O e-mail do admin é obrigatório
+  // e o criador NÃO vira membro da org · o cliente vira dono (org_admin) no
+  // aceite (grant_org_admin=true). Carimba o indicante explícito (registrar/super_admin).
+  const { data: rpcRows, error: rpcErr } = await sb.rpc("create_org_with_owner_invite", {
     p_name: data.tenantName,
     p_slug: tenantSlug,
     p_app_slug: data.appSlug,
-    p_admin_user_id: null,
+    p_admin_email: data.adminEmail,
     p_niche: data.niche ?? null,
     p_introduced_by_partner_id: data.introducedByPartnerId ?? null,
-  });
-  if (orgErr) {
-    if (orgErr.code === "42501") return { ok: false, error: "FORBIDDEN" };
-    if (orgErr.code === "22023" || orgErr.code === "23505") {
-      return { ok: false, error: "VALIDATION", message: orgErr.message };
-    }
-    if (orgErr.code === "P0001" && /(niche|introduced_by_partner)/i.test(orgErr.message)) {
-      return { ok: false, error: "VALIDATION", message: orgErr.message };
-    }
-    return { ok: false, error: "API_ERROR", message: orgErr.message };
-  }
-  if (typeof orgIdRaw !== "string") {
-    return { ok: false, error: "API_ERROR", message: "create_org_for_app retornou id inválido" };
-  }
-  const orgId = orgIdRaw;
-
-  // Convida o admin do tenant.
-  const { data: inviteTokenRaw, error: inviteErr } = await sb.rpc("org_admin_invite", {
-    p_org_id: orgId,
-    p_email: data.adminEmail,
-    p_role_slug: adminRoleSlug,
     p_expires_in_days: expiresInDays,
-    p_app_slug: data.appSlug,
   });
-  if (inviteErr) {
-    if (inviteErr.code === "42501") return { ok: false, error: "FORBIDDEN" };
-    return { ok: false, error: "API_ERROR", message: inviteErr.message };
+  if (rpcErr) {
+    if (rpcErr.code === "42501") return { ok: false, error: "FORBIDDEN" };
+    if (rpcErr.code === "22023" || rpcErr.code === "23505") {
+      return { ok: false, error: "VALIDATION", message: rpcErr.message };
+    }
+    if (
+      rpcErr.code === "P0001" &&
+      /(niche|introduced_by_partner|cannot be your own)/i.test(rpcErr.message)
+    ) {
+      return { ok: false, error: "VALIDATION", message: rpcErr.message };
+    }
+    return { ok: false, error: "API_ERROR", message: rpcErr.message };
   }
-  if (typeof inviteTokenRaw !== "string") {
-    return { ok: false, error: "API_ERROR", message: "org_admin_invite retornou token inválido" };
+  const row = Array.isArray(rpcRows) ? rpcRows[0] : rpcRows;
+  const orgId = row?.out_org_id;
+  const inviteToken = row?.out_invite_token;
+  if (typeof orgId !== "string" || typeof inviteToken !== "string") {
+    return { ok: false, error: "API_ERROR", message: "create_org_with_owner_invite retornou dados inválidos" };
   }
-  const inviteToken = inviteTokenRaw;
 
   const expiresAt = new Date(Date.now() + expiresInDays * 24 * 60 * 60 * 1000).toISOString();
   const appFallback =
