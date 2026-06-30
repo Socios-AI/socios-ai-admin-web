@@ -18,7 +18,6 @@ export function UserListTable({ rows }: { rows: UserRow[] }) {
           <tr>
             <th className="px-4 py-3 font-medium">Pessoa</th>
             <th className="px-4 py-3 font-medium">Orgs</th>
-            <th className="px-4 py-3 font-medium">Super-admin</th>
             <th className="px-4 py-3 font-medium">Criado em</th>
           </tr>
         </thead>
@@ -59,7 +58,6 @@ export function UserListTable({ rows }: { rows: UserRow[] }) {
                     </span>
                   )}
                 </td>
-                <td className="px-4 py-3">{row.is_super_admin ? "Sim" : "Não"}</td>
                 <td className="px-4 py-3 text-muted-foreground">
                   {new Date(row.created_at).toLocaleDateString("pt-BR")}
                 </td>
