@@ -19,8 +19,9 @@ function buildSb({
   adminUserId = "user-1",
   currentEmail = "old@x.com",
   isSuperAdmin = false,
+  isStaff = false,
   appPublicUrl = "https://beauty.x",
-}: { adminUserId?: string | null; currentEmail?: string; isSuperAdmin?: boolean; appPublicUrl?: string | null } = {}) {
+}: { adminUserId?: string | null; currentEmail?: string; isSuperAdmin?: boolean; isStaff?: boolean; appPublicUrl?: string | null } = {}) {
   const appMaybe = vi.fn().mockResolvedValue({
     data: { name: "Beauty", public_url: appPublicUrl, role_catalog: { "tenant-admin": "Admin" }, metadata: {} },
     error: null,
@@ -37,6 +38,10 @@ function buildSb({
     if (table === "orgs") return { select: () => ({ eq: () => ({ maybeSingle: orgMaybe }) }) };
     if (table === "app_memberships") {
       return { select: () => ({ eq: () => ({ eq: () => ({ eq: () => ({ is: () => ({ maybeSingle: memMaybe }) }) }) }) }) };
+    }
+    if (table === "platform_actors") {
+      const rows = isStaff ? [{ tier: "registrar" }] : [];
+      return { select: () => ({ eq: () => ({ is: () => ({ in: () => Promise.resolve({ data: rows, error: null }) }) }) }) };
     }
     return {
       select: () => ({ eq: () => ({ maybeSingle: profileMaybe }) }),
@@ -94,6 +99,17 @@ describe("updateOrgAdminEmailAction", () => {
   it("forbidden when target admin is a super_admin (no swap, no invite)", async () => {
     authMock.mockResolvedValue(registrarAuth);
     const parts = buildSb({ isSuperAdmin: true });
+    wire(parts);
+    const r = await updateOrgAdminEmailAction(valid);
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error).toBe("FORBIDDEN");
+    expect(parts.updateUserById).not.toHaveBeenCalled();
+    expect(parts.rpc).not.toHaveBeenCalled();
+  });
+
+  it("forbidden when target admin is platform staff (no swap, no invite)", async () => {
+    authMock.mockResolvedValue(registrarAuth);
+    const parts = buildSb({ isStaff: true });
     wire(parts);
     const r = await updateOrgAdminEmailAction(valid);
     expect(r.ok).toBe(false);
