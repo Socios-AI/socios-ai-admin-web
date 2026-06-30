@@ -3,6 +3,8 @@ import { encodeCursor, type AuditCursor } from "./audit-cursor";
 
 export type UserOrgRef = { id: string; name: string };
 
+export type PartnerRole = "licenciado" | "representante" | "embaixador" | "afiliado";
+
 export type UserRow = {
   id: string;
   email: string;
@@ -10,6 +12,9 @@ export type UserRow = {
   created_at: string;
   is_super_admin: boolean;
   orgs: UserOrgRef[];
+  partner_role: PartnerRole | null;
+  partner_status: string | null;
+  staff_tier: "owner" | "admin" | "registrar" | null;
 };
 
 export type Membership = {
@@ -98,6 +103,36 @@ export async function listUsers(args: ListUsersArgs): Promise<{ rows: UserRow[];
     }
   }
 
+  // Papel de parceiro (rede) e tier de staff · fontes de "função" além de org.
+  const partnerByUser = new Map<string, { role: PartnerRole; status: string }>();
+  const staffByUser = new Map<string, "owner" | "admin" | "registrar">();
+  if (ids.length > 0) {
+    const { data: prs, error: prErr } = await sb
+      .from("partners")
+      .select("user_id, role, status")
+      .in("user_id", ids);
+    if (prErr) throw new Error(`listUsers partners failed: ${prErr.message}`);
+    for (const pr of (prs ?? []) as Array<{ user_id: string; role: PartnerRole; status: string }>) {
+      const cur = partnerByUser.get(pr.user_id);
+      // prefere a linha ativa se houver mais de uma
+      if (!cur || (pr.status === "active" && cur.status !== "active")) {
+        partnerByUser.set(pr.user_id, { role: pr.role, status: pr.status });
+      }
+    }
+
+    const { data: pas, error: paErr } = await sb
+      .from("platform_actors")
+      .select("user_id, tier")
+      .in("user_id", ids)
+      .is("valid_to", null);
+    if (paErr) throw new Error(`listUsers platform_actors failed: ${paErr.message}`);
+    const rank: Record<string, number> = { owner: 3, admin: 2, registrar: 1 };
+    for (const pa of (pas ?? []) as Array<{ user_id: string; tier: "owner" | "admin" | "registrar" }>) {
+      const cur = staffByUser.get(pa.user_id);
+      if (!cur || (rank[pa.tier] ?? 0) > (rank[cur] ?? 0)) staffByUser.set(pa.user_id, pa.tier);
+    }
+  }
+
   const rows: UserRow[] = profs.map((p) => ({
     id: p.id,
     email: p.email,
@@ -105,6 +140,9 @@ export async function listUsers(args: ListUsersArgs): Promise<{ rows: UserRow[];
     created_at: p.created_at,
     is_super_admin: p.is_super_admin,
     orgs: orgsByUser.get(p.id) ?? [],
+    partner_role: partnerByUser.get(p.id)?.role ?? null,
+    partner_status: partnerByUser.get(p.id)?.status ?? null,
+    staff_tier: staffByUser.get(p.id) ?? null,
   }));
   return { rows, total: count ?? 0 };
 }
