@@ -97,6 +97,21 @@ export async function updateOrgAdminEmailAction(input: unknown): Promise<UpdateO
     return { ok: false, error: "FORBIDDEN" };
   }
 
+  // Trava anti-sequestro: nunca trocar o LOGIN de uma conta de staff da
+  // plataforma (owner/registrar/admin). Se o admin de uma org for staff (estado
+  // bagunçado), editar o e-mail da org sequestraria o login do staff. Ver
+  // incidente 2026-06-30.
+  const { data: staffActors, error: staffErr } = await sb
+    .from("platform_actors")
+    .select("tier")
+    .eq("user_id", userId)
+    .is("valid_to", null)
+    .in("tier", ["owner", "registrar", "admin"]);
+  if (staffErr) return { ok: false, error: "API_ERROR", message: staffErr.message };
+  if (staffActors && staffActors.length > 0) {
+    return { ok: false, error: "FORBIDDEN" };
+  }
+
   const currentEmail = ((cur?.email as string | null) ?? "").toLowerCase();
   if (currentEmail === email) {
     return { ok: true, emailSent: false };
