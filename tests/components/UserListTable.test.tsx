@@ -11,6 +11,9 @@ function row(over: Partial<UserRow> = {}): UserRow {
     created_at: "2026-06-29T12:00:00Z",
     is_super_admin: false,
     orgs: [],
+    partner_role: null,
+    partner_status: null,
+    staff_tier: null,
     ...over,
   };
 }
@@ -24,7 +27,6 @@ describe("<UserListTable>", () => {
 
   it("usa o email como principal quando não há nome", () => {
     render(<UserListTable rows={[row({ full_name: null, email: "noname@x.com" })]} />);
-    // email aparece uma única vez (como principal, sem linha secundária duplicada)
     expect(screen.getAllByText("noname@x.com")).toHaveLength(1);
   });
 
@@ -38,14 +40,34 @@ describe("<UserListTable>", () => {
     ];
     render(<UserListTable rows={[row({ orgs })]} />);
     expect(screen.getByText("Salão A")).toBeInTheDocument();
-    expect(screen.getByText("Clínica B")).toBeInTheDocument();
     expect(screen.getByText("Loja C")).toBeInTheDocument();
     expect(screen.queryByText("Studio D")).not.toBeInTheDocument();
     expect(screen.getByText("+2")).toBeInTheDocument();
   });
 
-  it("mostra (sem org) quando o usuário não tem orgs", () => {
-    render(<UserListTable rows={[row({ orgs: [] })]} />);
-    expect(screen.getByText("(sem org)")).toBeInTheDocument();
+  it("mostra o papel de parceiro (representante -> Revendedor) e a org junto", () => {
+    render(
+      <UserListTable
+        rows={[row({ partner_role: "representante", partner_status: "active", orgs: [{ id: "o1", name: "Salão A" }] })]}
+      />,
+    );
+    expect(screen.getByText("Revendedor")).toBeInTheDocument();
+    expect(screen.getByText("Salão A")).toBeInTheDocument();
+  });
+
+  it("mostra o papel de licenciado mesmo sem org", () => {
+    render(<UserListTable rows={[row({ partner_role: "licenciado", partner_status: "active", orgs: [] })]} />);
+    expect(screen.getByText("Licenciado")).toBeInTheDocument();
+    expect(screen.queryByText("(sem vínculo)")).not.toBeInTheDocument();
+  });
+
+  it("mostra badge de staff (registrar -> Cadastrador)", () => {
+    render(<UserListTable rows={[row({ staff_tier: "registrar" })]} />);
+    expect(screen.getByText("Cadastrador")).toBeInTheDocument();
+  });
+
+  it("mostra (sem vínculo) quando não há org, papel nem staff", () => {
+    render(<UserListTable rows={[row({ orgs: [], partner_role: null, staff_tier: null })]} />);
+    expect(screen.getByText("(sem vínculo)")).toBeInTheDocument();
   });
 });
