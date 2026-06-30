@@ -1,12 +1,15 @@
 import { getCallerClient } from "@socios-ai/auth/admin";
 import { encodeCursor, type AuditCursor } from "./audit-cursor";
 
+export type UserOrgRef = { id: string; name: string };
+
 export type UserRow = {
   id: string;
   email: string;
+  full_name: string | null;
   created_at: string;
   is_super_admin: boolean;
-  membership_count: number;
+  orgs: UserOrgRef[];
 };
 
 export type Membership = {
@@ -39,12 +42,10 @@ export async function listUsers(args: ListUsersArgs): Promise<{ rows: UserRow[];
   const limit = args.limit ?? 20;
   const offset = args.offset ?? 0;
 
-  // We query auth.users-like data via the public.profiles table (which the JWT hook keeps in sync).
-  // Email lives in auth.users; super-admin RLS bypass on profiles allows joining via FK.
-  // For v1 simplicity, query profiles + count memberships separately.
+  // Página de pessoas (profiles mantido em sync pelo hook do JWT).
   let query = sb
     .from("profiles")
-    .select("id, email, created_at, is_super_admin, app_memberships:app_memberships(count)", { count: "exact" })
+    .select("id, email, full_name, created_at, is_super_admin", { count: "exact" })
     .order("created_at", { ascending: false })
     .range(offset, offset + limit - 1);
 
@@ -55,12 +56,55 @@ export async function listUsers(args: ListUsersArgs): Promise<{ rows: UserRow[];
   const { data, error, count } = await query;
   if (error) throw new Error(`listUsers failed: ${error.message}`);
 
-  const rows: UserRow[] = (data ?? []).map((p: { id: string; email: string; created_at: string; is_super_admin: boolean; app_memberships?: Array<{ count: number }> }) => ({
+  const profs = (data ?? []) as Array<{
+    id: string;
+    email: string;
+    full_name: string | null;
+    created_at: string;
+    is_super_admin: boolean;
+  }>;
+  const ids = profs.map((p) => p.id);
+
+  // Orgs ativas por usuário. app_memberships.org_id NÃO tem FK p/ orgs, então
+  // buscamos os nomes em query separada e juntamos aqui (sem embed).
+  const orgsByUser = new Map<string, UserOrgRef[]>();
+  if (ids.length > 0) {
+    const { data: mems, error: mErr } = await sb
+      .from("app_memberships")
+      .select("user_id, org_id")
+      .in("user_id", ids)
+      .is("revoked_at", null)
+      .not("org_id", "is", null);
+    if (mErr) throw new Error(`listUsers memberships failed: ${mErr.message}`);
+
+    const memRows = (mems ?? []) as Array<{ user_id: string; org_id: string }>;
+    const orgIds = [...new Set(memRows.map((m) => m.org_id))];
+    const nameById = new Map<string, string>();
+    if (orgIds.length > 0) {
+      const { data: orgs, error: oErr } = await sb.from("orgs").select("id, name").in("id", orgIds);
+      if (oErr) throw new Error(`listUsers orgs failed: ${oErr.message}`);
+      for (const o of (orgs ?? []) as Array<{ id: string; name: string }>) nameById.set(o.id, o.name);
+    }
+
+    const seen = new Map<string, Set<string>>();
+    for (const m of memRows) {
+      const set = seen.get(m.user_id) ?? new Set<string>();
+      if (set.has(m.org_id)) continue; // dedupe: mesma org em apps diferentes
+      set.add(m.org_id);
+      seen.set(m.user_id, set);
+      const arr = orgsByUser.get(m.user_id) ?? [];
+      arr.push({ id: m.org_id, name: nameById.get(m.org_id) ?? "(org sem nome)" });
+      orgsByUser.set(m.user_id, arr);
+    }
+  }
+
+  const rows: UserRow[] = profs.map((p) => ({
     id: p.id,
     email: p.email,
+    full_name: p.full_name ?? null,
     created_at: p.created_at,
     is_super_admin: p.is_super_admin,
-    membership_count: p.app_memberships?.[0]?.count ?? 0,
+    orgs: orgsByUser.get(p.id) ?? [],
   }));
   return { rows, total: count ?? 0 };
 }
