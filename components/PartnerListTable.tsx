@@ -71,6 +71,7 @@ export function PartnerListTable({
     {
       key: "tier",
       header: "Tier",
+      width: "7rem",
       cell: (p) => <TierBadge tier={p.tier} />,
       filter: {
         label: "Tier",
@@ -84,6 +85,7 @@ export function PartnerListTable({
     {
       key: "role",
       header: "Papel",
+      width: "8rem",
       cell: (p) =>
         p.role ? (
           <Badge variant="muted">{ROLE_LABEL[p.role]}</Badge>
@@ -94,6 +96,7 @@ export function PartnerListTable({
     {
       key: "status",
       header: "Status",
+      width: "10.5rem",
       cell: (p) => <PartnerStatusBadge status={p.status} />,
       filter: {
         label: "Status",
@@ -128,11 +131,15 @@ export function PartnerListTable({
     {
       key: "commission",
       header: "Comissão",
+      align: "right",
+      width: "7rem",
+      className: "tabular-nums",
       cell: (p) => fmtPct(p.custom_commission_pct),
     },
     {
       key: "activated",
       header: "Ativado em",
+      width: "9rem",
       cell: (p) => fmtDate(p.activated_at),
       sortAccessor: (p) => p.activated_at ?? "",
     },
@@ -140,6 +147,7 @@ export function PartnerListTable({
       key: "actions",
       header: "",
       align: "right",
+      width: "6rem",
       cell: (p) => (
         <Link href={`/partners/${p.id}`} className="text-primary hover:underline">
           Detalhes

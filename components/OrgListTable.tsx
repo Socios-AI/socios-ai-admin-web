@@ -74,12 +74,14 @@ export function OrgListTable({ orgs, apps }: { orgs: OrgListing[]; apps: AppOpti
       key: "members",
       header: "Membros",
       align: "right",
+      width: "6rem",
       sortAccessor: (o) => o.activeMembers,
       cell: (o) => o.activeMembers,
     },
     {
       key: "lastActivity",
       header: "Última atividade",
+      width: "10rem",
       sortAccessor: (o) => new Date(o.lastActivity).getTime(),
       cell: (o) => <span className="text-muted-foreground">{formatDate(o.lastActivity)}</span>,
     },
@@ -87,6 +89,7 @@ export function OrgListTable({ orgs, apps }: { orgs: OrgListing[]; apps: AppOpti
       key: "actions",
       header: "",
       align: "right",
+      width: "6.5rem",
       cell: (o) => (
         // Abre no contexto do app mais recente (a org é vista sempre por app).
         <Link

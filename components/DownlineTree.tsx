@@ -84,7 +84,7 @@ export function DownlineTree({
               <TD className="text-right tabular-nums text-muted-foreground">{fmtRate(n.rate_to_parent)}</TD>
               <TD className="text-right tabular-nums">{fmtEarned(n.earned)}</TD>
               <TD className="text-right tabular-nums text-muted-foreground">{n.child_count}</TD>
-              <TD>
+              <TD className="text-right">
                 <Link href={`/partners/${n.partner_id}`} className="text-primary hover:underline">
                   abrir
                 </Link>

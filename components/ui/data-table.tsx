@@ -23,6 +23,9 @@ export interface Column<T> {
   align?: "left" | "right" | "center";
   className?: string;
   headerClassName?: string;
+  // Largura fixa da coluna (ex: "9rem"). Se ao menos uma coluna definir width,
+  // a tabela usa table-layout: fixed · larguras estáveis entre páginas.
+  width?: string;
 }
 
 export interface DataTableProps<T> {
@@ -69,6 +72,9 @@ export function DataTable<T>({
   const [page, setPage] = React.useState(0);
   const [expanded, setExpanded] = React.useState<Record<string, boolean>>({});
   const expandable = Boolean(renderSubRow);
+  // Com larguras definidas, fixa o layout para as colunas não "pularem" entre
+  // páginas (o conteúdo de cada página deixa de ditar a largura).
+  const hasWidths = columns.some((c) => c.width);
 
   const filterCols = React.useMemo(
     () => columns.filter((c) => c.filter),
@@ -182,7 +188,18 @@ export function DataTable<T>({
           />
         )
       ) : (
-        <Table>
+        <Table className={hasWidths ? "table-fixed" : undefined}>
+          {hasWidths ? (
+            <colgroup>
+              {expandable ? <col style={{ width: "2rem" }} /> : null}
+              {columns.map((col) => (
+                <col
+                  key={col.key}
+                  style={col.width ? { width: col.width } : undefined}
+                />
+              ))}
+            </colgroup>
+          ) : null}
           <THead>
             <TR>
               {expandable ? <TH className="w-8" aria-hidden="true" /> : null}

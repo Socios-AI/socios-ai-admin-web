@@ -115,7 +115,7 @@ export function OrgPlansSection({ orgId, appSlug, subscriptions, availablePlans 
                   <TR>
                     <TH>Plano</TH>
                     <TH>Status</TH>
-                    <TH>Preço</TH>
+                    <TH className="text-right">Preço</TH>
                     <TH>Período até</TH>
                     <TH className="text-right">Ações</TH>
                   </TR>
@@ -134,7 +134,7 @@ export function OrgPlansSection({ orgId, appSlug, subscriptions, availablePlans 
                       <TD>
                         <Badge variant={statusVariant(s.status)}>{s.status}</Badge>
                       </TD>
-                      <TD>
+                      <TD className="text-right tabular-nums">
                         {formatPrice(s.plan.price_amount, s.plan.currency)} ({s.plan.billing_period})
                       </TD>
                       <TD className="text-muted-foreground">
@@ -169,7 +169,7 @@ export function OrgPlansSection({ orgId, appSlug, subscriptions, availablePlans 
                     <TR>
                       <TH>Plano</TH>
                       <TH>Status</TH>
-                      <TH>Preço</TH>
+                      <TH className="text-right">Preço</TH>
                       <TH>Período até</TH>
                       <TH />
                     </TR>
@@ -188,7 +188,7 @@ export function OrgPlansSection({ orgId, appSlug, subscriptions, availablePlans 
                         <TD>
                           <Badge variant="muted">{s.status}</Badge>
                         </TD>
-                        <TD>
+                        <TD className="text-right tabular-nums">
                           {formatPrice(s.plan.price_amount, s.plan.currency)} ({s.plan.billing_period})
                         </TD>
                         <TD className="text-muted-foreground">

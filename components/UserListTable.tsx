@@ -122,6 +122,7 @@ const columns: Column<UserRow>[] = [
   {
     key: "created",
     header: "Criado em",
+    width: "9rem",
     cell: (row) => (
       <span className="text-muted-foreground">
         {new Date(row.created_at).toLocaleDateString("pt-BR")}
