@@ -60,11 +60,13 @@ export function OrgListTable({ orgs, apps }: { orgs: OrgListing[]; apps: AppOpti
       },
       cell: (o) => (
         <span className="flex flex-wrap items-center gap-1.5">
-          {o.apps.map((a) => (
-            <Badge key={a.appSlug} variant={appVariant(a.appSlug)}>
-              {label(a.appSlug)}
-            </Badge>
-          ))}
+          {[...o.apps]
+            .sort((a, b) => label(a.appSlug).localeCompare(label(b.appSlug), "pt-BR"))
+            .map((a) => (
+              <Badge key={a.appSlug} variant={appVariant(a.appSlug)}>
+                {label(a.appSlug)}
+              </Badge>
+            ))}
         </span>
       ),
     },
@@ -134,7 +136,9 @@ function OrgAppBreakdown({
         Detalhe por app
       </p>
       <div className="divide-y divide-border/60">
-        {org.apps.map((a) => (
+        {[...org.apps]
+          .sort((a, b) => label(a.appSlug).localeCompare(label(b.appSlug), "pt-BR"))
+          .map((a) => (
           <div
             key={a.appSlug}
             className="grid grid-cols-1 items-center gap-2 py-2.5 sm:grid-cols-[minmax(160px,1fr)_auto_auto_auto] sm:gap-6"

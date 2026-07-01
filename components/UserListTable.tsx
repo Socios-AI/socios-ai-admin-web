@@ -4,7 +4,7 @@ import Link from "next/link";
 import { Users, ShieldCheck } from "lucide-react";
 import type { PartnerRole, UserRow } from "@/lib/data";
 import { DataTable, type Column } from "@/components/ui/data-table";
-import { Badge } from "@/components/ui/badge";
+import { Badge, type BadgeVariant } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { buttonClasses } from "@/components/ui/button";
 
@@ -21,6 +21,21 @@ const STAFF_LABEL: Record<NonNullable<UserRow["staff_tier"]>, string> = {
   owner: "Owner",
   admin: "Admin",
   registrar: "Cadastrador",
+};
+
+// Cada papel tem uma cor própria e distinta, pra leitura rápida.
+// Parceiros = tints coloridos; staff interno (Cadastrador/Owner/Admin) = navy sólido.
+const PARTNER_VARIANT: Record<PartnerRole, BadgeVariant> = {
+  licenciado: "purple",
+  representante: "sky",
+  embaixador: "lime",
+  afiliado: "warning",
+};
+
+const STAFF_VARIANT: Record<NonNullable<UserRow["staff_tier"]>, BadgeVariant> = {
+  owner: "navy",
+  admin: "navy",
+  registrar: "navy",
 };
 
 const columns: Column<UserRow>[] = [
@@ -58,9 +73,15 @@ const columns: Column<UserRow>[] = [
       const hasAnything = row.partner_role || row.staff_tier || row.orgs.length > 0;
       return (
         <span className="flex flex-wrap items-center gap-1">
-          {/* Papel de parceiro · destacado (roxo) quando ativo */}
+          {/* Papel de parceiro · cor por papel quando ativo; muted quando inativo */}
           {row.partner_role ? (
-            <Badge variant={row.partner_status === "active" ? "purple" : "muted"}>
+            <Badge
+              variant={
+                row.partner_status === "active"
+                  ? PARTNER_VARIANT[row.partner_role]
+                  : "muted"
+              }
+            >
               {PARTNER_LABEL[row.partner_role]}
               {row.partner_status && row.partner_status !== "active"
                 ? ` · ${row.partner_status}`
@@ -68,9 +89,11 @@ const columns: Column<UserRow>[] = [
             </Badge>
           ) : null}
 
-          {/* Staff */}
+          {/* Staff interno */}
           {row.staff_tier ? (
-            <Badge variant="sky">{STAFF_LABEL[row.staff_tier]}</Badge>
+            <Badge variant={STAFF_VARIANT[row.staff_tier]}>
+              {STAFF_LABEL[row.staff_tier]}
+            </Badge>
           ) : null}
 
           {/* Orgs (chips) */}
