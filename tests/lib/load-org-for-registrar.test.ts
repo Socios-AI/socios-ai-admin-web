@@ -109,7 +109,7 @@ describe("loadOrgForRegistrar", () => {
     expect(r!.name).toBe("Clínica Giselle");
     expect(r!.niche).toBe("beauty");
     expect(r!.members).toEqual([
-      { appSlug: "beauty", roleSlug: "tenant-admin", userId: "u1", email: "giselle@x.com", isAdmin: true, appCanInvite: true, grantedAt: "2026-06-02T00:00:00.000Z" },
+      { appSlug: "beauty", roleSlug: "tenant-admin", userId: "u1", name: "Giselle", email: "giselle@x.com", isAdmin: true, appCanInvite: true, grantedAt: "2026-06-02T00:00:00.000Z" },
     ]);
   });
 

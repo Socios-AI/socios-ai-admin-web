@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { RegistrarOrgNameEdit } from "@/components/RegistrarOrgNameEdit";
 import { RegistrarOrgAdminEmailEdit } from "@/components/RegistrarOrgAdminEmailEdit";
+import { RegistrarMemberNameEdit } from "@/components/RegistrarMemberNameEdit";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -51,6 +52,7 @@ export async function RegistrarOrgDetailView({ orgId }: { orgId: string }) {
                 <TR>
                   <TH>App</TH>
                   <TH>Papel</TH>
+                  <TH>Nome</TH>
                   <TH>E-mail</TH>
                   <TH>Concedido em</TH>
                 </TR>
@@ -62,6 +64,13 @@ export async function RegistrarOrgDetailView({ orgId }: { orgId: string }) {
                       <Badge variant="muted">{m.appSlug}</Badge>
                     </TD>
                     <TD>{m.roleSlug}</TD>
+                    <TD>
+                      {m.userId ? (
+                        <RegistrarMemberNameEdit userId={m.userId} initialName={m.name ?? ""} />
+                      ) : (
+                        <span className="text-muted-foreground">(sem usuário)</span>
+                      )}
+                    </TD>
                     <TD>
                       {m.isAdmin && m.userId && m.appCanInvite ? (
                         <RegistrarOrgAdminEmailEdit

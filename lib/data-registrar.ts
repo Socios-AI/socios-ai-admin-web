@@ -47,7 +47,7 @@ export type RegistrarOrgDetail = {
   slug: string;
   niche: string | null;
   createdAt: string;
-  members: Array<{ appSlug: string; roleSlug: string; userId: string | null; email: string | null; isAdmin: boolean; appCanInvite: boolean; grantedAt: string }>;
+  members: Array<{ appSlug: string; roleSlug: string; userId: string | null; name: string | null; email: string | null; isAdmin: boolean; appCanInvite: boolean; grantedAt: string }>;
 };
 
 export type RegistrarTreeNode = {
@@ -201,6 +201,7 @@ export async function loadOrgForRegistrar(orgId: string): Promise<RegistrarOrgDe
       appSlug: String(r.app_slug),
       roleSlug: String(r.role_slug),
       userId: r.user_id ? String(r.user_id) : null,
+      name: r.user_id ? (names.get(String(r.user_id))?.name || null) : null,
       email: r.user_id ? (names.get(String(r.user_id))?.email ?? null) : null,
       isAdmin: adminRoleByApp.get(String(r.app_slug)) === String(r.role_slug),
       appCanInvite: appCanReceiveOrgInvite(String(r.app_slug), publicUrlByApp.get(String(r.app_slug)) ?? null),
