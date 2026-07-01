@@ -22,9 +22,9 @@ const variants: Record<BadgeVariant, string> = {
   warning: "bg-warning/15 text-foreground border-warning/50",
   destructive: "bg-destructive/10 text-destructive border-destructive/30",
   navy: "bg-support-navy text-white border-transparent",
-  purple: "bg-support-purple/20 text-support-navy border-support-purple/40",
-  sky: "bg-support-sky/20 text-support-navy border-support-sky/40",
-  lime: "bg-support-lime/40 text-support-navy border-support-lime",
+  purple: "bg-support-purple/15 text-foreground border-support-purple/50",
+  sky: "bg-support-sky/15 text-foreground border-support-sky/50",
+  lime: "bg-support-lime/20 text-foreground border-support-lime/60",
 };
 
 export interface BadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
