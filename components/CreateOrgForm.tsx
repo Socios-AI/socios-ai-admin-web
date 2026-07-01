@@ -31,6 +31,7 @@ export function CreateOrgForm({ apps }: { apps: AppOption[] }) {
   const router = useRouter();
   const [appSlug, setAppSlug] = useState(apps[0]?.slug ?? "");
   const [tenantName, setTenantName] = useState("");
+  const [adminName, setAdminName] = useState("");
   const [adminEmail, setAdminEmail] = useState("");
   const [niche, setNiche] = useState("");
 
@@ -73,6 +74,7 @@ export function CreateOrgForm({ apps }: { apps: AppOption[] }) {
       const res = await createOrgWithIntroducerAction({
         appSlug,
         tenantName,
+        adminName,
         adminEmail,
         niche: requiresNiche ? niche : undefined,
         introducedByPartnerId: selectedPartner?.partnerId,
@@ -110,6 +112,18 @@ export function CreateOrgForm({ apps }: { apps: AppOption[] }) {
             onChange={(e) => setTenantName(e.target.value)}
             minLength={2}
             maxLength={100}
+            required
+          />
+        </Field>
+
+        <Field label="Nome do responsável" htmlFor="adminName" required>
+          <Input
+            id="adminName"
+            value={adminName}
+            onChange={(e) => setAdminName(e.target.value)}
+            minLength={2}
+            maxLength={100}
+            placeholder="Nome completo de quem vai administrar"
             required
           />
         </Field>
@@ -233,6 +247,7 @@ export function CreateOrgForm({ apps }: { apps: AppOption[] }) {
               onClick={() => {
                 setResult(null);
                 setTenantName("");
+                setAdminName("");
                 setAdminEmail("");
                 setNiche("");
                 setSelectedPartner(null);

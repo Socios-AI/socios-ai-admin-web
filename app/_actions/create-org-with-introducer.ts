@@ -82,6 +82,7 @@ export async function createOrgWithIntroducerAction(input: unknown): Promise<Cre
     p_slug: tenantSlug,
     p_app_slug: data.appSlug,
     p_admin_email: data.adminEmail,
+    p_admin_name: data.adminName,
     p_niche: data.niche ?? null,
     p_introduced_by_partner_id: data.introducedByPartnerId ?? null,
     p_expires_in_days: expiresInDays,

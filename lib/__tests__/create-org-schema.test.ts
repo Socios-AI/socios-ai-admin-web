@@ -5,6 +5,7 @@ describe("createOrgSchema", () => {
   const base = {
     appSlug: "beauty",
     tenantName: "Clinica X",
+    adminName: "Fulano de Tal",
     adminEmail: "dono@clinica.com",
   };
 
@@ -27,6 +28,16 @@ describe("createOrgSchema", () => {
 
   it("rejects a too-short tenant name", () => {
     expect(createOrgSchema.safeParse({ ...base, tenantName: "X" }).success).toBe(false);
+  });
+
+  it("requires the responsible person's name (adminName)", () => {
+    const noName = {
+      appSlug: base.appSlug,
+      tenantName: base.tenantName,
+      adminEmail: base.adminEmail,
+    };
+    expect(createOrgSchema.safeParse(noName).success).toBe(false);
+    expect(createOrgSchema.safeParse({ ...base, adminName: "X" }).success).toBe(false);
   });
 
   it("drops tenantSlug if passed (no longer part of the schema)", () => {

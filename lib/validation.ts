@@ -365,6 +365,11 @@ export const createOrgSchema = z.object({
   tenantName: z.string().trim().min(2, "Nome muito curto").max(100, "Nome muito longo"),
   // tenantSlug não é mais informado pelo admin: é derivado do nome no servidor
   // (lib/org-slug.ts), garantindo unicidade.
+  adminName: z
+    .string()
+    .trim()
+    .min(2, "Nome do responsável muito curto")
+    .max(100, "Nome do responsável muito longo"),
   adminEmail: z.string().trim().toLowerCase().email("Email inválido"),
   niche: z.string().trim().min(1).optional(),
   introducedByPartnerId: z.string().uuid("Parceiro inválido").optional(),
