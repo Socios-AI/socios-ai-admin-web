@@ -517,14 +517,22 @@ export async function listUserSubscriptions(args: {
 // Plan H: org listing helper
 // =============================================================
 
-export type OrgListing = {
-  orgId: string;
+export type OrgAppEntry = {
   appSlug: string;
-  name: string | null;
-  slug: string | null;
   activeMembers: number;
   firstSeen: string;
   lastActivity: string;
+};
+
+export type OrgListing = {
+  orgId: string;
+  name: string | null;
+  slug: string | null;
+  // Apps em que a org tem acesso ativo, ordenados por lastActivity desc (mais recente primeiro).
+  apps: OrgAppEntry[];
+  activeMembers: number; // usuários distintos ativos na org (somando todos os apps)
+  firstSeen: string; // granted_at mais antigo entre memberships ativos
+  lastActivity: string; // granted_at mais recente entre memberships ativos
 };
 
 export async function listOrgs(args: {
@@ -533,46 +541,77 @@ export async function listOrgs(args: {
 }): Promise<OrgListing[]> {
   const sb = getCallerClient({ callerJwt: args.callerJwt });
 
-  let q = sb
+  const { data, error } = await sb
     .from("app_memberships")
-    .select("org_id, app_slug, revoked_at, granted_at")
-    .not("org_id", "is", null);
-  if (args.app) q = q.eq("app_slug", args.app);
-
-  const { data, error } = await q;
+    .select("org_id, app_slug, user_id, granted_at")
+    .not("org_id", "is", null)
+    .is("revoked_at", null);
   if (error) throw new Error(`listOrgs failed: ${error.message}`);
 
   const rows = (data ?? []) as Array<{
     org_id: string;
     app_slug: string;
-    revoked_at: string | null;
+    user_id: string | null;
     granted_at: string;
   }>;
 
-  const groups = new Map<string, OrgListing>();
+  // Agrega por organização, com breakdown por app. Uma org com acesso a N apps
+  // vira UMA linha (antes virava N linhas), e cada app guarda a própria métrica.
+  type OrgAcc = {
+    orgId: string;
+    apps: Map<string, { users: Set<string>; firstSeen: string; lastActivity: string }>;
+    users: Set<string>;
+    firstSeen: string;
+    lastActivity: string;
+  };
+  const orgs = new Map<string, OrgAcc>();
   for (const r of rows) {
-    const key = `${r.org_id}|${r.app_slug}`;
-    const existing = groups.get(key);
-    const isActive = r.revoked_at === null;
-    if (!existing) {
-      groups.set(key, {
+    let org = orgs.get(r.org_id);
+    if (!org) {
+      org = {
         orgId: r.org_id,
-        appSlug: r.app_slug,
-        name: null,
-        slug: null,
-        activeMembers: isActive ? 1 : 0,
+        apps: new Map(),
+        users: new Set(),
         firstSeen: r.granted_at,
         lastActivity: r.granted_at,
-      });
-      continue;
+      };
+      orgs.set(r.org_id, org);
     }
-    if (isActive) existing.activeMembers += 1;
-    if (r.granted_at < existing.firstSeen) existing.firstSeen = r.granted_at;
-    if (r.granted_at > existing.lastActivity) existing.lastActivity = r.granted_at;
+    if (r.user_id) org.users.add(r.user_id);
+    if (r.granted_at < org.firstSeen) org.firstSeen = r.granted_at;
+    if (r.granted_at > org.lastActivity) org.lastActivity = r.granted_at;
+
+    let app = org.apps.get(r.app_slug);
+    if (!app) {
+      app = { users: new Set(), firstSeen: r.granted_at, lastActivity: r.granted_at };
+      org.apps.set(r.app_slug, app);
+    }
+    if (r.user_id) app.users.add(r.user_id);
+    if (r.granted_at < app.firstSeen) app.firstSeen = r.granted_at;
+    if (r.granted_at > app.lastActivity) app.lastActivity = r.granted_at;
   }
 
-  const listed = [...groups.values()]
-    .filter((g) => g.activeMembers > 0)
+  let listed: OrgListing[] = [...orgs.values()].map((o) => ({
+    orgId: o.orgId,
+    name: null,
+    slug: null,
+    activeMembers: o.users.size,
+    firstSeen: o.firstSeen,
+    lastActivity: o.lastActivity,
+    apps: [...o.apps.entries()]
+      .map(([appSlug, a]) => ({
+        appSlug,
+        activeMembers: a.users.size,
+        firstSeen: a.firstSeen,
+        lastActivity: a.lastActivity,
+      }))
+      .sort((a, b) => (a.lastActivity < b.lastActivity ? 1 : -1)),
+  }));
+
+  // Filtro opcional por app: mantém só orgs com acesso àquele app (sem esconder os demais chips).
+  if (args.app) listed = listed.filter((o) => o.apps.some((a) => a.appSlug === args.app));
+
+  listed = listed
     .sort((a, b) => (a.lastActivity < b.lastActivity ? 1 : -1))
     .slice(0, 100);
 

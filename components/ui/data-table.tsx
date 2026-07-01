@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { ArrowUpDown, ArrowUp, ArrowDown, Search } from "lucide-react";
+import { ArrowUpDown, ArrowUp, ArrowDown, Search, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/ui/cn";
 import { Input } from "./input";
 import { Select } from "./select";
@@ -17,7 +17,8 @@ export interface Column<T> {
   filter?: {
     label: string;
     options: { label: string; value: string }[];
-    accessor: (row: T) => string;
+    // Retorne um array para relações 1-para-muitos (o filtro casa se o valor estiver contido).
+    accessor: (row: T) => string | string[];
   };
   align?: "left" | "right" | "center";
   className?: string;
@@ -36,6 +37,8 @@ export interface DataTableProps<T> {
   empty?: React.ReactNode;
   emptyFiltered?: React.ReactNode;
   toolbarExtra?: React.ReactNode;
+  // Conteúdo expansível por linha. Se retornar null, a linha não expande (sem seta).
+  renderSubRow?: (row: T) => React.ReactNode;
 }
 
 const alignClass = {
@@ -56,6 +59,7 @@ export function DataTable<T>({
   empty,
   emptyFiltered,
   toolbarExtra,
+  renderSubRow,
 }: DataTableProps<T>) {
   const [query, setQuery] = React.useState("");
   const [filters, setFilters] = React.useState<Record<string, string>>({});
@@ -63,6 +67,8 @@ export function DataTable<T>({
     initialSort ?? null,
   );
   const [page, setPage] = React.useState(0);
+  const [expanded, setExpanded] = React.useState<Record<string, boolean>>({});
+  const expandable = Boolean(renderSubRow);
 
   const filterCols = React.useMemo(
     () => columns.filter((c) => c.filter),
@@ -74,7 +80,11 @@ export function DataTable<T>({
 
     for (const col of filterCols) {
       const val = filters[col.key];
-      if (val) rows = rows.filter((r) => col.filter!.accessor(r) === val);
+      if (val)
+        rows = rows.filter((r) => {
+          const acc = col.filter!.accessor(r);
+          return Array.isArray(acc) ? acc.includes(val) : acc === val;
+        });
     }
 
     if (search && query.trim()) {
@@ -175,6 +185,7 @@ export function DataTable<T>({
         <Table>
           <THead>
             <TR>
+              {expandable ? <TH className="w-8" aria-hidden="true" /> : null}
               {columns.map((col) => {
                 const sorted = sort?.key === col.key;
                 return (
@@ -211,27 +222,63 @@ export function DataTable<T>({
             </TR>
           </THead>
           <TBody>
-            {pageRows.map((row) => (
-              <TR
-                key={getRowId(row)}
-                onClick={onRowClick ? () => onRowClick(row) : undefined}
-                className={cn(
-                  onRowClick && "cursor-pointer hover:bg-muted/50 transition-colors",
-                )}
-              >
-                {columns.map((col) => (
-                  <TD
-                    key={col.key}
+            {pageRows.map((row) => {
+              const id = getRowId(row);
+              const sub = renderSubRow ? renderSubRow(row) : null;
+              const isOpen = Boolean(expanded[id]);
+              return (
+                <React.Fragment key={id}>
+                  <TR
+                    onClick={onRowClick ? () => onRowClick(row) : undefined}
                     className={cn(
-                      col.align && alignClass[col.align],
-                      col.className,
+                      onRowClick && "cursor-pointer hover:bg-muted/50 transition-colors",
                     )}
                   >
-                    {col.cell(row)}
-                  </TD>
-                ))}
-              </TR>
-            ))}
+                    {expandable ? (
+                      <TD className="w-8 pr-0">
+                        {sub ? (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setExpanded((s) => ({ ...s, [id]: !s[id] }));
+                            }}
+                            aria-expanded={isOpen}
+                            aria-label={isOpen ? "Recolher" : "Expandir"}
+                            className="grid h-6 w-6 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                          >
+                            <ChevronRight
+                              className={cn(
+                                "h-4 w-4 transition-transform",
+                                isOpen && "rotate-90",
+                              )}
+                            />
+                          </button>
+                        ) : null}
+                      </TD>
+                    ) : null}
+                    {columns.map((col) => (
+                      <TD
+                        key={col.key}
+                        className={cn(
+                          col.align && alignClass[col.align],
+                          col.className,
+                        )}
+                      >
+                        {col.cell(row)}
+                      </TD>
+                    ))}
+                  </TR>
+                  {expandable && isOpen && sub ? (
+                    <TR className="bg-muted/20">
+                      <TD colSpan={columns.length + 1} className="p-0">
+                        {sub}
+                      </TD>
+                    </TR>
+                  ) : null}
+                </React.Fragment>
+              );
+            })}
           </TBody>
         </Table>
       )}
