@@ -1,6 +1,10 @@
 import Link from "next/link";
 import { AdminShell } from "@/components/AdminShell";
 import { UserListTable } from "@/components/UserListTable";
+import { PageHeader } from "@/components/ui/page-header";
+import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Button, buttonClasses } from "@/components/ui/button";
 import { getCallerJwt } from "@/lib/auth";
 import { listUsers } from "@/lib/data";
 
@@ -38,71 +42,73 @@ export default async function UsersPage(props: { searchParams: Promise<{ q?: str
 
   return (
     <AdminShell>
-      <header className="mb-6 flex items-center justify-between gap-4">
-        <div>
-          <h1 className="font-display font-semibold text-2xl">Usuários</h1>
-          <p className="text-muted-foreground text-sm">
-            {error ? "Erro ao carregar." : `${total} no total`}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <form action="/users" method="get" className="flex gap-2">
-            <input
-              type="search"
-              name="q"
-              defaultValue={q}
-              placeholder="Buscar por email..."
-              className="rounded-lg border border-input bg-background px-3 py-2 text-sm"
-            />
-            <button
-              type="submit"
-              className="rounded-lg bg-primary text-primary-foreground font-medium px-4 py-2 hover:opacity-90"
-            >
-              Buscar
-            </button>
-          </form>
-          <Link
-            href="/users/new"
-            className="rounded-lg bg-primary text-primary-foreground px-4 py-2 text-sm font-medium hover:opacity-90"
-          >
-            Convidar usuário
-          </Link>
-        </div>
-      </header>
+      <PageHeader
+        title="Usuários"
+        subtitle={error ? "Erro ao carregar." : `${total} no total`}
+        actions={
+          <>
+            <form action="/users" method="get" className="flex gap-2">
+              <Input
+                type="search"
+                name="q"
+                defaultValue={q}
+                placeholder="Buscar por email…"
+                className="w-56"
+              />
+              <button type="submit" className={buttonClasses({ variant: "secondary" })}>
+                Buscar
+              </button>
+            </form>
+            <Link href="/users/new" className={buttonClasses({ variant: "primary" })}>
+              Convidar usuário
+            </Link>
+          </>
+        }
+      />
 
       {error ? (
-        <div className="rounded-2xl border border-destructive bg-destructive/5 p-6">
+        <Card className="border-destructive/50 bg-destructive/5 p-6">
           <p className="text-destructive font-medium">Não foi possível carregar a lista.</p>
           <p className="text-sm text-muted-foreground mt-1">{error}</p>
-        </div>
+        </Card>
       ) : (
-        <UserListTable rows={rows} />
-      )}
+        <div className="space-y-4">
+          <UserListTable rows={rows} />
 
-      {!error && totalPages > 1 && (
-        <nav className="mt-4 flex items-center justify-between text-sm">
-          <span className="text-muted-foreground">
-            Página {page} de {totalPages}
-          </span>
-          <div className="flex gap-2">
-            {page > 1 && (
-              <a
-                href={`/users?q=${encodeURIComponent(q)}&page=${page - 1}`}
-                className="px-3 py-1.5 rounded border border-border hover:bg-muted"
-              >
-                Anterior
-              </a>
-            )}
-            {page < totalPages && (
-              <a
-                href={`/users?q=${encodeURIComponent(q)}&page=${page + 1}`}
-                className="px-3 py-1.5 rounded border border-border hover:bg-muted"
-              >
-                Próxima
-              </a>
-            )}
-          </div>
-        </nav>
+          {totalPages > 1 ? (
+            <nav className="flex items-center justify-between gap-2 text-sm text-muted-foreground">
+              <span>
+                Página {page} de {totalPages}
+              </span>
+              <div className="flex gap-2">
+                {page > 1 ? (
+                  <Link
+                    href={`/users?q=${encodeURIComponent(q)}&page=${page - 1}`}
+                    className={buttonClasses({ variant: "outline", size: "sm" })}
+                  >
+                    Anterior
+                  </Link>
+                ) : (
+                  <Button variant="outline" size="sm" disabled>
+                    Anterior
+                  </Button>
+                )}
+                {page < totalPages ? (
+                  <Link
+                    href={`/users?q=${encodeURIComponent(q)}&page=${page + 1}`}
+                    className={buttonClasses({ variant: "outline", size: "sm" })}
+                  >
+                    Próxima
+                  </Link>
+                ) : (
+                  <Button variant="outline" size="sm" disabled>
+                    Próxima
+                  </Button>
+                )}
+              </div>
+            </nav>
+          ) : null}
+        </div>
       )}
     </AdminShell>
   );

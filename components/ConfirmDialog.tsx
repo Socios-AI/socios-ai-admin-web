@@ -1,7 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Loader2 } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Dialog, DialogFooter } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Field } from "@/components/ui/field";
+import { Textarea } from "@/components/ui/textarea";
 
 export type ConfirmDialogProps = {
   open: boolean;
@@ -36,8 +39,6 @@ export function ConfirmDialog({
     }
   }, [open]);
 
-  if (!open) return null;
-
   const reasonOk = !requireReason || reason.trim().length >= 5;
 
   async function handleConfirm() {
@@ -51,59 +52,44 @@ export function ConfirmDialog({
   }
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="confirm-dialog-title"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+    <Dialog
+      open={open}
+      onClose={submitting ? () => {} : onCancel}
+      title={title}
+      description={description}
+      dismissible={!submitting}
     >
-      <div className="w-full max-w-md rounded-2xl border border-border bg-card p-6 shadow-lg space-y-4">
-        <div className="space-y-1">
-          <h2 id="confirm-dialog-title" className="font-display font-semibold text-lg">
-            {title}
-          </h2>
-          <p className="text-sm text-muted-foreground">{description}</p>
-        </div>
+      {requireReason && (
+        <Field label="Motivo (mínimo 5 caracteres)" htmlFor="confirm-reason">
+          <Textarea
+            id="confirm-reason"
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            rows={3}
+            required
+          />
+        </Field>
+      )}
 
-        {requireReason && (
-          <div className="space-y-1.5">
-            <label htmlFor="confirm-reason" className="text-sm font-medium">
-              Motivo (mínimo 5 caracteres)
-            </label>
-            <textarea
-              id="confirm-reason"
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              rows={3}
-              className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-              required
-            />
-          </div>
-        )}
-
-        <div className="flex justify-end gap-2 pt-2">
-          <button
-            type="button"
-            onClick={onCancel}
-            disabled={submitting}
-            className="rounded-lg border border-input bg-background px-4 py-2 text-sm hover:bg-muted transition disabled:opacity-50"
-          >
-            {cancelLabel}
-          </button>
-          <button
-            type="button"
-            onClick={handleConfirm}
-            disabled={!reasonOk || submitting}
-            className={`rounded-lg px-4 py-2 text-sm font-medium transition disabled:opacity-50 ${
-              destructive
-                ? "bg-destructive text-destructive-foreground hover:opacity-90"
-                : "bg-primary text-primary-foreground hover:opacity-90"
-            }`}
-          >
-            {submitting ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : confirmLabel}
-          </button>
-        </div>
-      </div>
-    </div>
+      <DialogFooter>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={onCancel}
+          disabled={submitting}
+        >
+          {cancelLabel}
+        </Button>
+        <Button
+          type="button"
+          variant={destructive ? "destructive" : "primary"}
+          onClick={handleConfirm}
+          disabled={!reasonOk}
+          loading={submitting}
+        >
+          {confirmLabel}
+        </Button>
+      </DialogFooter>
+    </Dialog>
   );
 }

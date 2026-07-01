@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { ConfirmDialog } from "./ConfirmDialog";
+import { Button } from "@/components/ui/button";
 import { revokeAffiliateInvitationAction } from "@/app/_actions/revoke-affiliate-invitation";
 
 export function AffiliateRevokeButton({
@@ -19,13 +20,15 @@ export function AffiliateRevokeButton({
 
   return (
     <>
-      <button
+      <Button
         type="button"
+        variant="outline"
+        size="sm"
         onClick={() => setOpen(true)}
-        className="rounded-md border border-destructive text-destructive px-2.5 py-1 text-xs hover:bg-destructive/10"
+        className="border-destructive text-destructive hover:bg-destructive/10"
       >
         Revogar
-      </button>
+      </Button>
       <ConfirmDialog
         open={open}
         title={`Revogar convite de ${email}`}

@@ -2,7 +2,10 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { updateOrgAdminEmailAction } from "@/app/_actions/update-org-admin-email";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 
 export function RegistrarOrgAdminEmailEdit({
   orgId,
@@ -37,6 +40,7 @@ export function RegistrarOrgAdminEmailEdit({
       const res = await updateOrgAdminEmailAction({ orgId, appSlug, email });
       if (res.ok) {
         setEditing(false);
+        toast.success("E-mail atualizado");
         router.refresh();
       } else {
         setError(res.message ?? res.error);
@@ -47,22 +51,23 @@ export function RegistrarOrgAdminEmailEdit({
   return (
     <span className="flex flex-col gap-1">
       <span className="flex items-center gap-2">
-        <input
+        <Input
           type="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          onKeyDown={(e) => { if (e.key === "Enter") save(); if (e.key === "Escape") setEditing(false); }}
-          className="rounded-lg border border-input bg-background px-2 py-1 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+          onKeyDown={(e) => {
+            if (e.key === "Enter") save();
+            if (e.key === "Escape") setEditing(false);
+          }}
+          className="h-8 w-auto min-w-[16rem] text-sm"
           autoFocus
         />
-        <button type="button" onClick={save} disabled={pending}
-          className="rounded-lg bg-primary px-2 py-1 text-xs font-medium text-primary-foreground hover:opacity-90 disabled:opacity-50">
-          {pending ? "..." : "Salvar"}
-        </button>
-        <button type="button" onClick={() => setEditing(false)}
-          className="rounded-lg border border-input px-2 py-1 text-xs hover:bg-muted">
+        <Button type="button" size="sm" onClick={save} loading={pending}>
+          Salvar
+        </Button>
+        <Button type="button" variant="outline" size="sm" onClick={() => setEditing(false)}>
           Cancelar
-        </button>
+        </Button>
       </span>
       {error ? <span className="text-xs text-destructive">{error}</span> : null}
     </span>

@@ -4,6 +4,10 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
+import { Card } from "@/components/ui/card";
+import { Badge, type BadgeVariant } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { AssignPlanDialog } from "./AssignPlanDialog";
 import { assignManualSubscriptionAction } from "@/app/_actions/assign-manual-subscription";
@@ -44,6 +48,13 @@ function formatPrice(amount: number, currency: string): string {
 function formatDate(iso: string | null): string {
   if (!iso) return "vitalício";
   return new Date(iso).toLocaleDateString("pt-BR");
+}
+
+function statusVariant(status: string): BadgeVariant {
+  if (status === "active") return "success";
+  if (status === "manual") return "navy";
+  if (TERMINAL.has(status)) return "muted";
+  return "default";
 }
 
 export function PlansTab({ userId, subscriptions, availablePlans }: Props) {
@@ -101,55 +112,43 @@ export function PlansTab({ userId, subscriptions, availablePlans }: Props) {
         : null;
 
     return (
-      <tr key={s.id}>
-        <td className="px-4 py-2">
+      <TR key={s.id}>
+        <TD>
           <div className="font-medium">{s.plan.name}</div>
           <div className="text-xs text-muted-foreground">
             {s.plan.app_slugs.length > 0
               ? s.plan.app_slugs.join(" · ")
               : "(sem apps vinculados)"}
           </div>
-        </td>
-        <td className="px-4 py-2 text-xs">
-          <span
-            className={
-              s.status === "manual"
-                ? "rounded-full bg-secondary text-secondary-foreground px-2 py-0.5"
-                : s.status === "active"
-                  ? "rounded-full bg-primary/10 text-primary px-2 py-0.5"
-                  : "rounded-full bg-muted text-muted-foreground px-2 py-0.5"
-            }
-          >
-            {s.status}
-          </span>
-        </td>
-        <td className="px-4 py-2 text-sm">
+        </TD>
+        <TD>
+          <Badge variant={statusVariant(s.status)}>{s.status}</Badge>
+        </TD>
+        <TD>
           {formatPrice(s.plan.price_amount, s.plan.currency)} ({s.plan.billing_period})
-        </td>
-        <td className="px-4 py-2 text-sm text-muted-foreground">
+        </TD>
+        <TD className="text-muted-foreground">
           {formatDate(s.current_period_end)}
-        </td>
-        <td className="px-4 py-2">
+        </TD>
+        <TD>
           {s.via === "org" && orgHref ? (
-            <Link
-              href={orgHref}
-              className="text-xs text-primary hover:underline"
-            >
+            <Link href={orgHref} className="text-xs text-primary hover:underline">
               Via org {s.via_org_id?.slice(0, 8)} · {s.via_app_slug}
             </Link>
           ) : (
             <span className="text-xs text-muted-foreground">Direto</span>
           )}
-        </td>
-        <td className="px-4 py-2 text-right">
+        </TD>
+        <TD className="text-right">
           {withCancel && s.via === "user" && (
-            <button
-              type="button"
+            <Button
+              size="sm"
+              variant="outline"
+              className="border-destructive/40 text-destructive hover:bg-destructive/10"
               onClick={() => setMode({ kind: "cancel", subscriptionId: s.id })}
-              className="rounded-lg border border-destructive/40 text-destructive px-3 py-1 text-xs hover:bg-destructive/10"
             >
               Cancelar
-            </button>
+            </Button>
           )}
           {withCancel && s.via === "org" && orgHref && (
             <Link
@@ -159,8 +158,8 @@ export function PlansTab({ userId, subscriptions, availablePlans }: Props) {
               Cancelar via organização
             </Link>
           )}
-        </td>
-      </tr>
+        </TD>
+      </TR>
     );
   }
 
@@ -168,17 +167,13 @@ export function PlansTab({ userId, subscriptions, availablePlans }: Props) {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h2 className="font-display text-lg">Subscriptions</h2>
-        <button
-          type="button"
-          onClick={() => setMode({ kind: "assign" })}
-          className="rounded-lg bg-primary text-primary-foreground px-3 py-1.5 text-sm font-medium hover:opacity-90"
-        >
+        <Button size="sm" onClick={() => setMode({ kind: "assign" })}>
           Atribuir plano
-        </button>
+        </Button>
       </div>
 
       {subscriptions.length === 0 ? (
-        <p className="text-sm text-muted-foreground">Sem subscriptions.</p>
+        <Card className="p-6 text-sm text-muted-foreground">Sem subscriptions.</Card>
       ) : (
         <>
           {active.length > 0 && (
@@ -186,21 +181,19 @@ export function PlansTab({ userId, subscriptions, availablePlans }: Props) {
               <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
                 Ativas
               </h3>
-              <div className="rounded-xl border border-border bg-card overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead className="bg-muted/50 text-muted-foreground text-left">
-                    <tr>
-                      <th className="px-4 py-2 font-medium">Plano</th>
-                      <th className="px-4 py-2 font-medium">Status</th>
-                      <th className="px-4 py-2 font-medium">Preço</th>
-                      <th className="px-4 py-2 font-medium">Período até</th>
-                      <th className="px-4 py-2 font-medium">Origem</th>
-                      <th className="px-4 py-2 font-medium text-right">Ações</th>
-                    </tr>
-                  </thead>
-                  <tbody>{activeSorted.map((s) => renderRow(s, true))}</tbody>
-                </table>
-              </div>
+              <Table>
+                <THead>
+                  <TR>
+                    <TH>Plano</TH>
+                    <TH>Status</TH>
+                    <TH>Preço</TH>
+                    <TH>Período até</TH>
+                    <TH>Origem</TH>
+                    <TH className="text-right">Ações</TH>
+                  </TR>
+                </THead>
+                <TBody>{activeSorted.map((s) => renderRow(s, true))}</TBody>
+              </Table>
             </div>
           )}
 
@@ -209,20 +202,20 @@ export function PlansTab({ userId, subscriptions, availablePlans }: Props) {
               <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
                 Encerradas
               </h3>
-              <div className="rounded-xl border border-border bg-card overflow-x-auto opacity-70">
-                <table className="w-full text-sm">
-                  <thead className="bg-muted/50 text-muted-foreground text-left">
-                    <tr>
-                      <th className="px-4 py-2 font-medium">Plano</th>
-                      <th className="px-4 py-2 font-medium">Status</th>
-                      <th className="px-4 py-2 font-medium">Preço</th>
-                      <th className="px-4 py-2 font-medium">Período até</th>
-                      <th className="px-4 py-2 font-medium">Origem</th>
-                      <th className="px-4 py-2 font-medium" />
-                    </tr>
-                  </thead>
-                  <tbody>{ended.map((s) => renderRow(s, false))}</tbody>
-                </table>
+              <div className="opacity-70">
+                <Table>
+                  <THead>
+                    <TR>
+                      <TH>Plano</TH>
+                      <TH>Status</TH>
+                      <TH>Preço</TH>
+                      <TH>Período até</TH>
+                      <TH>Origem</TH>
+                      <TH />
+                    </TR>
+                  </THead>
+                  <TBody>{ended.map((s) => renderRow(s, false))}</TBody>
+                </Table>
               </div>
             </div>
           )}

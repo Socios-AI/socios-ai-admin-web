@@ -1,5 +1,6 @@
 import { AdminShell } from "@/components/AdminShell";
 import { CreateOrgForm } from "@/components/CreateOrgForm";
+import { PageHeader } from "@/components/ui/page-header";
 import { getCallerClient } from "@socios-ai/auth/admin";
 import { getCallerJwt } from "@/lib/auth";
 
@@ -33,12 +34,11 @@ export default async function NewOrgPage() {
 
   return (
     <AdminShell>
-      <header className="mb-6">
-        <h1 className="font-display font-semibold text-2xl">Novo cliente</h1>
-        <p className="text-muted-foreground text-sm">
-          Cadastra um tenant e, se for o caso, registra o parceiro que indicou.
-        </p>
-      </header>
+      <PageHeader
+        title="Novo cliente"
+        subtitle="Cadastra um tenant e, se for o caso, registra o parceiro que indicou."
+        breadcrumbs={[{ label: "Organizações", href: "/orgs" }, { label: "Novo cliente" }]}
+      />
       <CreateOrgForm apps={apps} />
     </AdminShell>
   );

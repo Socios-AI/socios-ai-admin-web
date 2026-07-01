@@ -1,6 +1,9 @@
 import Link from "next/link";
 import { AdminShell } from "@/components/AdminShell";
 import { PlanListTable } from "@/components/PlanListTable";
+import { PageHeader } from "@/components/ui/page-header";
+import { Card } from "@/components/ui/card";
+import { buttonClasses } from "@/components/ui/button";
 import { getCallerJwt } from "@/lib/auth";
 import { listPlansCatalog } from "@/lib/data";
 
@@ -11,7 +14,7 @@ export default async function PlansPage() {
   if (!jwt) {
     return (
       <AdminShell>
-        <p className="text-destructive">Sessão inválida. Faça login novamente.</p>
+        <p className="text-sm text-destructive">Sessão inválida. Faça login novamente.</p>
       </AdminShell>
     );
   }
@@ -26,25 +29,20 @@ export default async function PlansPage() {
 
   return (
     <AdminShell>
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-semibold">Planos</h1>
-          <p className="text-sm text-muted-foreground">
-            Catálogo de planos contratáveis. Cada plano libera um ou mais apps via claim no JWT.
-          </p>
-        </div>
-        <Link
-          href="/plans/new"
-          className="rounded-md bg-foreground text-background px-4 py-2 text-sm font-medium hover:opacity-90"
-        >
-          Novo plano
-        </Link>
-      </div>
+      <PageHeader
+        title="Planos"
+        subtitle="Catálogo de planos contratáveis. Cada plano libera um ou mais apps via claim no JWT."
+        actions={
+          <Link href="/plans/new" className={buttonClasses({ variant: "primary" })}>
+            Novo plano
+          </Link>
+        }
+      />
 
       {error ? (
-        <div className="rounded-md border border-destructive bg-destructive/10 px-4 py-3 text-sm text-destructive">
+        <Card className="border-destructive/50 bg-destructive/10 p-4 text-sm text-destructive">
           Não foi possível carregar a lista. {error}
-        </div>
+        </Card>
       ) : (
         <PlanListTable rows={rows} />
       )}

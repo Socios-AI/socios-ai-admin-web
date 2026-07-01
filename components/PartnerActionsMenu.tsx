@@ -1,8 +1,10 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { ChevronDown } from "lucide-react";
 import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { suspendPartnerAction } from "@/app/_actions/suspend-partner";
 import { terminatePartnerAction } from "@/app/_actions/terminate-partner";
@@ -20,6 +22,17 @@ export function PartnerActionsMenu({ partnerId, status }: Props) {
   const [mode, setMode] = useState<Mode>({ kind: "none" });
   const [, startTransition] = useTransition();
   const [open, setOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Fecha o menu ao clicar fora.
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent) => {
+      if (!containerRef.current?.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [open]);
 
   const close = () => {
     setMode({ kind: "none" });
@@ -46,21 +59,25 @@ export function PartnerActionsMenu({ partnerId, status }: Props) {
   const canTerminate = status !== "terminated";
 
   return (
-    <div className="relative">
-      <button
+    <div className="relative" ref={containerRef}>
+      <Button
         type="button"
+        variant="outline"
+        size="sm"
         onClick={() => setOpen((v) => !v)}
-        className="rounded-lg border border-input bg-background px-3 py-1.5 text-sm hover:bg-muted"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        rightIcon={<ChevronDown className="h-4 w-4" aria-hidden="true" />}
       >
         Ações
-      </button>
+      </Button>
       {open && (
-        <div className="absolute right-0 top-full mt-1 z-10 w-48 rounded-lg border border-border bg-card shadow-lg p-1">
+        <div className="absolute right-0 top-full z-10 mt-1 w-48 rounded-lg border border-border bg-card p-1 shadow-lg">
           {canSuspend && (
             <button
               type="button"
               onClick={() => setMode({ kind: "suspend" })}
-              className="block w-full text-left px-3 py-2 text-sm rounded hover:bg-muted"
+              className="block w-full rounded px-3 py-2 text-left text-sm hover:bg-muted"
             >
               Suspender
             </button>
@@ -69,7 +86,7 @@ export function PartnerActionsMenu({ partnerId, status }: Props) {
             <button
               type="button"
               onClick={() => setMode({ kind: "terminate" })}
-              className="block w-full text-left px-3 py-2 text-sm rounded text-destructive hover:bg-muted"
+              className="block w-full rounded px-3 py-2 text-left text-sm text-destructive hover:bg-muted"
             >
               Encerrar
             </button>

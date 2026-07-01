@@ -5,6 +5,8 @@ import { TabNav, type TabItem } from "@/components/Tabs";
 import { AccessTab } from "@/components/AccessTab";
 import { PlansTab } from "@/components/PlansTab";
 import { AuditTab } from "@/components/AuditTab";
+import { PageHeader } from "@/components/ui/page-header";
+import { Badge } from "@/components/ui/badge";
 import { getCallerJwt } from "@/lib/auth";
 import {
   getUser,
@@ -68,25 +70,25 @@ export default async function UserDetailPage(props: {
     is_active: p.is_active,
   }));
 
+  const tierLabel =
+    tier === "owner"
+      ? "Owner"
+      : tier === "admin"
+        ? "Admin"
+        : tier === "affiliate"
+          ? "Afiliado"
+          : tier === "registrar"
+            ? "Cadastrador"
+            : "Sem tier";
+
   return (
     <AdminShell>
-      <header className="mb-6 flex items-start justify-between gap-4">
-        <div>
-          <h1 className="font-display font-semibold text-2xl">{user.email}</h1>
-          <p className="text-muted-foreground text-sm">
-            Criado em {new Date(user.created_at).toLocaleString("pt-BR")}
-          </p>
-        </div>
-        <span
-          className={
-            tier
-              ? "rounded-full bg-primary/10 text-primary px-3 py-1 text-sm font-medium whitespace-nowrap"
-              : "rounded-full bg-muted text-muted-foreground px-3 py-1 text-sm font-medium whitespace-nowrap"
-          }
-        >
-          {tier === "owner" ? "Owner" : tier === "admin" ? "Admin" : tier === "affiliate" ? "Afiliado" : tier === "registrar" ? "Cadastrador" : "Sem tier"}
-        </span>
-      </header>
+      <PageHeader
+        title={user.email}
+        subtitle={`Criado em ${new Date(user.created_at).toLocaleString("pt-BR")}`}
+        breadcrumbs={[{ label: "Usuários", href: "/users" }, { label: user.email }]}
+        actions={<Badge variant={tier ? "success" : "muted"}>{tierLabel}</Badge>}
+      />
 
       <GlobalUserActions
         userId={user.id}

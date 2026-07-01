@@ -2,7 +2,11 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { updateOrgAction } from "@/app/_actions/update-org";
+import { Field } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 
 export function RegistrarOrgNameEdit({ orgId, initialName }: { orgId: string; initialName: string }) {
   const router = useRouter();
@@ -14,14 +18,15 @@ export function RegistrarOrgNameEdit({ orgId, initialName }: { orgId: string; in
   if (!editing) {
     return (
       <div className="flex items-center gap-3">
-        <h1 className="font-display font-semibold text-2xl">{initialName}</h1>
-        <button
+        <h1 className="font-display font-semibold text-2xl tracking-tight">{initialName}</h1>
+        <Button
           type="button"
+          variant="outline"
+          size="sm"
           onClick={() => { setName(initialName); setError(null); setEditing(true); }}
-          className="rounded-lg border border-input px-3 py-1.5 text-sm hover:bg-muted"
         >
           Editar cadastro
-        </button>
+        </Button>
       </div>
     );
   }
@@ -32,6 +37,7 @@ export function RegistrarOrgNameEdit({ orgId, initialName }: { orgId: string; in
       const res = await updateOrgAction({ orgId, name });
       if (res.ok) {
         setEditing(false);
+        toast.success("Cadastro atualizado");
         router.refresh();
       } else {
         setError(res.message ?? res.error);
@@ -40,29 +46,28 @@ export function RegistrarOrgNameEdit({ orgId, initialName }: { orgId: string; in
   }
 
   return (
-    <div className="flex flex-col gap-1">
-      <label htmlFor="org-name" className="text-sm text-muted-foreground">Nome</label>
+    <Field label="Nome" htmlFor="org-name" error={error ?? undefined} className="max-w-xl">
       <div className="flex items-center gap-2">
-        <input
+        <Input
           id="org-name"
           value={name}
           onChange={(e) => setName(e.target.value)}
-          onKeyDown={(e) => { if (e.key === "Enter") save(); if (e.key === "Escape") setEditing(false); }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") save();
+            if (e.key === "Escape") setEditing(false);
+          }}
           minLength={2}
           maxLength={200}
-          className="rounded-lg border border-input bg-background px-3 py-1.5 text-lg text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+          className="text-lg"
           autoFocus
         />
-        <button type="button" onClick={save} disabled={pending}
-          className="rounded-lg bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:opacity-90 disabled:opacity-50">
-          {pending ? "..." : "Salvar"}
-        </button>
-        <button type="button" onClick={() => setEditing(false)}
-          className="rounded-lg border border-input px-3 py-1.5 text-sm hover:bg-muted">
+        <Button type="button" onClick={save} loading={pending}>
+          Salvar
+        </Button>
+        <Button type="button" variant="outline" onClick={() => setEditing(false)}>
           Cancelar
-        </button>
+        </Button>
       </div>
-      {error ? <span className="text-sm text-destructive">{error}</span> : null}
-    </div>
+    </Field>
   );
 }

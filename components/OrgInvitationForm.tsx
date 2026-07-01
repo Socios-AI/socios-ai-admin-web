@@ -1,7 +1,13 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { Copy, Check } from "lucide-react";
 import { createOrgInvitationAction } from "@/app/_actions/create-org-invitation";
+import { Field } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
+import { copyToClipboard } from "@/lib/ui/clipboard";
 
 type Role = "org_admin" | "org_user";
 
@@ -40,98 +46,85 @@ export function OrgInvitationForm({ orgId }: { orgId: string }) {
     });
   }
 
-  async function copyLink() {
-    if (!success) return;
-    await navigator.clipboard.writeText(success.inviteUrl);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  }
-
   if (success) {
     return (
       <div className="space-y-3">
-        <div className="rounded-lg border border-emerald-300 bg-emerald-50 dark:bg-emerald-950 dark:border-emerald-800 p-3 text-sm">
+        <div className="rounded-md border border-primary/40 bg-primary/10 p-3 text-sm">
           Convite criado. Envie o link abaixo.
         </div>
-        <div className="flex gap-2">
-          <input
-            type="text"
-            readOnly
-            value={success.inviteUrl}
-            className="flex-1 rounded-lg border border-border bg-background px-3 py-2 text-xs font-mono"
-          />
-          <button
+        <div className="flex items-center gap-2">
+          <code className="min-w-0 flex-1 truncate rounded-md bg-background px-2 py-1.5 font-mono text-xs">
+            {success.inviteUrl}
+          </code>
+          <Button
             type="button"
-            onClick={copyLink}
-            className="rounded-lg border border-border bg-secondary px-3 py-2 text-sm hover:bg-secondary/80"
+            variant="outline"
+            size="icon"
+            aria-label="Copiar link"
+            onClick={async () => {
+              const ok = await copyToClipboard(success.inviteUrl, "Link copiado");
+              if (ok) {
+                setCopied(true);
+                setTimeout(() => setCopied(false), 1500);
+              }
+            }}
           >
-            {copied ? "Copiado!" : "Copiar"}
-          </button>
+            {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+          </Button>
         </div>
-        <button
-          type="button"
-          onClick={reset}
-          className="text-sm text-muted-foreground hover:underline"
-        >
+        <Button type="button" variant="ghost" size="sm" onClick={reset}>
           Convidar outro membro
-        </button>
+        </Button>
       </div>
     );
   }
 
   return (
     <form onSubmit={onSubmit} className="space-y-4">
-      <div>
-        <label htmlFor="org-inv-email" className="block text-sm font-medium mb-1">Email</label>
-        <input
+      <Field label="Email" htmlFor="org-inv-email" required>
+        <Input
           id="org-inv-email"
           type="email"
           required
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
         />
-      </div>
+      </Field>
       <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label htmlFor="org-inv-role" className="block text-sm font-medium mb-1">Role</label>
-          <select
+        <Field label="Role" htmlFor="org-inv-role">
+          <Select
             id="org-inv-role"
             value={roleSlug}
             onChange={(e) => setRoleSlug(e.target.value as Role)}
-            className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
           >
             <option value="org_user">Org User</option>
             <option value="org_admin">Org Admin</option>
-          </select>
-        </div>
-        <div>
-          <label htmlFor="org-inv-exp" className="block text-sm font-medium mb-1">Expira (dias)</label>
-          <input
+          </Select>
+        </Field>
+        <Field label="Expira (dias)" htmlFor="org-inv-exp">
+          <Input
             id="org-inv-exp"
             type="number"
             min={1}
             max={30}
             value={expiresInDays}
             onChange={(e) => setExpiresInDays(parseInt(e.target.value, 10) || 7)}
-            className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
           />
-        </div>
+        </Field>
       </div>
 
       {error ? (
-        <div role="alert" className="rounded-lg border border-red-300 bg-red-50 dark:bg-red-950 dark:border-red-800 p-3 text-sm">
+        <p
+          role="alert"
+          className="rounded-md border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive"
+        >
           {error}
-        </div>
+        </p>
       ) : null}
 
-      <button
-        type="submit"
-        disabled={pending}
-        className="w-full rounded-lg bg-primary text-primary-foreground py-2.5 text-sm font-medium hover:opacity-90 transition disabled:opacity-50"
-      >
+      <Button type="submit" loading={pending} className="w-full">
         {pending ? "Criando..." : "Criar convite"}
-      </button>
+      </Button>
     </form>
   );
 }

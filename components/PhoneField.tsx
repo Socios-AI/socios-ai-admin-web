@@ -91,7 +91,7 @@ export function PhoneField({
         />
       </div>
       {showWarning && (
-        <p className="mt-1 text-xs text-red-600 dark:text-red-400">
+        <p className="mt-1 text-xs text-destructive">
           Número incompleto ou inválido para o país selecionado.
         </p>
       )}

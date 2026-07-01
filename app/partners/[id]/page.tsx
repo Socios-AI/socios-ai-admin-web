@@ -10,9 +10,11 @@ import { AttributeUserDialog } from "@/components/AttributeUserDialog";
 import { AuditList } from "@/components/AuditList";
 import { RequestCompletionButton } from "@/components/RequestCompletionButton";
 import { MarkEntryFeePaidButton } from "@/components/MarkEntryFeePaidButton";
-import { PartnerEditForm } from "@/components/PartnerEditForm";
+import { PartnerEditDialog } from "@/components/PartnerEditDialog";
 import { EdgeRateDialog } from "@/components/EdgeRateDialog";
 import { LedgerTable } from "@/components/LedgerTable";
+import { PageHeader } from "@/components/ui/page-header";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getCallerJwt } from "@/lib/auth";
 import {
   getPartner,
@@ -63,12 +65,11 @@ export default async function PartnerDetailPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ tab?: string; edit?: string }>;
+  searchParams: Promise<{ tab?: string }>;
 }) {
   const { id } = await params;
-  const { tab, edit } = await searchParams;
+  const { tab } = await searchParams;
   const activeTab = tab && TABS.some((t) => t.key === tab) ? tab : "identidade";
-  const editMode = edit === "1";
 
   const jwt = await getCallerJwt();
   if (!jwt) {
@@ -129,56 +130,56 @@ export default async function PartnerDetailPage({
     })
     .map(toAuditEvent);
 
+  const partnerName = partner.user_id
+    ? partnerLabel(partner, profiles)
+    : "Parceiro órfão (user removido)";
+  const showTerminationReason =
+    (partner.status === "suspended" || partner.status === "terminated") &&
+    Boolean(partner.termination_reason);
+
   return (
     <AdminShell>
-      <header className="mb-6 flex items-start justify-between gap-4">
-        <div>
-          <Link
-            href="/partners"
-            className="text-sm text-muted-foreground hover:underline"
-          >
-            ← Licenciados
-          </Link>
-          <h1 className="font-display font-semibold text-2xl mt-2">
-            {partner.user_id ? partnerLabel(partner, profiles) : "Parceiro órfão (user removido)"}
-          </h1>
-          {partnerProfile?.full_name && partnerProfile.email ? (
-            <p className="text-sm text-muted-foreground mt-1">{partnerProfile.email}</p>
-          ) : null}
-          <p className="text-sm mt-1">
+      <PageHeader
+        breadcrumbs={[{ label: "Parceiros", href: "/partners" }, { label: partnerName }]}
+        title={partnerName}
+        subtitle={
+          <span className="inline-flex flex-wrap items-center gap-2">
+            {partnerProfile?.email ? <span>{partnerProfile.email}</span> : null}
             <PartnerStatusBadge status={partner.status} />
+          </span>
+        }
+        actions={
+          <>
+            <PartnerCommissionDialog
+              partnerId={partner.id}
+              currentPct={partner.custom_commission_pct}
+            />
+            <PartnerActionsMenu partnerId={partner.id} status={partner.status} />
+          </>
+        }
+      />
+
+      {showTerminationReason ? (
+        <div className="mb-6 rounded-lg border border-warning/50 bg-warning/15 p-4 text-sm text-foreground">
+          <p className="font-medium">
+            {partner.status === "terminated" ? "Motivo do encerramento" : "Motivo da suspensão"}
           </p>
+          <p className="mt-1 text-muted-foreground">{partner.termination_reason}</p>
         </div>
-        <div className="flex items-center gap-2">
-          <PartnerCommissionDialog
-            partnerId={partner.id}
-            currentPct={partner.custom_commission_pct}
-          />
-          <PartnerActionsMenu partnerId={partner.id} status={partner.status} />
-        </div>
-      </header>
+      ) : null}
 
       <TabNav items={TABS} active={activeTab} />
 
-      {activeTab === "identidade" && editMode && (
-        <PartnerEditForm
-          partnerId={partner.id}
-          initialFullName={partnerProfile?.full_name ?? ""}
-          initialEmail={partnerProfile?.email ?? ""}
-          initialProfile={registrationData?.profile ?? null}
-        />
-      )}
-
-      {activeTab === "identidade" && !editMode && (
-        <div className="space-y-8">
+      {activeTab === "identidade" && (
+        <div className="space-y-6">
           {/* Ações: editar cadastro · pedir complemento */}
-          <div className="flex items-center gap-2">
-            <Link
-              href={`/partners/${partner.id}?tab=identidade&edit=1`}
-              className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90"
-            >
-              Editar cadastro
-            </Link>
+          <div className="flex flex-wrap items-center gap-2">
+            <PartnerEditDialog
+              partnerId={partner.id}
+              initialFullName={partnerProfile?.full_name ?? ""}
+              initialEmail={partnerProfile?.email ?? ""}
+              initialProfile={registrationData?.profile ?? null}
+            />
             <RequestCompletionButton partnerId={partner.id} />
             {partner.role === "representante" &&
             partner.entry_fee_amount != null &&
@@ -188,6 +189,11 @@ export default async function PartnerDetailPage({
           </div>
 
           {/* Dados da plataforma */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm">Dados da plataforma</CardTitle>
+            </CardHeader>
+            <CardContent className="pt-0">
           <dl className="grid grid-cols-2 gap-x-8 gap-y-4 text-sm">
             <div>
               <dt className="text-muted-foreground">Nome</dt>
@@ -234,10 +240,15 @@ export default async function PartnerDetailPage({
               <dd>{partner.activated_at ?? "-"}</dd>
             </div>
           </dl>
+            </CardContent>
+          </Card>
 
           {/* Cadastro (registration profile) */}
-          <section className="border-t pt-6">
-            <h2 className="font-semibold text-sm mb-4">Cadastro</h2>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm">Cadastro</CardTitle>
+            </CardHeader>
+            <CardContent className="pt-0">
             {registrationData ? (
               <>
                 <dl className="grid grid-cols-2 gap-x-8 gap-y-4 text-sm mb-6">
@@ -322,7 +333,8 @@ export default async function PartnerDetailPage({
             ) : (
               <p className="text-sm text-muted-foreground">Cadastro não preenchido.</p>
             )}
-          </section>
+            </CardContent>
+          </Card>
         </div>
       )}
 

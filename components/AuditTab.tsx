@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { AuditList } from "./AuditList";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { AuditEvent } from "@/lib/data";
 
 type Props = {
@@ -9,17 +10,19 @@ type Props = {
 
 export function AuditTab({ userId, events }: Props) {
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h2 className="font-display text-lg">Eventos recentes deste usuário</h2>
+    <Card>
+      <CardHeader className="flex-row items-center justify-between space-y-0">
+        <CardTitle className="text-lg">Eventos recentes deste usuário</CardTitle>
         <Link
           href={`/audit?target_id=${userId}`}
           className="text-sm text-primary hover:underline"
         >
           Ver tudo no log de auditoria →
         </Link>
-      </div>
-      <AuditList events={events} />
-    </div>
+      </CardHeader>
+      <CardContent>
+        <AuditList events={events} />
+      </CardContent>
+    </Card>
   );
 }

@@ -2,8 +2,11 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2 } from "lucide-react";
 import { transferReferralAction } from "@/app/_actions/transfer-referral";
+import { Dialog, DialogFooter } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Field } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
 
 export function TransferReferralDialog({
   referralId,
@@ -26,70 +29,60 @@ export function TransferReferralDialog({
 
   return (
     <>
-      <button
-        type="button"
-        className="hover:underline mr-2"
-        onClick={() => setOpen(true)}
-      >
+      <button type="button" className="mr-2 hover:underline" onClick={() => setOpen(true)}>
         Transferir
       </button>
-      {open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="bg-background rounded-lg p-6 w-[28rem] shadow-lg">
-            <h3 className="font-semibold text-lg mb-2">Transferir indicação</h3>
-            <p className="text-sm text-muted-foreground mb-4">
-              Origem: <code className="font-mono text-xs">{fromPartnerId.slice(0, 8)}...</code>
-            </p>
-            <label className="block text-sm mb-1">
-              UUID do licenciado de destino
-            </label>
-            <input
-              type="text"
-              value={toPartnerId}
-              onChange={(e) => setToPartnerId(e.target.value)}
-              placeholder="uuid-uuid-uuid-uuid-uuid"
-              className="w-full border rounded px-2 py-1 mb-3 font-mono text-xs"
-              disabled={isPending}
-            />
-            {error && (
-              <p className="text-sm text-destructive mb-3">{error}</p>
-            )}
-            <div className="flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={close}
-                disabled={isPending}
-                className="px-3 py-1.5 rounded border"
-              >
-                Cancelar
-              </button>
-              <button
-                type="button"
-                disabled={isPending || !toPartnerId.trim()}
-                onClick={() => {
-                  setError(null);
-                  startTransition(async () => {
-                    const out = await transferReferralAction({
-                      referralId,
-                      toPartnerId: toPartnerId.trim(),
-                    });
-                    if (!out.ok) {
-                      setError(out.message ?? out.error);
-                    } else {
-                      close();
-                      router.refresh();
-                    }
-                  });
-                }}
-                className="px-3 py-1.5 rounded bg-primary text-primary-foreground inline-flex items-center gap-2"
-              >
-                {isPending && <Loader2 className="h-3 w-3 animate-spin" />}
-                Transferir
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <Dialog
+        open={open}
+        onClose={close}
+        title="Transferir indicação"
+        description={
+          <>
+            Origem: <code className="font-mono text-xs">{fromPartnerId.slice(0, 8)}...</code>
+          </>
+        }
+        dismissible={!isPending}
+      >
+        <Field label="UUID do licenciado de destino" htmlFor="transfer-to-input">
+          <Input
+            id="transfer-to-input"
+            type="text"
+            value={toPartnerId}
+            onChange={(e) => setToPartnerId(e.target.value)}
+            placeholder="uuid-uuid-uuid-uuid-uuid"
+            className="font-mono text-xs"
+            disabled={isPending}
+          />
+        </Field>
+        {error && <p className="text-sm text-destructive">{error}</p>}
+        <DialogFooter>
+          <Button type="button" variant="outline" onClick={close} disabled={isPending}>
+            Cancelar
+          </Button>
+          <Button
+            type="button"
+            disabled={isPending || !toPartnerId.trim()}
+            loading={isPending}
+            onClick={() => {
+              setError(null);
+              startTransition(async () => {
+                const out = await transferReferralAction({
+                  referralId,
+                  toPartnerId: toPartnerId.trim(),
+                });
+                if (!out.ok) {
+                  setError(out.message ?? out.error);
+                } else {
+                  close();
+                  router.refresh();
+                }
+              });
+            }}
+          >
+            Transferir
+          </Button>
+        </DialogFooter>
+      </Dialog>
     </>
   );
 }

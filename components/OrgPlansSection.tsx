@@ -7,6 +7,9 @@ import { ConfirmDialog } from "./ConfirmDialog";
 import { AssignOrgPlanDialog } from "./AssignOrgPlanDialog";
 import { assignManualSubscriptionAction } from "@/app/_actions/assign-manual-subscription";
 import { cancelSubscriptionAction } from "@/app/_actions/cancel-subscription";
+import { Button } from "@/components/ui/button";
+import { Badge, type BadgeVariant } from "@/components/ui/badge";
+import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
 import type { OrgSubscription, BillingPeriod, PlanCurrency } from "@/lib/data";
 
 type AvailablePlan = {
@@ -40,6 +43,12 @@ function formatPrice(amount: number, currency: string): string {
 function formatDate(iso: string | null): string {
   if (!iso) return "vitalício";
   return new Date(iso).toLocaleDateString("pt-BR");
+}
+
+function statusVariant(status: string): BadgeVariant {
+  if (status === "active") return "success";
+  if (status === "manual") return "purple";
+  return "muted";
 }
 
 export function OrgPlansSection({ orgId, appSlug, subscriptions, availablePlans }: Props) {
@@ -87,13 +96,9 @@ export function OrgPlansSection({ orgId, appSlug, subscriptions, availablePlans 
   return (
     <div className="space-y-6">
       <div className="flex justify-end">
-        <button
-          type="button"
-          onClick={() => setMode({ kind: "assign" })}
-          className="rounded-lg bg-primary text-primary-foreground px-3 py-1.5 text-sm font-medium hover:opacity-90"
-        >
+        <Button type="button" size="sm" onClick={() => setMode({ kind: "assign" })}>
           Atribuir plano
-        </button>
+        </Button>
       </div>
 
       {subscriptions.length === 0 ? (
@@ -105,61 +110,51 @@ export function OrgPlansSection({ orgId, appSlug, subscriptions, availablePlans 
               <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
                 Ativas
               </h3>
-              <div className="rounded-xl border border-border bg-card overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead className="bg-muted/50 text-muted-foreground text-left">
-                    <tr>
-                      <th className="px-4 py-2 font-medium">Plano</th>
-                      <th className="px-4 py-2 font-medium">Status</th>
-                      <th className="px-4 py-2 font-medium">Preço</th>
-                      <th className="px-4 py-2 font-medium">Período até</th>
-                      <th className="px-4 py-2 font-medium text-right">Ações</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {active.map((s) => (
-                      <tr key={s.id} className="border-t border-border">
-                        <td className="px-4 py-2">
-                          <div className="font-medium">{s.plan.name}</div>
-                          <div className="text-xs text-muted-foreground">
-                            {s.plan.apps.length > 0
-                              ? s.plan.apps.join(" · ")
-                              : "(sem apps vinculados)"}
-                          </div>
-                        </td>
-                        <td className="px-4 py-2 text-xs">
-                          <span
-                            className={
-                              s.status === "manual"
-                                ? "rounded-full bg-secondary text-secondary-foreground px-2 py-0.5"
-                                : s.status === "active"
-                                  ? "rounded-full bg-primary/10 text-primary px-2 py-0.5"
-                                  : "rounded-full bg-muted text-muted-foreground px-2 py-0.5"
-                            }
-                          >
-                            {s.status}
-                          </span>
-                        </td>
-                        <td className="px-4 py-2 text-sm">
-                          {formatPrice(s.plan.price_amount, s.plan.currency)} ({s.plan.billing_period})
-                        </td>
-                        <td className="px-4 py-2 text-sm text-muted-foreground">
-                          {formatDate(s.current_period_end)}
-                        </td>
-                        <td className="px-4 py-2 text-right">
-                          <button
-                            type="button"
-                            onClick={() => setMode({ kind: "cancel", subscriptionId: s.id })}
-                            className="rounded-lg border border-destructive/40 text-destructive px-3 py-1 text-xs hover:bg-destructive/10"
-                          >
-                            Cancelar
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              <Table>
+                <THead>
+                  <TR>
+                    <TH>Plano</TH>
+                    <TH>Status</TH>
+                    <TH>Preço</TH>
+                    <TH>Período até</TH>
+                    <TH className="text-right">Ações</TH>
+                  </TR>
+                </THead>
+                <TBody>
+                  {active.map((s) => (
+                    <TR key={s.id}>
+                      <TD>
+                        <div className="font-medium">{s.plan.name}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {s.plan.apps.length > 0
+                            ? s.plan.apps.join(" · ")
+                            : "(sem apps vinculados)"}
+                        </div>
+                      </TD>
+                      <TD>
+                        <Badge variant={statusVariant(s.status)}>{s.status}</Badge>
+                      </TD>
+                      <TD>
+                        {formatPrice(s.plan.price_amount, s.plan.currency)} ({s.plan.billing_period})
+                      </TD>
+                      <TD className="text-muted-foreground">
+                        {formatDate(s.current_period_end)}
+                      </TD>
+                      <TD className="text-right">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setMode({ kind: "cancel", subscriptionId: s.id })}
+                          className="border-destructive/40 text-destructive hover:bg-destructive/10"
+                        >
+                          Cancelar
+                        </Button>
+                      </TD>
+                    </TR>
+                  ))}
+                </TBody>
+              </Table>
             </div>
           )}
 
@@ -168,44 +163,42 @@ export function OrgPlansSection({ orgId, appSlug, subscriptions, availablePlans 
               <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
                 Encerradas
               </h3>
-              <div className="rounded-xl border border-border bg-card overflow-x-auto opacity-70">
-                <table className="w-full text-sm">
-                  <thead className="bg-muted/50 text-muted-foreground text-left">
-                    <tr>
-                      <th className="px-4 py-2 font-medium">Plano</th>
-                      <th className="px-4 py-2 font-medium">Status</th>
-                      <th className="px-4 py-2 font-medium">Preço</th>
-                      <th className="px-4 py-2 font-medium">Período até</th>
-                      <th className="px-4 py-2 font-medium" />
-                    </tr>
-                  </thead>
-                  <tbody>
+              <div className="opacity-70">
+                <Table>
+                  <THead>
+                    <TR>
+                      <TH>Plano</TH>
+                      <TH>Status</TH>
+                      <TH>Preço</TH>
+                      <TH>Período até</TH>
+                      <TH />
+                    </TR>
+                  </THead>
+                  <TBody>
                     {ended.map((s) => (
-                      <tr key={s.id} className="border-t border-border">
-                        <td className="px-4 py-2">
+                      <TR key={s.id}>
+                        <TD>
                           <div className="font-medium">{s.plan.name}</div>
                           <div className="text-xs text-muted-foreground">
                             {s.plan.apps.length > 0
                               ? s.plan.apps.join(" · ")
                               : "(sem apps vinculados)"}
                           </div>
-                        </td>
-                        <td className="px-4 py-2 text-xs">
-                          <span className="rounded-full bg-muted text-muted-foreground px-2 py-0.5">
-                            {s.status}
-                          </span>
-                        </td>
-                        <td className="px-4 py-2 text-sm">
+                        </TD>
+                        <TD>
+                          <Badge variant="muted">{s.status}</Badge>
+                        </TD>
+                        <TD>
                           {formatPrice(s.plan.price_amount, s.plan.currency)} ({s.plan.billing_period})
-                        </td>
-                        <td className="px-4 py-2 text-sm text-muted-foreground">
+                        </TD>
+                        <TD className="text-muted-foreground">
                           {formatDate(s.current_period_end)}
-                        </td>
-                        <td className="px-4 py-2" />
-                      </tr>
+                        </TD>
+                        <TD />
+                      </TR>
                     ))}
-                  </tbody>
-                </table>
+                  </TBody>
+                </Table>
               </div>
             </div>
           )}

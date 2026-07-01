@@ -2,6 +2,12 @@
 
 import { useState, useMemo } from "react";
 import Link from "next/link";
+import { Dialog, DialogFooter } from "@/components/ui/dialog";
+import { Field } from "@/components/ui/field";
+import { Select } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Button, buttonClasses } from "@/components/ui/button";
 import type { BillingPeriod } from "@/lib/data";
 
 type PlanOption = {
@@ -50,37 +56,21 @@ export function AssignOrgPlanDialog({ open, plans, onSubmit, onCancel }: Props) 
   );
   const [notes, setNotes] = useState("");
 
-  if (!open) return null;
-
   if (plans.length === 0) {
     return (
-      <div
-        role="dialog"
-        aria-modal="true"
-        className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
-      >
-        <div className="w-full max-w-md rounded-2xl border border-border bg-card p-6 space-y-4">
-          <h2 className="font-display font-semibold text-lg">Atribuir plano</h2>
-          <p className="text-sm text-muted-foreground">
-            Nenhum plano ativo disponível. Crie um plano antes de atribuir.
-          </p>
-          <div className="flex justify-end gap-2">
-            <button
-              type="button"
-              onClick={onCancel}
-              className="rounded-lg border border-input px-4 py-2 text-sm hover:bg-muted"
-            >
-              Cancelar
-            </button>
-            <Link
-              href="/plans/new"
-              className="rounded-lg bg-primary text-primary-foreground px-4 py-2 text-sm font-medium hover:opacity-90"
-            >
-              Criar plano
-            </Link>
-          </div>
-        </div>
-      </div>
+      <Dialog open={open} onClose={onCancel} title="Atribuir plano" size="md">
+        <p className="text-sm text-muted-foreground">
+          Nenhum plano ativo disponível. Crie um plano antes de atribuir.
+        </p>
+        <DialogFooter>
+          <Button type="button" variant="outline" onClick={onCancel}>
+            Cancelar
+          </Button>
+          <Link href="/plans/new" className={buttonClasses({ variant: "primary" })}>
+            Criar plano
+          </Link>
+        </DialogFooter>
+      </Dialog>
     );
   }
 
@@ -94,22 +84,15 @@ export function AssignOrgPlanDialog({ open, plans, onSubmit, onCancel }: Props) 
   }
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+    <Dialog
+      open={open}
+      onClose={onCancel}
+      title="Atribuir plano à organização"
+      size="md"
     >
-      <form
-        onSubmit={handleSubmit}
-        className="w-full max-w-md rounded-2xl border border-border bg-card p-6 space-y-4"
-      >
-        <h2 className="font-display font-semibold text-lg">Atribuir plano à organização</h2>
-
-        <div className="space-y-1.5">
-          <label className="text-sm font-medium" htmlFor="aop-plan">
-            Plano
-          </label>
-          <select
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <Field label="Plano" htmlFor="aop-plan">
+          <Select
             id="aop-plan"
             value={planId}
             onChange={(e) => {
@@ -117,65 +100,50 @@ export function AssignOrgPlanDialog({ open, plans, onSubmit, onCancel }: Props) 
               const next = plans.find((p) => p.id === e.target.value);
               if (next) setPeriodEnd(defaultPeriodEnd(next.billing_period));
             }}
-            className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm"
           >
             {plans.map((p) => (
               <option key={p.id} value={p.id}>
                 {p.name} ({p.billing_period})
               </option>
             ))}
-          </select>
-        </div>
+          </Select>
+        </Field>
 
-        <div className="space-y-1.5">
-          <label className="text-sm font-medium" htmlFor="aop-period-end">
-            Fim do período (opcional)
-          </label>
-          <input
+        <Field
+          label="Fim do período (opcional)"
+          htmlFor="aop-period-end"
+          hint="Vazio = vitalício."
+        >
+          <Input
             id="aop-period-end"
             type="date"
             value={periodEnd}
             onChange={(e) => setPeriodEnd(e.target.value)}
-            className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm"
           />
-          <p className="text-xs text-muted-foreground">Vazio = vitalício.</p>
-        </div>
+        </Field>
 
-        <div className="space-y-1.5">
-          <label className="text-sm font-medium" htmlFor="aop-notes">
-            Observações (opcional)
-          </label>
-          <textarea
+        <Field label="Observações (opcional)" htmlFor="aop-notes">
+          <Textarea
             id="aop-notes"
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             rows={3}
             maxLength={500}
-            className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm"
           />
-        </div>
+        </Field>
 
         <p className="text-xs text-muted-foreground">
           Usuários da organização verão o plano novo no próximo refresh do token (~1h) ou
           após logout/login. Para forçar agora, use force logout em /users/[id].
         </p>
 
-        <div className="flex justify-end gap-2 pt-2">
-          <button
-            type="button"
-            onClick={onCancel}
-            className="rounded-lg border border-input px-4 py-2 text-sm hover:bg-muted"
-          >
+        <DialogFooter>
+          <Button type="button" variant="outline" onClick={onCancel}>
             Cancelar
-          </button>
-          <button
-            type="submit"
-            className="rounded-lg bg-primary text-primary-foreground px-4 py-2 text-sm font-medium hover:opacity-90"
-          >
-            Atribuir
-          </button>
-        </div>
+          </Button>
+          <Button type="submit">Atribuir</Button>
+        </DialogFooter>
       </form>
-    </div>
+    </Dialog>
   );
 }

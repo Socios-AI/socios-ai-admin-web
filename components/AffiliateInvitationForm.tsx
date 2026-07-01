@@ -1,7 +1,13 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { toast } from "sonner";
+import { Copy, Check } from "lucide-react";
 import { createAffiliateInvitationAction } from "@/app/_actions/create-affiliate-invitation";
+import { Button } from "@/components/ui/button";
+import { Field } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import { copyToClipboard } from "@/lib/ui/clipboard";
 
 export function AffiliateInvitationForm({ onCreated }: { onCreated?: () => void }) {
   const [email, setEmail] = useState("");
@@ -9,7 +15,6 @@ export function AffiliateInvitationForm({ onCreated }: { onCreated?: () => void 
   const [source, setSource] = useState("");
   const [expiresInDays, setExpiresInDays] = useState(7);
   const [pending, startTransition] = useTransition();
-  const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<{ inviteUrl: string } | null>(null);
   const [copied, setCopied] = useState(false);
 
@@ -18,13 +23,11 @@ export function AffiliateInvitationForm({ onCreated }: { onCreated?: () => void 
     setDisplayName("");
     setSource("");
     setExpiresInDays(7);
-    setError(null);
     setSuccess(null);
   }
 
   function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setError(null);
     startTransition(async () => {
       const res = await createAffiliateInvitationAction({
         email,
@@ -33,122 +36,103 @@ export function AffiliateInvitationForm({ onCreated }: { onCreated?: () => void 
         expiresInDays,
       });
       if (!res.ok) {
-        setError(res.message ?? res.error);
+        toast.error(res.message ?? res.error);
         return;
       }
       setSuccess({ inviteUrl: res.inviteUrl });
+      toast.success("Convite criado");
       onCreated?.();
     });
   }
 
   async function copyLink() {
     if (!success) return;
-    await navigator.clipboard.writeText(success.inviteUrl);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    const ok = await copyToClipboard(success.inviteUrl, "Link copiado");
+    if (ok) {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
   }
 
   if (success) {
     return (
       <div className="space-y-4">
-        <div className="rounded-lg border border-emerald-300 bg-emerald-50 dark:bg-emerald-950 dark:border-emerald-800 p-4 text-sm">
+        <p className="text-sm text-muted-foreground">
           Convite criado. Envie o link abaixo para o influencer.
-        </div>
-        <div>
-          <label className="block text-xs font-medium text-muted-foreground mb-1">
-            Link do convite
-          </label>
+        </p>
+        <Field label="Link do convite" htmlFor="aff-invite-url">
           <div className="flex gap-2">
-            <input
+            <Input
+              id="aff-invite-url"
               type="text"
               readOnly
               value={success.inviteUrl}
-              className="flex-1 rounded-lg border border-border bg-background px-3 py-2 text-xs font-mono"
+              className="font-mono text-xs"
             />
-            <button
+            <Button
               type="button"
+              variant="outline"
+              size="icon"
               onClick={copyLink}
-              className="rounded-lg border border-border bg-secondary px-3 py-2 text-sm hover:bg-secondary/80"
+              aria-label="Copiar link"
             >
-              {copied ? "Copiado!" : "Copiar"}
-            </button>
+              {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+            </Button>
           </div>
-        </div>
-        <button
-          type="button"
-          onClick={reset}
-          className="text-sm text-muted-foreground hover:underline"
-        >
+        </Field>
+        <Button type="button" variant="ghost" size="sm" onClick={reset}>
           Criar outro convite
-        </button>
+        </Button>
       </div>
     );
   }
 
   return (
     <form onSubmit={onSubmit} className="space-y-4">
-      <div>
-        <label htmlFor="aff-email" className="block text-sm font-medium mb-1">Email</label>
-        <input
+      <Field label="Email" htmlFor="aff-email" required>
+        <Input
           id="aff-email"
           type="email"
           required
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
           placeholder="influencer@exemplo.com"
         />
-      </div>
-      <div>
-        <label htmlFor="aff-name" className="block text-sm font-medium mb-1">Nome de exibição</label>
-        <input
+      </Field>
+      <Field label="Nome de exibição" htmlFor="aff-name" required>
+        <Input
           id="aff-name"
           type="text"
           required
           value={displayName}
           onChange={(e) => setDisplayName(e.target.value)}
-          className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
         />
-      </div>
+      </Field>
       <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label htmlFor="aff-source" className="block text-sm font-medium mb-1">Fonte (opcional)</label>
-          <input
+        <Field label="Fonte (opcional)" htmlFor="aff-source">
+          <Input
             id="aff-source"
             type="text"
             value={source}
             onChange={(e) => setSource(e.target.value)}
-            className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
             placeholder="instagram, indicação, ..."
           />
-        </div>
-        <div>
-          <label htmlFor="aff-exp" className="block text-sm font-medium mb-1">Expira em (dias)</label>
-          <input
+        </Field>
+        <Field label="Expira em (dias)" htmlFor="aff-exp">
+          <Input
             id="aff-exp"
             type="number"
             min={1}
             max={30}
             value={expiresInDays}
             onChange={(e) => setExpiresInDays(parseInt(e.target.value, 10) || 7)}
-            className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
           />
-        </div>
+        </Field>
       </div>
 
-      {error ? (
-        <div role="alert" className="rounded-lg border border-red-300 bg-red-50 dark:bg-red-950 dark:border-red-800 p-3 text-sm">
-          {error}
-        </div>
-      ) : null}
-
-      <button
-        type="submit"
-        disabled={pending}
-        className="w-full rounded-lg bg-primary text-primary-foreground py-2.5 text-sm font-medium hover:opacity-90 transition disabled:opacity-50"
-      >
+      <Button type="submit" className="w-full" loading={pending}>
         {pending ? "Criando..." : "Criar convite"}
-      </button>
+      </Button>
     </form>
   );
 }

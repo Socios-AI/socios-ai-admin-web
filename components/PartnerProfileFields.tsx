@@ -64,7 +64,9 @@ export function PartnerProfileFields({
   const isBR = value.country === "BR";
   const isPJ = value.person_type === "company";
 
-  const Field = ({ name, labelText, type = "text" }: { name: keyof ProfileValue; labelText: string; type?: string }) => (
+  // Helper de renderização (NÃO é um componente): retorna JSX cru de <input> pra
+  // evitar remount/perda de foco a cada tecla. Chamar como {renderField(...)}.
+  const renderField = (name: keyof ProfileValue, labelText: string, type = "text") => (
     <div>
       <label htmlFor={name} className={label}>{labelText}</label>
       <input
@@ -159,18 +161,16 @@ export function PartnerProfileFields({
             <input id="tax_id" value={value.tax_id} onChange={(e) => onChange({ tax_id: e.target.value })} className={input} placeholder="XX-XXXXXXX" />
           </div>
         )}
-        {!isPJ && (
-          <Field name="birth_date" labelText="Data de nascimento" type="date" />
-        )}
+        {!isPJ && renderField("birth_date", "Data de nascimento", "date")}
       </div>
 
       {isPJ && (
         <div className="grid grid-cols-2 gap-4">
-          <Field name="company_legal_name" labelText={isBR ? "Razão social" : "Legal entity name"} />
-          <Field name="company_trade_name" labelText={isBR ? "Nome fantasia" : "DBA / trade name"} />
-          {!isBR && <Field name="company_entity_type" labelText="Entity type (LLC, C-Corp...)" />}
-          {isBR && <Field name="legal_rep_name" labelText="Responsável legal" />}
-          {isBR && <Field name="legal_rep_tax_id" labelText="CPF do responsável" />}
+          {renderField("company_legal_name", isBR ? "Razão social" : "Legal entity name")}
+          {renderField("company_trade_name", isBR ? "Nome fantasia" : "DBA / trade name")}
+          {!isBR && renderField("company_entity_type", "Entity type (LLC, C-Corp...)")}
+          {isBR && renderField("legal_rep_name", "Responsável legal")}
+          {isBR && renderField("legal_rep_tax_id", "CPF do responsável")}
         </div>
       )}
 
@@ -189,12 +189,12 @@ export function PartnerProfileFields({
           <label htmlFor="address_postal_code" className={label}>{isBR ? "CEP" : "ZIP"}</label>
           <input id="address_postal_code" value={value.address_postal_code} onBlur={onCepBlur} onChange={(e) => onChange({ address_postal_code: e.target.value })} className={input} />
         </div>
-        <Field name="address_line1" labelText={isBR ? "Logradouro" : "Street address"} />
-        {isBR && <Field name="address_number" labelText="Número" />}
-        <Field name="address_complement" labelText={isBR ? "Complemento" : "Apt / Suite"} />
-        {isBR && <Field name="address_district" labelText="Bairro" />}
-        <Field name="address_city" labelText={isBR ? "Cidade" : "City"} />
-        <Field name="address_state" labelText={isBR ? "UF" : "State"} />
+        {renderField("address_line1", isBR ? "Logradouro" : "Street address")}
+        {isBR && renderField("address_number", "Número")}
+        {renderField("address_complement", isBR ? "Complemento" : "Apt / Suite")}
+        {isBR && renderField("address_district", "Bairro")}
+        {renderField("address_city", isBR ? "Cidade" : "City")}
+        {renderField("address_state", isBR ? "UF" : "State")}
       </div>
 
       {/* Payout */}
@@ -212,7 +212,7 @@ export function PartnerProfileFields({
       </div>
       {value.payout_method === "pix" && (
         <div className="grid grid-cols-2 gap-4">
-          <Field name="pix_key" labelText="Chave PIX" />
+          {renderField("pix_key", "Chave PIX")}
           <div>
             <label htmlFor="pix_key_type" className={label}>Tipo da chave</label>
             <select id="pix_key_type" value={value.pix_key_type} onChange={(e) => onChange({ pix_key_type: e.target.value })} className={input}>
@@ -226,10 +226,10 @@ export function PartnerProfileFields({
       )}
       {value.payout_method === "bank_br" && (
         <div className="grid grid-cols-2 gap-4">
-          <Field name="bank_name" labelText="Banco" />
-          <Field name="branch" labelText="Agência" />
-          <Field name="account_number" labelText="Conta" />
-          <Field name="account_digit" labelText="Dígito" />
+          {renderField("bank_name", "Banco")}
+          {renderField("branch", "Agência")}
+          {renderField("account_number", "Conta")}
+          {renderField("account_digit", "Dígito")}
           <div>
             <label htmlFor="account_type" className={label}>Tipo de conta</label>
             <select id="account_type" value={value.account_type} onChange={(e) => onChange({ account_type: e.target.value })} className={input}>
@@ -241,9 +241,9 @@ export function PartnerProfileFields({
       )}
       {value.payout_method === "bank_us" && (
         <div className="grid grid-cols-2 gap-4">
-          <Field name="bank_name" labelText="Bank name" />
-          <Field name="routing_number" labelText="Routing number (ABA)" />
-          <Field name="account_number" labelText="Account number" />
+          {renderField("bank_name", "Bank name")}
+          {renderField("routing_number", "Routing number (ABA)")}
+          {renderField("account_number", "Account number")}
           <div>
             <label htmlFor="account_type" className={label}>Account type</label>
             <select id="account_type" value={value.account_type} onChange={(e) => onChange({ account_type: e.target.value })} className={input}>
@@ -255,7 +255,7 @@ export function PartnerProfileFields({
       )}
       {value.payout_method === "zelle" && (
         <div className="grid grid-cols-2 gap-4">
-          <Field name="zelle_identifier" labelText="Zelle (email ou telefone)" />
+          {renderField("zelle_identifier", "Zelle (email ou telefone)")}
           <div>
             <label htmlFor="zelle_type" className={label}>Tipo</label>
             <select id="zelle_type" value={value.zelle_type} onChange={(e) => onChange({ zelle_type: e.target.value })} className={input}>
@@ -266,7 +266,11 @@ export function PartnerProfileFields({
         </div>
       )}
 
-      {notice && <p className="text-sm text-amber-700 dark:text-amber-400">{notice}</p>}
+      {notice && (
+        <p className="rounded-md border border-warning/50 bg-warning/15 px-3 py-2 text-sm text-foreground">
+          {notice}
+        </p>
+      )}
     </div>
   );
 }

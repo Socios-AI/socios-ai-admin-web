@@ -1,8 +1,9 @@
+import { EmptyState } from "@/components/ui/empty-state";
 import type { AuditEvent } from "@/lib/data";
 
 export function AuditList({ events }: { events: AuditEvent[] }) {
   if (events.length === 0) {
-    return <p className="text-sm text-muted-foreground">Sem eventos recentes.</p>;
+    return <EmptyState title="Sem eventos recentes." />;
   }
   return (
     <ul className="space-y-2">

@@ -2,6 +2,9 @@ import { AdminShell } from "@/components/AdminShell";
 import { AuditFilters } from "@/components/AuditFilters";
 import { AuditTable } from "@/components/AuditTable";
 import { AuditPagination } from "@/components/AuditPagination";
+import { PageHeader } from "@/components/ui/page-header";
+import { Badge } from "@/components/ui/badge";
+import { buttonClasses } from "@/components/ui/button";
 import { getCallerJwt } from "@/lib/auth";
 import {
   listAuditEvents,
@@ -103,29 +106,26 @@ export default async function AuditPage(props: { searchParams: Promise<SearchPar
     pageError = (e as Error).message;
   }
 
+  const refreshForm = (
+    <form action="/audit" method="get">
+      {Object.entries(sp).map(([k, v]) =>
+        typeof v === "string" && v.length > 0 ? (
+          <input key={k} type="hidden" name={k} value={v} />
+        ) : null,
+      )}
+      <button type="submit" className={buttonClasses({ variant: "outline", size: "sm" })}>
+        ↻ Atualizar
+      </button>
+    </form>
+  );
+
   return (
     <AdminShell>
-      <header className="mb-6 flex items-center justify-between">
-        <div>
-          <h1 className="font-display font-semibold text-2xl">Auditoria</h1>
-          <p className="text-sm text-muted-foreground">
-            Log global de eventos do painel.
-          </p>
-        </div>
-        <form action="/audit" method="get">
-          {Object.entries(sp).map(([k, v]) =>
-            typeof v === "string" && v.length > 0 ? (
-              <input key={k} type="hidden" name={k} value={v} />
-            ) : null,
-          )}
-          <button
-            type="submit"
-            className="rounded-lg border border-border bg-card px-3 py-2 text-sm hover:bg-muted"
-          >
-            ↻ Atualizar
-          </button>
-        </form>
-      </header>
+      <PageHeader
+        title="Auditoria"
+        subtitle="Log global de eventos do painel."
+        actions={refreshForm}
+      />
 
       <div className="space-y-4">
         <AuditFilters
@@ -154,19 +154,16 @@ export default async function AuditPage(props: { searchParams: Promise<SearchPar
         {targetWarning && <UserSearchWarning kind={targetWarning} field="alvo" query={parsed.target ?? ""} />}
 
         {pageError ? (
-          <div className="rounded-2xl border border-destructive bg-destructive/5 p-6">
-            <p className="text-destructive font-medium">Erro ao carregar auditoria.</p>
-            <p className="text-sm text-muted-foreground mt-1 font-mono">{pageError}</p>
+          <div className="rounded-lg border border-destructive bg-destructive/5 p-6">
+            <p className="font-medium text-destructive">Erro ao carregar auditoria.</p>
+            <p className="mt-1 font-mono text-sm text-muted-foreground">{pageError}</p>
             <form action="/audit" method="get" className="mt-3">
               {Object.entries(sp).map(([k, v]) =>
                 typeof v === "string" && v.length > 0 ? (
                   <input key={k} type="hidden" name={k} value={v} />
                 ) : null,
               )}
-              <button
-                type="submit"
-                className="rounded-lg border border-border bg-card px-3 py-2 text-sm hover:bg-muted"
-              >
+              <button type="submit" className={buttonClasses({ variant: "outline", size: "sm" })}>
                 Tentar novamente
               </button>
             </form>
@@ -222,12 +219,17 @@ function DeeplinkBadge(props: {
   const removeHref = params.toString() ? `/audit?${params.toString()}` : "/audit";
 
   return (
-    <div className="rounded-lg bg-muted/40 border border-border px-3 py-2 text-sm flex items-center justify-between">
-      <span>
-        {label} = <strong>{email ?? id}</strong>{" "}
-        <span className="text-xs text-muted-foreground font-mono">({id.slice(0, 8)}…)</span>
+    <div className="flex items-center justify-between gap-2 rounded-lg border border-border bg-muted/40 px-3 py-2 text-sm">
+      <span className="flex flex-wrap items-center gap-2">
+        <Badge variant="navy">{label}</Badge>
+        <strong>{email ?? id}</strong>{" "}
+        <span className="font-mono text-xs text-muted-foreground">({id.slice(0, 8)}…)</span>
       </span>
-      <a href={removeHref} className="text-xs text-muted-foreground hover:text-foreground" aria-label="Limpar filtro deeplink">
+      <a
+        href={removeHref}
+        className="text-xs text-muted-foreground hover:text-foreground"
+        aria-label="Limpar filtro deeplink"
+      >
         ✕ limpar
       </a>
     </div>
@@ -241,21 +243,28 @@ function UserSearchWarning(props: {
 }) {
   if (props.kind === "validation") {
     return (
-      <div className="rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-sm text-amber-900">
-        Busca de {props.field} precisa de no mínimo 3 caracteres.
+      <div className="flex items-start gap-2 rounded-lg border border-warning/50 bg-warning/10 px-3 py-2 text-sm text-foreground">
+        <Badge variant="warning">Aviso</Badge>
+        <span>Busca de {props.field} precisa de no mínimo 3 caracteres.</span>
       </div>
     );
   }
   if (props.kind === "not_found") {
     return (
-      <div className="rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-sm text-amber-900">
-        Nenhum usuário encontrado para o {props.field} &apos;{props.query}&apos;. Verifique a busca.
+      <div className="flex items-start gap-2 rounded-lg border border-warning/50 bg-warning/10 px-3 py-2 text-sm text-foreground">
+        <Badge variant="warning">Aviso</Badge>
+        <span>
+          Nenhum usuário encontrado para o {props.field} &apos;{props.query}&apos;. Verifique a busca.
+        </span>
       </div>
     );
   }
   return (
-    <div className="rounded-lg bg-blue-50 border border-blue-200 px-3 py-2 text-sm text-blue-900">
-      Mostrando até 50 usuários correspondentes ao {props.field} &apos;{props.query}&apos;. Refine a busca para resultados mais precisos.
+    <div className="flex items-start gap-2 rounded-lg border border-support-sky/40 bg-support-sky/10 px-3 py-2 text-sm text-support-navy">
+      <Badge variant="sky">Info</Badge>
+      <span>
+        Mostrando até 50 usuários correspondentes ao {props.field} &apos;{props.query}&apos;. Refine a busca para resultados mais precisos.
+      </span>
     </div>
   );
 }
