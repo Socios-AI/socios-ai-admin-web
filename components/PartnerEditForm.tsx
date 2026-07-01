@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import {
   PartnerProfileFields,
   emptyProfileValue,
@@ -9,6 +10,9 @@ import {
   toPayoutPayload,
   type ProfileValue,
 } from "@/components/PartnerProfileFields";
+import { Field } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { updatePartnerRegistrationAction } from "@/app/_actions/update-partner-registration";
 
 type RawProfile = Record<string, unknown> | null;
@@ -42,19 +46,20 @@ function buildInitial(profile: RawProfile): ProfileValue {
   };
 }
 
-const FIELD =
-  "mt-1 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring";
-
 export function PartnerEditForm({
   partnerId,
   initialFullName,
   initialEmail,
   initialProfile,
+  onDone,
+  onCancel,
 }: {
   partnerId: string;
   initialFullName: string;
   initialEmail: string;
   initialProfile: RawProfile;
+  onDone?: () => void;
+  onCancel?: () => void;
 }) {
   const router = useRouter();
   const [fullName, setFullName] = useState(initialFullName);
@@ -68,6 +73,10 @@ export function PartnerEditForm({
   }
 
   function cancel() {
+    if (onCancel) {
+      onCancel();
+      return;
+    }
     router.push(`/partners/${partnerId}?tab=identidade`);
   }
 
@@ -84,32 +93,35 @@ export function PartnerEditForm({
         payoutMethods: payout ? [payout] : [],
       });
       if (res.ok) {
-        router.push(`/partners/${partnerId}?tab=identidade`);
+        toast.success("Cadastro atualizado.");
+        if (onDone) {
+          onDone();
+        } else {
+          router.push(`/partners/${partnerId}?tab=identidade`);
+        }
         router.refresh();
       } else {
-        setError(res.message ?? res.error);
+        const msg = res.message ?? res.error;
+        setError(msg);
+        toast.error(msg);
       }
     });
   }
 
   return (
-    <form onSubmit={onSubmit} className="space-y-6 max-w-2xl">
+    <form onSubmit={onSubmit} className="max-w-2xl space-y-6">
       <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label htmlFor="edit-name" className="block text-sm font-medium">Nome</label>
-          <input id="edit-name" value={fullName} onChange={(e) => setFullName(e.target.value)}
-            minLength={2} maxLength={120} required className={FIELD} />
-        </div>
-        <div>
-          <label htmlFor="edit-email" className="block text-sm font-medium">Email</label>
-          <input id="edit-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)}
-            required className={FIELD} />
-        </div>
+        <Field label="Nome" htmlFor="edit-name" required>
+          <Input id="edit-name" value={fullName} onChange={(e) => setFullName(e.target.value)} minLength={2} maxLength={120} required />
+        </Field>
+        <Field label="Email" htmlFor="edit-email" required>
+          <Input id="edit-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+        </Field>
       </div>
 
-      <div className="border-t pt-6">
-        <h2 className="font-semibold text-sm mb-4">Dados de cadastro</h2>
-        <p className="text-xs text-muted-foreground mb-4">
+      <div className="border-t border-border pt-6">
+        <h2 className="mb-1 text-sm font-semibold">Dados de cadastro</h2>
+        <p className="mb-4 text-xs text-muted-foreground">
           O documento (CPF/CNPJ) fica oculto; deixe em branco para manter o atual, ou redigite para trocar.
         </p>
         <PartnerProfileFields value={profile} onChange={handleChange} />
@@ -122,14 +134,12 @@ export function PartnerEditForm({
       ) : null}
 
       <div className="flex items-center gap-3">
-        <button type="submit" disabled={pending}
-          className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90 disabled:opacity-50">
-          {pending ? "Salvando..." : "Salvar cadastro"}
-        </button>
-        <button type="button" onClick={cancel}
-          className="rounded-lg border border-input px-4 py-2 text-sm hover:bg-muted">
+        <Button type="submit" loading={pending}>
+          Salvar cadastro
+        </Button>
+        <Button type="button" variant="outline" onClick={cancel}>
           Cancelar
-        </button>
+        </Button>
       </div>
     </form>
   );

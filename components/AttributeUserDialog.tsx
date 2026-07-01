@@ -2,9 +2,12 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2 } from "lucide-react";
 import { findUserForAttributionAction } from "@/app/_actions/find-user-for-attribution";
 import { attributeReferralAction } from "@/app/_actions/attribute-referral";
+import { Dialog, DialogFooter } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Field } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
 
 type FoundUser = {
   userId: string;
@@ -31,111 +34,97 @@ export function AttributeUserDialog({ partnerId }: { partnerId: string }) {
 
   return (
     <>
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className="rounded border px-3 py-1 text-sm hover:bg-accent"
-      >
+      <Button type="button" variant="outline" size="sm" onClick={() => setOpen(true)}>
         Atribuir cliente
-      </button>
-      {open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="bg-background rounded-lg p-6 w-[32rem] shadow-lg">
-            <h3 className="font-semibold text-lg mb-2">
-              Atribuir cliente a este licenciado
-            </h3>
-            <label className="block text-sm mb-1">Email do cliente</label>
-            <div className="flex gap-2 mb-3">
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="cliente@exemplo.com"
-                className="flex-1 border rounded px-2 py-1"
-                disabled={isSearching || isSubmitting}
-              />
-              <button
+      </Button>
+      <Dialog
+        open={open}
+        onClose={close}
+        title="Atribuir cliente a este licenciado"
+        size="lg"
+        dismissible={!isSearching && !isSubmitting}
+      >
+        <Field label="Email do cliente" htmlFor="attr-user-email">
+          <div className="flex gap-2">
+            <Input
+              id="attr-user-email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="cliente@exemplo.com"
+              disabled={isSearching || isSubmitting}
+            />
+            <Button
+              type="button"
+              variant="outline"
+              disabled={isSearching || !email.trim()}
+              loading={isSearching}
+              onClick={() => {
+                setError(null);
+                setFound(null);
+                startSearch(async () => {
+                  const out = await findUserForAttributionAction(email);
+                  if (!out.ok) {
+                    setError(out.message ?? out.error);
+                  } else if (!out.result) {
+                    setError("Usuário não encontrado.");
+                  } else {
+                    setFound(out.result);
+                  }
+                });
+              }}
+            >
+              Buscar
+            </Button>
+          </div>
+        </Field>
+
+        {found && (
+          <div className="rounded-lg border border-border p-3 text-sm">
+            <p className="font-medium">{found.email}</p>
+            {found.hasReferral ? (
+              <p className="mt-1 text-xs text-destructive">
+                Já atribuído a{" "}
+                <span className="font-mono">{found.currentReferral?.partnerLabel}</span>. Use
+                &quot;Transferir&quot; no licenciado de origem.
+              </p>
+            ) : (
+              <Button
                 type="button"
-                disabled={isSearching || !email.trim()}
+                size="sm"
+                className="mt-2"
+                loading={isSubmitting}
                 onClick={() => {
                   setError(null);
-                  setFound(null);
-                  startSearch(async () => {
-                    const out = await findUserForAttributionAction(email);
+                  startSubmit(async () => {
+                    const out = await attributeReferralAction({
+                      customerUserId: found.userId,
+                      sourcePartnerId: partnerId,
+                      attributionSource: "admin_assignment",
+                    });
                     if (!out.ok) {
                       setError(out.message ?? out.error);
-                    } else if (!out.result) {
-                      setError("Usuário não encontrado.");
                     } else {
-                      setFound(out.result);
+                      close();
+                      router.refresh();
                     }
                   });
                 }}
-                className="rounded border px-3 py-1.5 inline-flex items-center gap-2"
               >
-                {isSearching && <Loader2 className="h-3 w-3 animate-spin" />}
-                Buscar
-              </button>
-            </div>
-
-            {found && (
-              <div className="rounded border p-3 text-sm mb-3">
-                <p className="font-medium">{found.email}</p>
-                {found.hasReferral ? (
-                  <p className="text-destructive text-xs mt-1">
-                    Já atribuído a{" "}
-                    <span className="font-mono">
-                      {found.currentReferral?.partnerLabel}
-                    </span>
-                    . Use &quot;Transferir&quot; no licenciado de origem.
-                  </p>
-                ) : (
-                  <button
-                    type="button"
-                    disabled={isSubmitting}
-                    onClick={() => {
-                      setError(null);
-                      startSubmit(async () => {
-                        const out = await attributeReferralAction({
-                          customerUserId: found.userId,
-                          sourcePartnerId: partnerId,
-                          attributionSource: "admin_assignment",
-                        });
-                        if (!out.ok) {
-                          setError(out.message ?? out.error);
-                        } else {
-                          close();
-                          router.refresh();
-                        }
-                      });
-                    }}
-                    className="mt-2 rounded bg-primary text-primary-foreground px-3 py-1 text-sm inline-flex items-center gap-2"
-                  >
-                    {isSubmitting && (
-                      <Loader2 className="h-3 w-3 animate-spin" />
-                    )}
-                    Confirmar atribuição
-                  </button>
-                )}
-              </div>
+                Confirmar atribuição
+              </Button>
             )}
-
-            {error && (
-              <p className="text-sm text-destructive mb-3">{error}</p>
-            )}
-
-            <div className="flex justify-end">
-              <button
-                type="button"
-                onClick={close}
-                className="rounded border px-3 py-1.5"
-              >
-                Fechar
-              </button>
-            </div>
           </div>
-        </div>
-      )}
+        )}
+
+        {error && <p className="text-sm text-destructive">{error}</p>}
+
+        <DialogFooter>
+          <Button type="button" variant="outline" onClick={close}>
+            Fechar
+          </Button>
+        </DialogFooter>
+      </Dialog>
     </>
   );
 }

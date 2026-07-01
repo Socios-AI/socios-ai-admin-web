@@ -1,5 +1,10 @@
-import Link from "next/link";
+"use client";
+
+import { useRouter } from "next/navigation";
 import type { PlanCatalogRow } from "@/lib/data";
+import { DataTable, type Column } from "@/components/ui/data-table";
+import { Badge, type BadgeVariant } from "@/components/ui/badge";
+import { EmptyState } from "@/components/ui/empty-state";
 
 const PERIOD_LABEL: Record<PlanCatalogRow["billing_period"], string> = {
   monthly: "Mensal",
@@ -8,12 +13,16 @@ const PERIOD_LABEL: Record<PlanCatalogRow["billing_period"], string> = {
   custom: "Custom",
 };
 
-const PERIOD_TONE: Record<PlanCatalogRow["billing_period"], string> = {
-  monthly: "bg-sky-100 text-sky-800 border-sky-200",
-  yearly: "bg-violet-100 text-violet-800 border-violet-200",
-  one_time: "bg-emerald-100 text-emerald-800 border-emerald-200",
-  custom: "bg-amber-100 text-amber-800 border-amber-200",
+const PERIOD_VARIANT: Record<PlanCatalogRow["billing_period"], BadgeVariant> = {
+  monthly: "sky",
+  yearly: "purple",
+  one_time: "success",
+  custom: "warning",
 };
+
+const PERIOD_OPTIONS = (
+  Object.keys(PERIOD_LABEL) as PlanCatalogRow["billing_period"][]
+).map((value) => ({ value, label: PERIOD_LABEL[value] }));
 
 const CURRENCY_FORMATTERS: Record<PlanCatalogRow["currency"], Intl.NumberFormat> = {
   usd: new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }),
@@ -25,78 +34,96 @@ function formatPrice(amount: number, currency: PlanCatalogRow["currency"]): stri
   return CURRENCY_FORMATTERS[currency].format(amount);
 }
 
-export function PlanListTable({ rows }: { rows: PlanCatalogRow[] }) {
-  if (rows.length === 0) {
-    return (
-      <div className="rounded-2xl border border-border p-10 bg-card text-center">
-        <p className="text-muted-foreground">Nenhum plano cadastrado.</p>
+const columns: Column<PlanCatalogRow>[] = [
+  {
+    key: "name",
+    header: "Plano",
+    cell: (row) => (
+      <div>
+        <span className="font-medium">{row.name}</span>
+        <span className="ml-2 font-mono text-xs text-muted-foreground">
+          {row.slug}
+        </span>
       </div>
-    );
-  }
-
-  return (
-    <div className="rounded-2xl border border-border bg-card overflow-hidden">
-      <table className="w-full text-sm">
-        <thead className="bg-muted/50 text-muted-foreground text-left">
-          <tr>
-            <th className="px-4 py-3 font-medium">Plano</th>
-            <th className="px-4 py-3 font-medium">Periodicidade</th>
-            <th className="px-4 py-3 font-medium">Preço</th>
-            <th className="px-4 py-3 font-medium">Apps liberados</th>
-            <th className="px-4 py-3 font-medium">Subscribers</th>
-            <th className="px-4 py-3 font-medium">Estado</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row, i) => (
-            <tr key={row.id} className={i % 2 === 0 ? "bg-background" : "bg-muted/20"}>
-              <td className="px-4 py-3">
-                <Link href={`/plans/${row.id}`} className="hover:underline font-medium">
-                  {row.name}
-                </Link>
-                <span className="ml-2 text-xs text-muted-foreground font-mono">{row.slug}</span>
-              </td>
-              <td className="px-4 py-3">
-                <span
-                  className={`inline-block rounded-full border px-2 py-0.5 text-xs ${PERIOD_TONE[row.billing_period]}`}
-                >
-                  {PERIOD_LABEL[row.billing_period]}
-                </span>
-              </td>
-              <td className="px-4 py-3 font-mono text-xs">
-                {formatPrice(row.price_amount, row.currency)}
-              </td>
-              <td className="px-4 py-3">
-                {row.app_slugs.length === 0 ? (
-                  <span className="text-xs text-muted-foreground">nenhum</span>
-                ) : (
-                  <div className="flex flex-wrap gap-1">
-                    {row.app_slugs.map((slug) => (
-                      <span
-                        key={slug}
-                        className="rounded-full border border-border bg-muted px-2 py-0.5 text-xs font-mono"
-                      >
-                        {slug}
-                      </span>
-                    ))}
-                  </div>
-                )}
-              </td>
-              <td className="px-4 py-3">{row.subscriber_count}</td>
-              <td className="px-4 py-3">
-                <div className="flex flex-col gap-0.5 text-xs">
-                  <span className={row.is_active ? "text-emerald-700" : "text-zinc-500"}>
-                    {row.is_active ? "Ativo" : "Inativo"}
-                  </span>
-                  <span className={row.is_visible ? "text-foreground" : "text-amber-600"}>
-                    {row.is_visible ? "Visível" : "Oculto"}
-                  </span>
-                </div>
-              </td>
-            </tr>
+    ),
+    sortAccessor: (row) => row.name.toLowerCase(),
+  },
+  {
+    key: "period",
+    header: "Periodicidade",
+    cell: (row) => (
+      <Badge variant={PERIOD_VARIANT[row.billing_period]}>
+        {PERIOD_LABEL[row.billing_period]}
+      </Badge>
+    ),
+    filter: {
+      label: "Periodicidade",
+      options: PERIOD_OPTIONS,
+      accessor: (row) => row.billing_period,
+    },
+  },
+  {
+    key: "price",
+    header: "Preço",
+    cell: (row) => (
+      <span className="font-mono text-xs">
+        {formatPrice(row.price_amount, row.currency)}
+      </span>
+    ),
+    sortAccessor: (row) => row.price_amount,
+    align: "right",
+  },
+  {
+    key: "apps",
+    header: "Apps liberados",
+    cell: (row) =>
+      row.app_slugs.length === 0 ? (
+        <span className="text-xs text-muted-foreground">nenhum</span>
+      ) : (
+        <div className="flex flex-wrap gap-1">
+          {row.app_slugs.map((slug) => (
+            <Badge key={slug} variant="muted" className="font-mono">
+              {slug}
+            </Badge>
           ))}
-        </tbody>
-      </table>
-    </div>
+        </div>
+      ),
+  },
+  {
+    key: "subscribers",
+    header: "Subscribers",
+    cell: (row) => <span className="tabular-nums">{row.subscriber_count}</span>,
+    sortAccessor: (row) => row.subscriber_count,
+    align: "right",
+  },
+  {
+    key: "state",
+    header: "Estado",
+    cell: (row) => (
+      <div className="flex flex-wrap gap-1">
+        <Badge variant={row.is_active ? "success" : "muted"}>
+          {row.is_active ? "Ativo" : "Inativo"}
+        </Badge>
+        <Badge variant={row.is_visible ? "default" : "warning"}>
+          {row.is_visible ? "Visível" : "Oculto"}
+        </Badge>
+      </div>
+    ),
+  },
+];
+
+export function PlanListTable({ rows }: { rows: PlanCatalogRow[] }) {
+  const router = useRouter();
+  return (
+    <DataTable
+      columns={columns}
+      data={rows}
+      getRowId={(row) => row.id}
+      search={(row) => `${row.name} ${row.slug}`}
+      searchPlaceholder="Buscar plano…"
+      initialSort={{ key: "name", dir: "asc" }}
+      onRowClick={(row) => router.push(`/plans/${row.id}`)}
+      empty={<EmptyState title="Nenhum plano cadastrado." />}
+    />
   );
 }

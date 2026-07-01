@@ -1,4 +1,8 @@
 import Link from "next/link";
+import { PageHeader } from "@/components/ui/page-header";
+import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
+import { EmptyState } from "@/components/ui/empty-state";
+import { buttonClasses } from "@/components/ui/button";
 import { listOrgsForRegistrar } from "@/lib/data-registrar";
 
 // View curada do cadastrador · orgs sem nenhum dado de assinatura/financeiro.
@@ -7,55 +11,54 @@ export async function RegistrarOrgsView() {
 
   return (
     <>
-      <header className="mb-6 flex items-center justify-between gap-4">
-        <div>
-          <h1 className="font-display font-semibold text-2xl">Organizações</h1>
-          <p className="text-muted-foreground text-sm">{orgs.length} no total</p>
-        </div>
-        <Link
-          href="/orgs/new"
-          className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90"
-        >
-          Novo cliente
-        </Link>
-      </header>
+      <PageHeader
+        title="Organizações"
+        subtitle={`${orgs.length} no total`}
+        actions={
+          <Link href="/orgs/new" className={buttonClasses({ variant: "primary" })}>
+            Novo cliente
+          </Link>
+        }
+      />
 
-      <div className="overflow-hidden rounded-lg border border-border">
-        <table className="w-full text-sm">
-          <thead className="bg-muted/50 text-muted-foreground">
-            <tr>
-              <th className="px-3 py-2 text-left font-medium">Nome</th>
-              <th className="px-3 py-2 text-left font-medium">Slug</th>
-              <th className="px-3 py-2 text-left font-medium">Nicho</th>
-              <th className="px-3 py-2 text-left font-medium">Criado</th>
-            </tr>
-          </thead>
-          <tbody>
-            {orgs.length === 0 ? (
-              <tr>
-                <td colSpan={4} className="px-3 py-6 text-center text-muted-foreground">
-                  Nenhuma organização cadastrada ainda.
-                </td>
-              </tr>
-            ) : (
-              orgs.map((o) => (
-                <tr key={o.id} className="border-t border-border">
-                  <td className="px-3 py-2 font-medium">
-                    <Link href={`/orgs/${o.id}`} className="text-primary hover:underline">
-                      {o.name}
-                    </Link>
-                  </td>
-                  <td className="px-3 py-2 text-muted-foreground">{o.slug}</td>
-                  <td className="px-3 py-2 text-muted-foreground">{o.niche ?? "(sem nicho)"}</td>
-                  <td className="px-3 py-2 text-muted-foreground">
-                    {new Date(o.createdAt).toLocaleDateString("pt-BR")}
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
+      {orgs.length === 0 ? (
+        <EmptyState
+          title="Nenhuma organização cadastrada ainda"
+          description="Cadastre o primeiro cliente para começar."
+          action={
+            <Link href="/orgs/new" className={buttonClasses({ variant: "primary", size: "sm" })}>
+              Novo cliente
+            </Link>
+          }
+        />
+      ) : (
+        <Table>
+          <THead>
+            <TR>
+              <TH>Nome</TH>
+              <TH>Slug</TH>
+              <TH>Nicho</TH>
+              <TH>Criado</TH>
+            </TR>
+          </THead>
+          <TBody>
+            {orgs.map((o) => (
+              <TR key={o.id}>
+                <TD className="font-medium">
+                  <Link href={`/orgs/${o.id}`} className="text-primary hover:underline">
+                    {o.name}
+                  </Link>
+                </TD>
+                <TD className="text-muted-foreground">{o.slug}</TD>
+                <TD className="text-muted-foreground">{o.niche ?? "(sem nicho)"}</TD>
+                <TD className="text-muted-foreground">
+                  {new Date(o.createdAt).toLocaleDateString("pt-BR")}
+                </TD>
+              </TR>
+            ))}
+          </TBody>
+        </Table>
+      )}
     </>
   );
 }

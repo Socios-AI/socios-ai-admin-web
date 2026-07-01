@@ -1,6 +1,11 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { RegistrarOrgNameEdit } from "@/components/RegistrarOrgNameEdit";
 import { RegistrarOrgAdminEmailEdit } from "@/components/RegistrarOrgAdminEmailEdit";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { EmptyState } from "@/components/ui/empty-state";
 import { loadOrgForRegistrar } from "@/lib/data-registrar";
 
 function formatDate(iso: string): string {
@@ -16,7 +21,14 @@ export async function RegistrarOrgDetailView({ orgId }: { orgId: string }) {
 
   return (
     <>
-      <header className="mb-6">
+      <div className="mb-6">
+        <nav className="mb-2 flex flex-wrap items-center gap-1.5 font-mono text-xs text-muted-foreground">
+          <Link href="/orgs" className="hover:text-foreground transition-colors">
+            Organizações
+          </Link>
+          <span aria-hidden="true">/</span>
+          <span className="text-foreground">{org.name}</span>
+        </nav>
         <RegistrarOrgNameEdit orgId={org.id} initialName={org.name} />
         <p className="text-muted-foreground text-sm font-mono mt-1">
           {org.slug} · {org.id.slice(0, 8)}
@@ -24,41 +36,51 @@ export async function RegistrarOrgDetailView({ orgId }: { orgId: string }) {
         <p className="text-muted-foreground text-sm">
           Nicho: {org.niche ?? "(sem nicho)"} · criado em {formatDate(org.createdAt)}
         </p>
-      </header>
+      </div>
 
-      <section>
-        <h2 className="font-display font-semibold text-lg mb-3">Membros</h2>
-        {org.members.length === 0 ? (
-          <p className="text-muted-foreground text-sm">Nenhum membro ativo.</p>
-        ) : (
-          <table className="w-full text-sm">
-            <thead className="text-left text-muted-foreground">
-              <tr>
-                <th className="py-2">App</th>
-                <th className="py-2">Papel</th>
-                <th className="py-2">E-mail</th>
-                <th className="py-2">Concedido em</th>
-              </tr>
-            </thead>
-            <tbody>
-              {org.members.map((m, i) => (
-                <tr key={`${m.appSlug}-${i}`} className="border-t border-border">
-                  <td className="py-2">{m.appSlug}</td>
-                  <td className="py-2">{m.roleSlug}</td>
-                  <td className="py-2">
-                    {m.isAdmin && m.userId && m.appCanInvite ? (
-                      <RegistrarOrgAdminEmailEdit orgId={org.id} appSlug={m.appSlug} initialEmail={m.email ?? ""} />
-                    ) : (
-                      m.email ?? <span className="text-muted-foreground">sem email</span>
-                    )}
-                  </td>
-                  <td className="py-2">{formatDate(m.grantedAt)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </section>
+      <Card>
+        <CardHeader>
+          <CardTitle>Membros</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {org.members.length === 0 ? (
+            <EmptyState title="Nenhum membro ativo" />
+          ) : (
+            <Table>
+              <THead>
+                <TR>
+                  <TH>App</TH>
+                  <TH>Papel</TH>
+                  <TH>E-mail</TH>
+                  <TH>Concedido em</TH>
+                </TR>
+              </THead>
+              <TBody>
+                {org.members.map((m, i) => (
+                  <TR key={`${m.appSlug}-${i}`}>
+                    <TD>
+                      <Badge variant="muted">{m.appSlug}</Badge>
+                    </TD>
+                    <TD>{m.roleSlug}</TD>
+                    <TD>
+                      {m.isAdmin && m.userId && m.appCanInvite ? (
+                        <RegistrarOrgAdminEmailEdit
+                          orgId={org.id}
+                          appSlug={m.appSlug}
+                          initialEmail={m.email ?? ""}
+                        />
+                      ) : (
+                        m.email ?? <span className="text-muted-foreground">sem email</span>
+                      )}
+                    </TD>
+                    <TD className="text-muted-foreground">{formatDate(m.grantedAt)}</TD>
+                  </TR>
+                ))}
+              </TBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
     </>
   );
 }

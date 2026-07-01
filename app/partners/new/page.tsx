@@ -1,6 +1,7 @@
-import Link from "next/link";
 import { AdminShell } from "@/components/AdminShell";
 import { PartnerInvitationForm, type Recruiter } from "@/components/PartnerInvitationForm";
+import { PageHeader } from "@/components/ui/page-header";
+import { Card, CardContent } from "@/components/ui/card";
 import { getCallerJwt } from "@/lib/auth";
 import { listPartnerSubtree, resolveProfilesByIds } from "@/lib/data";
 
@@ -36,15 +37,16 @@ export default async function NewPartnerPage() {
 
   return (
     <AdminShell>
-      <header className="mb-6">
-        <Link href="/partners" className="text-sm text-muted-foreground hover:underline">← Voltar</Link>
-        <h1 className="font-display font-semibold text-2xl mt-2">Novo convite de licenciado</h1>
-        <p className="text-muted-foreground text-sm mt-1">
-          O convite gera contrato (Dropbox Sign) e link de pagamento (Stripe Connect).
-          Em modo mock, ambos retornam URLs simuladas para desenvolvimento.
-        </p>
-      </header>
-      <PartnerInvitationForm recruiters={recruiters} />
+      <PageHeader
+        breadcrumbs={[{ label: "Parceiros", href: "/partners" }, { label: "Novo licenciado" }]}
+        title="Novo convite de licenciado"
+        subtitle="O convite gera contrato (Dropbox Sign) e link de pagamento (Stripe Connect). Em modo mock, ambos retornam URLs simuladas para desenvolvimento."
+      />
+      <Card>
+        <CardContent className="pt-6">
+          <PartnerInvitationForm recruiters={recruiters} />
+        </CardContent>
+      </Card>
     </AdminShell>
   );
 }

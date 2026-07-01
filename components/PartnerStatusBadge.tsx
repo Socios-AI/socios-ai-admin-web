@@ -1,5 +1,6 @@
 import type { PartnerStatus } from "@/lib/partners";
 import { partnerStatusBadgeVariant } from "@/lib/partners";
+import { Badge, type BadgeVariant } from "@/components/ui/badge";
 
 const LABELS: Record<PartnerStatus, string> = {
   pending_contract: "Aguardando contrato",
@@ -10,22 +11,21 @@ const LABELS: Record<PartnerStatus, string> = {
   terminated:       "Encerrado",
 };
 
-const VARIANT_CLASS: Record<string, string> = {
-  success:     "bg-emerald-100 text-emerald-800 border-emerald-200",
-  warning:     "bg-amber-100  text-amber-800  border-amber-200",
-  muted:       "bg-muted      text-muted-foreground border-border",
-  destructive: "bg-red-100    text-red-800    border-red-200",
-  default:     "bg-card       text-foreground border-border",
+// partnerStatusBadgeVariant() já devolve success/warning/muted/destructive/default,
+// que mapeiam 1:1 nas variantes do Badge primitivo (tokens do design system).
+const VARIANT_MAP: Record<string, BadgeVariant> = {
+  success: "success",
+  warning: "warning",
+  muted: "muted",
+  destructive: "destructive",
+  default: "default",
 };
 
 export function PartnerStatusBadge({ status }: { status: PartnerStatus }) {
   const variant = partnerStatusBadgeVariant(status);
   return (
-    <span
-      data-variant={variant}
-      className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium ${VARIANT_CLASS[variant]}`}
-    >
+    <Badge variant={VARIANT_MAP[variant] ?? "default"} data-variant={variant}>
       {LABELS[status]}
-    </span>
+    </Badge>
   );
 }

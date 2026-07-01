@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { AuditTable } from "../../components/AuditTable";
 import type { AuditLogEntry } from "../../lib/data";
 
@@ -58,16 +59,20 @@ describe("AuditTable", () => {
     expect(screen.getByText("lead-pro")).toBeTruthy();
   });
 
-  it("expand reveals JSON metadata", () => {
+  it("expand reveals JSON metadata", async () => {
+    const user = userEvent.setup();
     const row = makeRow({ metadata: { plan_id: "p1", reason: "test" } });
     render(<AuditTable rows={[row]} profileMap={new Map()} />);
+    await user.click(screen.getByRole("button", { name: /expandir/i }));
     const pre = screen.getByText(/"plan_id": "p1"/);
     expect(pre).toBeTruthy();
   });
 
-  it("expand shows ip_address and user_agent when present", () => {
+  it("expand shows ip_address and user_agent when present", async () => {
+    const user = userEvent.setup();
     const row = makeRow({ ip_address: "10.0.0.5", user_agent: "Mozilla/5.0" });
     render(<AuditTable rows={[row]} profileMap={new Map()} />);
+    await user.click(screen.getByRole("button", { name: /expandir/i }));
     expect(screen.getByText("10.0.0.5")).toBeTruthy();
     expect(screen.getByText("Mozilla/5.0")).toBeTruthy();
   });

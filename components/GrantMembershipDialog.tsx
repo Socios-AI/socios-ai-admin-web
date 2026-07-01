@@ -2,6 +2,11 @@
 
 import { useState } from "react";
 import { ROLES, roleRequiresOrg } from "@/lib/roles";
+import { Dialog, DialogFooter } from "@/components/ui/dialog";
+import { Field } from "@/components/ui/field";
+import { Select } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 
 type App = { slug: string; name: string };
 
@@ -17,16 +22,10 @@ export function GrantMembershipDialog({ open, apps, onSubmit, onCancel }: Props)
   const [roleSlug, setRoleSlug] = useState<string>("end-user");
   const [orgId, setOrgId] = useState("");
 
-  if (!open) return null;
-
   const requiresOrg = roleRequiresOrg(roleSlug);
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
-    >
+    <Dialog open={open} onClose={onCancel} title="Conceder membership" size="md">
       <form
         onSubmit={(e) => {
           e.preventDefault();
@@ -36,68 +35,44 @@ export function GrantMembershipDialog({ open, apps, onSubmit, onCancel }: Props)
             orgId: requiresOrg ? orgId : undefined,
           });
         }}
-        className="w-full max-w-md rounded-2xl border border-border bg-card p-6 space-y-4"
+        className="space-y-4"
       >
-        <h2 className="font-display font-semibold text-lg">Conceder membership</h2>
-
-        <div className="space-y-1.5">
-          <label htmlFor="g-app" className="text-sm font-medium">App</label>
-          <select
-            id="g-app"
-            value={appSlug}
-            onChange={(e) => setAppSlug(e.target.value)}
-            className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm"
-          >
+        <Field label="App" htmlFor="g-app">
+          <Select id="g-app" value={appSlug} onChange={(e) => setAppSlug(e.target.value)}>
             {apps.map((a) => (
               <option key={a.slug} value={a.slug}>{a.name}</option>
             ))}
-          </select>
-        </div>
+          </Select>
+        </Field>
 
-        <div className="space-y-1.5">
-          <label htmlFor="g-role" className="text-sm font-medium">Role</label>
-          <select
-            id="g-role"
-            value={roleSlug}
-            onChange={(e) => setRoleSlug(e.target.value)}
-            className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm"
-          >
+        <Field label="Role" htmlFor="g-role">
+          <Select id="g-role" value={roleSlug} onChange={(e) => setRoleSlug(e.target.value)}>
             {ROLES.map((r) => (
               <option key={r.slug} value={r.slug}>{r.label}</option>
             ))}
-          </select>
-        </div>
+          </Select>
+        </Field>
 
         {requiresOrg && (
-          <div className="space-y-1.5">
-            <label htmlFor="g-org" className="text-sm font-medium">Org ID</label>
-            <input
+          <Field label="Org ID" htmlFor="g-org">
+            <Input
               id="g-org"
               type="text"
               required
               value={orgId}
               onChange={(e) => setOrgId(e.target.value)}
-              className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm font-mono"
+              className="font-mono"
             />
-          </div>
+          </Field>
         )}
 
-        <div className="flex justify-end gap-2 pt-2">
-          <button
-            type="button"
-            onClick={onCancel}
-            className="rounded-lg border border-input px-4 py-2 text-sm hover:bg-muted"
-          >
+        <DialogFooter>
+          <Button type="button" variant="outline" onClick={onCancel}>
             Cancelar
-          </button>
-          <button
-            type="submit"
-            className="rounded-lg bg-primary text-primary-foreground px-4 py-2 text-sm font-medium hover:opacity-90"
-          >
-            Conceder
-          </button>
-        </div>
+          </Button>
+          <Button type="submit">Conceder</Button>
+        </DialogFooter>
       </form>
-    </div>
+    </Dialog>
   );
 }

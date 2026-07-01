@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { buttonClasses } from "@/components/ui/button";
 import type { AuditFilterValues } from "@/lib/audit-url-params";
 
 export type AuditPaginationProps = {
@@ -19,7 +20,7 @@ export function AuditPagination({ currentParams, nextCursor }: AuditPaginationPr
     <div className="mt-4 flex justify-center">
       <Link
         href={`/audit?${params.toString()}`}
-        className="rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium hover:bg-muted"
+        className={buttonClasses({ variant: "outline" })}
       >
         Carregar mais
       </Link>

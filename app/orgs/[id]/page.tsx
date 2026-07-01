@@ -1,9 +1,15 @@
 import Link from "next/link";
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 import { AdminShell } from "@/components/AdminShell";
 import { OrgPlansSection } from "@/components/OrgPlansSection";
 import { OrgEditDialog } from "@/components/OrgEditDialog";
 import { RegistrarOrgDetailView } from "@/components/RegistrarOrgDetailView";
+import { PageHeader } from "@/components/ui/page-header";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
+import { EmptyState } from "@/components/ui/empty-state";
+import { buttonClasses } from "@/components/ui/button";
 import { getCallerJwt, getEffectiveRegistrar } from "@/lib/auth";
 import { loadOrg, listPlansCatalog } from "@/lib/data";
 
@@ -33,7 +39,23 @@ export default async function OrgDetailPage(props: {
   const { app: appParam } = await props.searchParams;
   const appSlug = Array.isArray(appParam) ? appParam[0] : appParam;
   if (!appSlug) {
-    redirect("/orgs");
+    return (
+      <AdminShell>
+        <PageHeader
+          title="Organização"
+          breadcrumbs={[{ label: "Organizações", href: "/orgs" }]}
+        />
+        <EmptyState
+          title="Selecione um app"
+          description="Uma organização é vista no contexto de um app. Abra-a a partir da lista para escolher o app."
+          action={
+            <Link href="/orgs" className={buttonClasses({ variant: "primary", size: "sm" })}>
+              Voltar para organizações
+            </Link>
+          }
+        />
+      </AdminShell>
+    );
   }
 
   const jwt = await getCallerJwt();
@@ -51,6 +73,8 @@ export default async function OrgDetailPage(props: {
   ]);
   if (!org) notFound();
 
+  const displayName = org.name ?? org.orgId.slice(0, 8);
+
   const availablePlans = plansCatalog
     .filter((p) => p.is_active)
     .map((p) => ({
@@ -65,62 +89,85 @@ export default async function OrgDetailPage(props: {
 
   return (
     <AdminShell>
-      <header className="mb-6 flex items-start justify-between gap-4">
-        <div>
-          <h1 className="font-display font-semibold text-2xl">
+      <PageHeader
+        breadcrumbs={[{ label: "Organizações", href: "/orgs" }, { label: displayName }]}
+        title={
+          <span className="inline-flex items-center gap-2">
             {org.name ?? <span className="font-mono">{org.orgId.slice(0, 8)}</span>}
-            <span className="ml-2 text-base text-muted-foreground">no app {org.appSlug}</span>
-          </h1>
-          <p className="text-muted-foreground text-sm font-mono">
-            {org.slug ? `${org.slug} · ` : ""}{org.orgId.slice(0, 8)}
-          </p>
-          <p className="text-muted-foreground text-sm">
-            {org.members.length}{" "}
-            {org.members.length === 1 ? "membro ativo" : "membros ativos"}
-          </p>
-        </div>
-        <OrgEditDialog orgId={org.orgId} initialName={org.name ?? ""} />
-      </header>
+            <Badge variant="muted">{org.appSlug}</Badge>
+          </span>
+        }
+        subtitle={
+          <span className="font-mono">
+            {org.slug ? `${org.slug} · ` : ""}
+            {org.orgId.slice(0, 8)}
+            <span className="ml-2 font-sans">
+              · {org.members.length}{" "}
+              {org.members.length === 1 ? "membro ativo" : "membros ativos"}
+            </span>
+          </span>
+        }
+        actions={<OrgEditDialog orgId={org.orgId} initialName={org.name ?? ""} />}
+      />
 
-      <section className="mb-8">
-        <h2 className="font-display font-semibold text-lg mb-3">Membros</h2>
-        <table className="w-full text-sm">
-          <thead className="text-left text-muted-foreground">
-            <tr>
-              <th className="py-2">Email</th>
-              <th className="py-2">Papel</th>
-              <th className="py-2">Concedido em</th>
-              <th className="py-2"></th>
-            </tr>
-          </thead>
-          <tbody>
-            {org.members.map((m) => (
-              <tr key={m.membershipId} className="border-t border-border">
-                <td className="py-2">
-                  {m.email ?? <span className="text-muted-foreground">sem email</span>}
-                </td>
-                <td className="py-2">{m.roleSlug}</td>
-                <td className="py-2">{formatDate(m.createdAt)}</td>
-                <td className="py-2">
-                  <Link href={`/users/${m.userId}`} className="text-primary hover:underline">
-                    Gerenciar via usuário
-                  </Link>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </section>
+      <div className="space-y-8">
+        <Card>
+          <CardHeader>
+            <CardTitle>Membros</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {org.members.length === 0 ? (
+              <EmptyState title="Nenhum membro ativo" />
+            ) : (
+              <Table>
+                <THead>
+                  <TR>
+                    <TH>Email</TH>
+                    <TH>Papel</TH>
+                    <TH>Concedido em</TH>
+                    <TH />
+                  </TR>
+                </THead>
+                <TBody>
+                  {org.members.map((m) => (
+                    <TR key={m.membershipId}>
+                      <TD>
+                        {m.email ?? <span className="text-muted-foreground">sem email</span>}
+                      </TD>
+                      <TD>
+                        <Badge variant="muted">{m.roleSlug}</Badge>
+                      </TD>
+                      <TD className="text-muted-foreground">{formatDate(m.createdAt)}</TD>
+                      <TD className="text-right">
+                        <Link
+                          href={`/users/${m.userId}`}
+                          className="text-primary hover:underline"
+                        >
+                          Gerenciar via usuário
+                        </Link>
+                      </TD>
+                    </TR>
+                  ))}
+                </TBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
 
-      <section>
-        <h2 className="font-display font-semibold text-lg mb-3">Planos</h2>
-        <OrgPlansSection
-          orgId={org.orgId}
-          appSlug={org.appSlug}
-          subscriptions={org.subscriptions}
-          availablePlans={availablePlans}
-        />
-      </section>
+        <Card>
+          <CardHeader>
+            <CardTitle>Planos</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <OrgPlansSection
+              orgId={org.orgId}
+              appSlug={org.appSlug}
+              subscriptions={org.subscriptions}
+              availablePlans={availablePlans}
+            />
+          </CardContent>
+        </Card>
+      </div>
     </AdminShell>
   );
 }

@@ -92,7 +92,7 @@ export default async function PlanDetailPage(props: { params: Promise<{ id: stri
                 <dd className="font-mono break-all">{plan.stripe_price_id ?? "—"}</dd>
               </div>
               {plan.stripe_product_id?.startsWith("prod_mock_") && (
-                <div className="rounded-md border border-amber-300 bg-amber-50 px-2 py-1 text-amber-800">
+                <div className="rounded-md border border-warning/50 bg-warning/10 px-2 py-1 text-foreground">
                   IDs mockados (Stripe key não configurada). Plug a chave em STRIPE_SECRET_KEY e edite o plano para sincronizar.
                 </div>
               )}

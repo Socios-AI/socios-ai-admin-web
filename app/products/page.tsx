@@ -1,6 +1,9 @@
 import Link from "next/link";
 import { AdminShell } from "@/components/AdminShell";
 import { EntryFeePriceDialog } from "@/components/EntryFeePriceDialog";
+import { PageHeader } from "@/components/ui/page-header";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
 import { getCallerJwt } from "@/lib/auth";
 import { listEntryFeePrices, type EntryFeePrice } from "@/lib/data";
 
@@ -25,7 +28,7 @@ export default async function ProductsPage() {
   if (!jwt) {
     return (
       <AdminShell>
-        <p className="text-destructive">Sessão inválida.</p>
+        <p className="text-sm text-destructive">Sessão inválida.</p>
       </AdminShell>
     );
   }
@@ -36,77 +39,86 @@ export default async function ProductsPage() {
 
   return (
     <AdminShell>
-      <header className="mb-6">
-        <h1 className="font-display font-semibold text-2xl">Produtos & Taxas</h1>
-        <p className="text-muted-foreground text-sm">
-          Taxas de entrada com preço versionado. Produtos de assinatura ficam em{" "}
-          <Link href="/plans" className="text-primary hover:underline">Planos</Link>.
-        </p>
-      </header>
+      <PageHeader
+        title="Produtos & Taxas"
+        subtitle={
+          <>
+            Taxas de entrada com preço versionado. Produtos de assinatura ficam em{" "}
+            <Link href="/plans" className="text-primary hover:underline">
+              Planos
+            </Link>
+            .
+          </>
+        }
+      />
 
-      <section className="mb-8">
-        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-          Taxas de entrada (preço atual)
-        </h2>
-        <div className="grid gap-4 sm:grid-cols-2">
-          {(["licenciado", "representante"] as const).map((role) => {
-            const cur = active.find((p) => p.role === role);
-            return (
-              <div key={role} className="rounded-lg border border-border bg-card p-4">
-                <div className="flex items-start justify-between gap-2">
-                  <div>
-                    <p className="text-sm text-muted-foreground">{ROLE_LABEL[role]}</p>
-                    <p className="text-2xl font-display font-semibold tabular-nums mt-1">
-                      {cur ? fmtMoney(cur.amount, cur.currency) : "não definido"}
-                    </p>
-                    {cur ? (
-                      <p className="text-xs text-muted-foreground mt-1">vigente desde {fmtDate(cur.effective_from)}</p>
-                    ) : null}
+      <div className="space-y-8">
+        <section className="space-y-3">
+          <h2 className="font-display text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+            Taxas de entrada (preço atual)
+          </h2>
+          <div className="grid gap-4 sm:grid-cols-2">
+            {(["licenciado", "representante"] as const).map((role) => {
+              const cur = active.find((p) => p.role === role);
+              return (
+                <div key={role} className="rounded-lg border border-border bg-card p-4">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <p className="font-mono text-xs uppercase tracking-wide text-muted-foreground">
+                        {ROLE_LABEL[role]}
+                      </p>
+                      <p className="mt-2 text-2xl font-semibold tabular-nums">
+                        {cur ? fmtMoney(cur.amount, cur.currency) : "não definido"}
+                      </p>
+                      {cur ? (
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          vigente desde {fmtDate(cur.effective_from)}
+                        </p>
+                      ) : null}
+                    </div>
+                    <EntryFeePriceDialog
+                      role={role}
+                      roleLabel={ROLE_LABEL[role]}
+                      currentAmount={cur?.amount ?? 0}
+                      currentCurrency={(cur?.currency as "usd" | "brl") ?? (role === "licenciado" ? "usd" : "brl")}
+                    />
                   </div>
-                  <EntryFeePriceDialog
-                    role={role}
-                    roleLabel={ROLE_LABEL[role]}
-                    currentAmount={cur?.amount ?? 0}
-                    currentCurrency={(cur?.currency as "usd" | "brl") ?? (role === "licenciado" ? "usd" : "brl")}
-                  />
                 </div>
-              </div>
-            );
-          })}
-        </div>
-      </section>
-
-      <section>
-        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-          Histórico de preços
-        </h2>
-        {history.length === 0 ? (
-          <p className="text-sm text-muted-foreground">Sem versões anteriores.</p>
-        ) : (
-          <div className="overflow-x-auto rounded-lg border border-border bg-card">
-            <table className="w-full text-sm">
-              <thead className="bg-muted/50 text-left text-xs uppercase tracking-wide text-muted-foreground">
-                <tr>
-                  <th className="px-4 py-3">Taxa</th>
-                  <th className="px-4 py-3">Valor</th>
-                  <th className="px-4 py-3">De</th>
-                  <th className="px-4 py-3">Até</th>
-                </tr>
-              </thead>
-              <tbody>
-                {history.map((p) => (
-                  <tr key={p.id} className="border-t border-border">
-                    <td className="px-4 py-3">{ROLE_LABEL[p.role]}</td>
-                    <td className="px-4 py-3 tabular-nums">{fmtMoney(p.amount, p.currency)}</td>
-                    <td className="px-4 py-3 text-muted-foreground">{fmtDate(p.effective_from)}</td>
-                    <td className="px-4 py-3 text-muted-foreground">{fmtDate(p.effective_to)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+              );
+            })}
           </div>
-        )}
-      </section>
+        </section>
+
+        <section className="space-y-3">
+          <h2 className="font-display text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+            Histórico de preços
+          </h2>
+          {history.length === 0 ? (
+            <EmptyState title="Sem versões anteriores." />
+          ) : (
+            <Table>
+              <THead>
+                <TR>
+                  <TH>Taxa</TH>
+                  <TH className="text-right">Valor</TH>
+                  <TH>De</TH>
+                  <TH>Até</TH>
+                </TR>
+              </THead>
+              <TBody>
+                {history.map((p) => (
+                  <TR key={p.id}>
+                    <TD>{ROLE_LABEL[p.role]}</TD>
+                    <TD className="text-right tabular-nums">{fmtMoney(p.amount, p.currency)}</TD>
+                    <TD className="text-muted-foreground">{fmtDate(p.effective_from)}</TD>
+                    <TD className="text-muted-foreground">{fmtDate(p.effective_to)}</TD>
+                  </TR>
+                ))}
+              </TBody>
+            </Table>
+          )}
+        </section>
+      </div>
     </AdminShell>
   );
 }

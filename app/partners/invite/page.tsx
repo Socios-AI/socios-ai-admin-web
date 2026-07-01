@@ -1,5 +1,7 @@
 import { AdminShell } from "@/components/AdminShell";
 import { PartnerInviteForm } from "@/components/PartnerInviteForm";
+import { PageHeader } from "@/components/ui/page-header";
+import { Card, CardContent } from "@/components/ui/card";
 
 export const dynamic = "force-dynamic";
 
@@ -15,13 +17,16 @@ export default async function InvitePartnerPage(props: {
 
   return (
     <AdminShell>
-      <header className="mb-6">
-        <h1 className="font-display font-semibold text-2xl">Convidar parceiro</h1>
-        <p className="text-muted-foreground text-sm">
-          Cria o convite de onboarding. Sem cobrança nem contrato por ora.
-        </p>
-      </header>
-      <PartnerInviteForm initialRole={initialRole} />
+      <PageHeader
+        breadcrumbs={[{ label: "Parceiros", href: "/partners" }, { label: "Convidar parceiro" }]}
+        title="Convidar parceiro"
+        subtitle="Cria o convite de onboarding. Sem cobrança nem contrato por ora."
+      />
+      <Card>
+        <CardContent className="pt-6">
+          <PartnerInviteForm initialRole={initialRole} />
+        </CardContent>
+      </Card>
     </AdminShell>
   );
 }

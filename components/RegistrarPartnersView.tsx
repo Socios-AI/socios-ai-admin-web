@@ -1,5 +1,12 @@
 import Link from "next/link";
+import { UserPlus } from "lucide-react";
 import { listPartnersForRegistrar, listInvitesForRegistrar } from "@/lib/data-registrar";
+import { PageHeader } from "@/components/ui/page-header";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
+import { Badge, type BadgeVariant } from "@/components/ui/badge";
+import { EmptyState } from "@/components/ui/empty-state";
+import { buttonClasses } from "@/components/ui/button";
 import { RegistrarInviteCancelButton } from "./RegistrarInviteCancelButton";
 
 const ROLE_LABEL: Record<string, string> = {
@@ -17,6 +24,15 @@ const STATUS_LABEL: Record<string, string> = {
   terminated: "Encerrado",
   sent: "Enviado",
 };
+const STATUS_VARIANT: Record<string, BadgeVariant> = {
+  active: "success",
+  suspended: "warning",
+  terminated: "destructive",
+  pending_contract: "muted",
+  pending_payment: "muted",
+  pending_kyc: "muted",
+  sent: "muted",
+};
 
 // View curada do cadastrador · SEM dados financeiros (ver lib/data-registrar).
 export async function RegistrarPartnersView() {
@@ -27,103 +43,106 @@ export async function RegistrarPartnersView() {
 
   return (
     <>
-      <header className="mb-6 flex items-center justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="font-display font-semibold text-2xl">Parceiros</h1>
-          <p className="text-muted-foreground text-sm">
-            {partners.length} cadastrados · {invites.length} convites pendentes
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <Link
-            href="/partners/invite?role=licenciado"
-            className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-          >
-            Novo licenciado
+      <PageHeader
+        title="Parceiros"
+        subtitle={`${partners.length} cadastrados · ${invites.length} convites pendentes`}
+        actions={
+          <Link href="/partners/invite" className={buttonClasses({ variant: "primary" })}>
+            Convidar parceiro
           </Link>
-          <Link
-            href="/partners/invite?role=representante"
-            className="rounded-lg border border-border bg-secondary px-4 py-2 text-sm font-medium hover:bg-secondary/80"
-          >
-            Novo revendedor
-          </Link>
-          <Link
-            href="/partners/invite?role=embaixador"
-            className="rounded-lg border border-border bg-secondary px-4 py-2 text-sm font-medium hover:bg-secondary/80"
-          >
-            Novo embaixador
-          </Link>
-        </div>
-      </header>
+        }
+      />
 
       {invites.length > 0 ? (
-        <section className="mb-8">
-          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-            Convites pendentes
-          </h2>
-          <div className="overflow-hidden rounded-lg border border-border">
-            <table className="w-full text-sm">
-              <thead className="bg-muted/50 text-muted-foreground">
-                <tr>
-                  <th className="px-3 py-2 text-left font-medium">Nome</th>
-                  <th className="px-3 py-2 text-left font-medium">E-mail</th>
-                  <th className="px-3 py-2 text-left font-medium">Papel</th>
-                  <th className="px-3 py-2 text-left font-medium">Expira</th>
-                  <th className="px-3 py-2 text-right font-medium">Ações</th>
-                </tr>
-              </thead>
-              <tbody>
+        <Card className="mb-8">
+          <CardHeader>
+            <CardTitle className="text-sm uppercase tracking-wide text-muted-foreground">
+              Convites pendentes
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <Table>
+              <THead>
+                <TR>
+                  <TH>Nome</TH>
+                  <TH>E-mail</TH>
+                  <TH>Papel</TH>
+                  <TH>Expira</TH>
+                  <TH className="text-right">Ações</TH>
+                </TR>
+              </THead>
+              <TBody>
                 {invites.map((i) => (
-                  <tr key={i.id} className="border-t border-border">
-                    <td className="px-3 py-2">{i.fullName}</td>
-                    <td className="px-3 py-2 text-muted-foreground">{i.email}</td>
-                    <td className="px-3 py-2">{i.targetRole ? ROLE_LABEL[i.targetRole] ?? i.targetRole : "—"}</td>
-                    <td className="px-3 py-2 text-muted-foreground">
+                  <TR key={i.id}>
+                    <TD>{i.fullName}</TD>
+                    <TD className="text-muted-foreground">{i.email}</TD>
+                    <TD>
+                      {i.targetRole ? (
+                        <Badge variant="muted">{ROLE_LABEL[i.targetRole] ?? i.targetRole}</Badge>
+                      ) : (
+                        "—"
+                      )}
+                    </TD>
+                    <TD className="text-muted-foreground">
                       {new Date(i.expiresAt).toLocaleDateString("pt-BR")}
-                    </td>
-                    <td className="px-3 py-2 text-right">
+                    </TD>
+                    <TD className="text-right">
                       <RegistrarInviteCancelButton invitationId={i.id} email={i.email} />
-                    </td>
-                  </tr>
+                    </TD>
+                  </TR>
                 ))}
-              </tbody>
-            </table>
-          </div>
-        </section>
+              </TBody>
+            </Table>
+          </CardContent>
+        </Card>
       ) : null}
 
-      <section>
-        <div className="overflow-hidden rounded-lg border border-border">
-          <table className="w-full text-sm">
-            <thead className="bg-muted/50 text-muted-foreground">
-              <tr>
-                <th className="px-3 py-2 text-left font-medium">Nome</th>
-                <th className="px-3 py-2 text-left font-medium">E-mail</th>
-                <th className="px-3 py-2 text-left font-medium">Papel</th>
-                <th className="px-3 py-2 text-left font-medium">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {partners.length === 0 ? (
-                <tr>
-                  <td colSpan={4} className="px-3 py-6 text-center text-muted-foreground">
-                    Nenhum parceiro cadastrado ainda.
-                  </td>
-                </tr>
-              ) : (
-                partners.map((p) => (
-                  <tr key={p.id} className="border-t border-border">
-                    <td className="px-3 py-2">{p.name}</td>
-                    <td className="px-3 py-2 text-muted-foreground">{p.email ?? "—"}</td>
-                    <td className="px-3 py-2">{p.role ? ROLE_LABEL[p.role] ?? p.role : "—"}</td>
-                    <td className="px-3 py-2 text-muted-foreground">{STATUS_LABEL[p.status] ?? p.status}</td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </section>
+      {partners.length === 0 ? (
+        <EmptyState
+          icon={<UserPlus />}
+          title="Nenhum parceiro cadastrado ainda"
+          description="Convide um parceiro para começar."
+          action={
+            <Link
+              href="/partners/invite"
+              className={buttonClasses({ variant: "primary", size: "sm" })}
+            >
+              Convidar parceiro
+            </Link>
+          }
+        />
+      ) : (
+        <Table>
+          <THead>
+            <TR>
+              <TH>Nome</TH>
+              <TH>E-mail</TH>
+              <TH>Papel</TH>
+              <TH>Status</TH>
+            </TR>
+          </THead>
+          <TBody>
+            {partners.map((p) => (
+              <TR key={p.id}>
+                <TD>{p.name}</TD>
+                <TD className="text-muted-foreground">{p.email ?? "—"}</TD>
+                <TD>
+                  {p.role ? (
+                    <Badge variant="muted">{ROLE_LABEL[p.role] ?? p.role}</Badge>
+                  ) : (
+                    "—"
+                  )}
+                </TD>
+                <TD>
+                  <Badge variant={STATUS_VARIANT[p.status] ?? "default"}>
+                    {STATUS_LABEL[p.status] ?? p.status}
+                  </Badge>
+                </TD>
+              </TR>
+            ))}
+          </TBody>
+        </Table>
+      )}
     </>
   );
 }

@@ -301,13 +301,13 @@ export function PlanForm({ mode, apps, initial }: PlanFormProps) {
       </div>
 
       {customSelected && (
-        <div className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+        <div className="rounded-md border border-warning/50 bg-warning/10 px-3 py-2 text-xs text-foreground">
           Periodicidade <strong>custom</strong> não cria Stripe Product/Price. Use para acordos enterprise faturados manualmente.
         </div>
       )}
 
       {priceWillChange && (
-        <div className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+        <div className="rounded-md border border-warning/50 bg-warning/10 px-3 py-2 text-xs text-foreground">
           Mudança de preço detectada. Stripe não permite editar Price existente; um novo será criado e o antigo arquivado. Subscribers atuais permanecem no preço antigo até renovação.
         </div>
       )}

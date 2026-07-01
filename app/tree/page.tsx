@@ -1,6 +1,7 @@
 import { AdminShell } from "@/components/AdminShell";
 import { DownlineTree } from "@/components/DownlineTree";
 import { RegistrarTreeView } from "@/components/RegistrarTreeView";
+import { PageHeader } from "@/components/ui/page-header";
 import { getCallerJwt, getEffectiveRegistrar } from "@/lib/auth";
 import { listPartnerSubtree, resolveProfilesByIds } from "@/lib/data";
 
@@ -21,7 +22,7 @@ export default async function TreePage() {
   if (!jwt) {
     return (
       <AdminShell>
-        <p className="text-destructive">Sessão inválida.</p>
+        <p className="text-sm text-destructive">Sessão inválida.</p>
       </AdminShell>
     );
   }
@@ -37,12 +38,10 @@ export default async function TreePage() {
 
   return (
     <AdminShell>
-      <header className="mb-6">
-        <h1 className="font-display font-semibold text-2xl">Árvore da rede</h1>
-        <p className="text-muted-foreground text-sm">
-          {nodes.length} parceiros · {licenciados} licenciados · raiz = Sócios AI
-        </p>
-      </header>
+      <PageHeader
+        title="Árvore da rede"
+        subtitle={`${nodes.length} parceiros · ${licenciados} licenciados · raiz = Sócios AI`}
+      />
       <DownlineTree nodes={nodes} profiles={profiles} />
     </AdminShell>
   );

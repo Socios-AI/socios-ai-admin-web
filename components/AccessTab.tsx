@@ -3,6 +3,9 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { GrantMembershipDialog } from "./GrantMembershipDialog";
 import { grantMembershipAction } from "@/app/_actions/grant-membership";
@@ -93,50 +96,45 @@ export function AccessTab({ userId, memberships, apps }: Props) {
     <div className="space-y-4">
       <div className="flex justify-between items-center">
         <h2 className="font-display text-lg">Memberships ativas</h2>
-        <button
-          type="button"
-          onClick={() => setMode({ kind: "grant" })}
-          className="rounded-lg bg-primary text-primary-foreground px-3 py-1.5 text-sm font-medium hover:opacity-90"
-        >
+        <Button size="sm" onClick={() => setMode({ kind: "grant" })}>
           Conceder acesso
-        </button>
+        </Button>
       </div>
 
       {activeMemberships.length === 0 ? (
-        <p className="text-sm text-muted-foreground">Sem memberships ativas.</p>
+        <Card className="p-6 text-sm text-muted-foreground">Sem memberships ativas.</Card>
       ) : (
-        <div className="rounded-xl border border-border bg-card overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="bg-muted/50 text-muted-foreground text-left">
-              <tr>
-                <th className="px-4 py-2 font-medium">App</th>
-                <th className="px-4 py-2 font-medium">Papel</th>
-                <th className="px-4 py-2 font-medium">Org</th>
-                <th className="px-4 py-2 font-medium text-right">Ações</th>
-              </tr>
-            </thead>
-            <tbody>
-              {activeMemberships.map((m) => (
-                <tr key={m.id}>
-                  <td className="px-4 py-2 font-mono text-xs">{m.app_slug}</td>
-                  <td className="px-4 py-2">{m.role_slug}</td>
-                  <td className="px-4 py-2 text-muted-foreground">
-                    {m.org_id ?? <span className="italic">sem org</span>}
-                  </td>
-                  <td className="px-4 py-2 text-right">
-                    <button
-                      type="button"
-                      onClick={() => setMode({ kind: "revoke", membershipId: m.id })}
-                      className="rounded-lg border border-destructive/40 text-destructive px-3 py-1 text-xs hover:bg-destructive/10"
-                    >
-                      Revogar
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <Table>
+          <THead>
+            <TR>
+              <TH>App</TH>
+              <TH>Papel</TH>
+              <TH>Org</TH>
+              <TH className="text-right">Ações</TH>
+            </TR>
+          </THead>
+          <TBody>
+            {activeMemberships.map((m) => (
+              <TR key={m.id}>
+                <TD className="font-mono text-xs">{m.app_slug}</TD>
+                <TD>{m.role_slug}</TD>
+                <TD className="text-muted-foreground">
+                  {m.org_id ?? <span className="italic">sem org</span>}
+                </TD>
+                <TD className="text-right">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="border-destructive/40 text-destructive hover:bg-destructive/10"
+                    onClick={() => setMode({ kind: "revoke", membershipId: m.id })}
+                  >
+                    Revogar
+                  </Button>
+                </TD>
+              </TR>
+            ))}
+          </TBody>
+        </Table>
       )}
 
       <GrantMembershipDialog

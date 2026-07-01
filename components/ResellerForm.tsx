@@ -2,8 +2,13 @@
 
 import { useState, useTransition } from "react";
 import Link from "next/link";
+import { toast } from "sonner";
 import { createResellerAction } from "@/app/_actions/create-reseller";
 import { PartnerProfileFields, emptyProfileValue, toProfilePayload, toPayoutPayload, type ProfileValue } from "./PartnerProfileFields";
+import { Field } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import { Button, buttonClasses } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 
 export function ResellerForm() {
   const [pending, startTransition] = useTransition();
@@ -31,19 +36,22 @@ export function ResellerForm() {
     startTransition(async () => {
       const res = await createResellerAction(payload);
       if (!res.ok) {
-        setError(res.message ?? res.error);
+        const msg = res.message ?? res.error;
+        setError(msg);
+        toast.error(msg);
         return;
       }
       setSuccess({ partnerId: res.partnerId, recoveryEmailSent: res.recoveryEmailSent });
+      toast.success("Revendedor criado.");
     });
   }
 
   if (success) {
     return (
-      <div className="space-y-4 max-w-xl">
-        <div className="rounded-lg border border-emerald-300 bg-emerald-50 dark:bg-emerald-950 dark:border-emerald-800 p-4 text-sm">
-          <p className="font-medium">Revendedor criado.</p>
-          <p className="mt-1 text-muted-foreground">
+      <div className="max-w-xl space-y-4">
+        <div className="space-y-2 rounded-lg border border-primary/40 bg-primary/10 p-4 text-sm">
+          <Badge variant="success">Revendedor criado</Badge>
+          <p className="text-muted-foreground">
             {success.recoveryEmailSent
               ? "Email de set-password enviado."
               : "Falha ao enviar email de set-password (reenvie manualmente)."}
@@ -52,14 +60,11 @@ export function ResellerForm() {
         <div className="flex gap-3">
           <Link
             href={`/partners/${success.partnerId}`}
-            className="rounded-lg border border-border bg-secondary px-4 py-2 text-sm hover:bg-secondary/80"
+            className={buttonClasses({ variant: "secondary" })}
           >
             Ver revendedor
           </Link>
-          <Link
-            href="/partners"
-            className="rounded-lg border border-border px-4 py-2 text-sm hover:bg-muted"
-          >
+          <Link href="/partners" className={buttonClasses({ variant: "outline" })}>
             Voltar para a lista
           </Link>
         </div>
@@ -68,32 +73,19 @@ export function ResellerForm() {
   }
 
   return (
-    <form onSubmit={onSubmit} className="space-y-5 max-w-xl">
-      <div>
-        <label htmlFor="email" className="block text-sm font-medium mb-1">Email</label>
-        <input
-          id="email"
-          name="email"
-          type="email"
-          required
-          className="w-full rounded-lg border border-input bg-background px-3 py-2"
-        />
-      </div>
-      <div>
-        <label htmlFor="fullName" className="block text-sm font-medium mb-1">Nome completo</label>
-        <input
-          id="fullName"
-          name="fullName"
-          type="text"
-          required
-          className="w-full rounded-lg border border-input bg-background px-3 py-2"
-        />
-      </div>
-      <div>
-        <label htmlFor="customCommissionPct" className="block text-sm font-medium mb-1">
-          Comissão custom (opcional, 0 a 1)
-        </label>
-        <input
+    <form onSubmit={onSubmit} className="max-w-xl space-y-5">
+      <Field label="Email" htmlFor="email" required>
+        <Input id="email" name="email" type="email" required />
+      </Field>
+      <Field label="Nome completo" htmlFor="fullName" required>
+        <Input id="fullName" name="fullName" type="text" required />
+      </Field>
+      <Field
+        label="Comissão custom (opcional, 0 a 1)"
+        htmlFor="customCommissionPct"
+        hint="Em branco usa o valor fixo padrão (commission_config). Comissão real de revendedor é valor fixo, não percentual; este campo só sobrescreve se houver acordo específico."
+      >
+        <Input
           id="customCommissionPct"
           name="customCommissionPct"
           type="number"
@@ -101,30 +93,20 @@ export function ResellerForm() {
           min="0"
           max="1"
           placeholder="ex: 0.10 (10%)"
-          className="w-full rounded-lg border border-input bg-background px-3 py-2"
         />
-        <p className="mt-1 text-xs text-muted-foreground">
-          Em branco usa o valor fixo padrão (commission_config). Comissão real
-          de revendedor é valor fixo, não percentual; este campo só sobrescreve
-          se houver acordo específico.
-        </p>
-      </div>
+      </Field>
 
       <PartnerProfileFields value={profile} onChange={(patch) => setProfile((p) => ({ ...p, ...patch }))} />
 
       {error ? (
-        <div role="alert" className="rounded-lg border border-red-300 bg-red-50 dark:bg-red-950 dark:border-red-800 p-3 text-sm">
+        <p role="alert" className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
           {error}
-        </div>
+        </p>
       ) : null}
 
-      <button
-        type="submit"
-        disabled={pending}
-        className="rounded-lg bg-primary text-primary-foreground px-4 py-2 text-sm font-medium hover:opacity-90 disabled:opacity-50"
-      >
-        {pending ? "Criando..." : "Criar revendedor"}
-      </button>
+      <Button type="submit" loading={pending}>
+        Criar revendedor
+      </Button>
     </form>
   );
 }

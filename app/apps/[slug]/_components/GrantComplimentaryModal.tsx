@@ -119,7 +119,7 @@ export function GrantComplimentaryModal({ onClose }: Props) {
         </div>
 
         {result && (
-          <p className={result.ok ? "text-sm text-emerald-600" : "text-sm text-destructive"}>
+          <p className={result.ok ? "text-sm text-foreground" : "text-sm text-destructive"}>
             {result.message}
           </p>
         )}

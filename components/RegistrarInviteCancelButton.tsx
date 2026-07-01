@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { ConfirmDialog } from "./ConfirmDialog";
+import { Button } from "@/components/ui/button";
 import { cancelPartnerInvitationAction } from "@/app/_actions/cancel-partner-invitation";
 
 export function RegistrarInviteCancelButton({
@@ -19,14 +20,16 @@ export function RegistrarInviteCancelButton({
 
   return (
     <>
-      <button
+      <Button
         type="button"
+        variant="outline"
+        size="sm"
         onClick={() => setOpen(true)}
         disabled={pending}
-        className="rounded-md border border-destructive px-2.5 py-1 text-xs font-medium text-destructive hover:bg-destructive/10 disabled:opacity-50"
+        className="border-destructive text-destructive hover:bg-destructive/10"
       >
         Cancelar
-      </button>
+      </Button>
       <ConfirmDialog
         open={open}
         title={`Cancelar convite de ${email}`}

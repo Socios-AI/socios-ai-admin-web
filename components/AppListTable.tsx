@@ -1,5 +1,11 @@
-import Link from "next/link";
+"use client";
+
+import { useRouter } from "next/navigation";
+import { Check, Minus } from "lucide-react";
 import type { AppCatalogRow } from "@/lib/data";
+import { DataTable, type Column } from "@/components/ui/data-table";
+import { Badge, type BadgeVariant } from "@/components/ui/badge";
+import { EmptyState } from "@/components/ui/empty-state";
 
 const STATUS_LABEL: Record<AppCatalogRow["status"], string> = {
   active: "Ativo",
@@ -8,59 +14,96 @@ const STATUS_LABEL: Record<AppCatalogRow["status"], string> = {
   archived: "Arquivado",
 };
 
-const STATUS_TONE: Record<AppCatalogRow["status"], string> = {
-  active: "bg-emerald-100 text-emerald-800 border-emerald-200",
-  beta: "bg-sky-100 text-sky-800 border-sky-200",
-  sunset: "bg-amber-100 text-amber-800 border-amber-200",
-  archived: "bg-zinc-100 text-zinc-700 border-zinc-200",
+const STATUS_VARIANT: Record<AppCatalogRow["status"], BadgeVariant> = {
+  active: "success",
+  beta: "sky",
+  sunset: "warning",
+  archived: "muted",
 };
 
-export function AppListTable({ rows }: { rows: AppCatalogRow[] }) {
-  if (rows.length === 0) {
-    return (
-      <div className="rounded-2xl border border-border p-10 bg-card text-center">
-        <p className="text-muted-foreground">Nenhum app cadastrado.</p>
-      </div>
-    );
-  }
+const STATUS_OPTIONS = (
+  Object.keys(STATUS_LABEL) as AppCatalogRow["status"][]
+).map((value) => ({ value, label: STATUS_LABEL[value] }));
 
+function BoolCell({ on }: { on: boolean }) {
+  return on ? (
+    <Check className="h-4 w-4 text-foreground" aria-label="Sim" />
+  ) : (
+    <Minus className="h-4 w-4 text-muted-foreground" aria-label="Não" />
+  );
+}
+
+const columns: Column<AppCatalogRow>[] = [
+  {
+    key: "name",
+    header: "App",
+    cell: (row) => (
+      <div>
+        <span className="font-medium">{row.name}</span>
+        <span className="ml-2 font-mono text-xs text-muted-foreground">
+          {row.slug}
+        </span>
+      </div>
+    ),
+    sortAccessor: (row) => row.name.toLowerCase(),
+  },
+  {
+    key: "status",
+    header: "Status",
+    cell: (row) => (
+      <Badge variant={STATUS_VARIANT[row.status]}>
+        {STATUS_LABEL[row.status]}
+      </Badge>
+    ),
+    filter: {
+      label: "Status",
+      options: STATUS_OPTIONS,
+      accessor: (row) => row.status,
+    },
+  },
+  {
+    key: "accepts",
+    header: "Aceita novos",
+    cell: (row) => <BoolCell on={row.accepts_new_subscriptions} />,
+    align: "center",
+  },
+  {
+    key: "billing",
+    header: "Cobrança",
+    cell: (row) =>
+      row.billing_paused ? (
+        <Badge variant="warning">Pausada</Badge>
+      ) : (
+        <Badge variant="success">Ativa</Badge>
+      ),
+  },
+  {
+    key: "active",
+    header: "Ativo",
+    cell: (row) => <BoolCell on={row.active} />,
+    align: "center",
+  },
+  {
+    key: "memberships",
+    header: "Memberships",
+    cell: (row) => <span className="tabular-nums">{row.membership_count}</span>,
+    sortAccessor: (row) => row.membership_count,
+    align: "right",
+  },
+];
+
+export function AppListTable({ rows }: { rows: AppCatalogRow[] }) {
+  const router = useRouter();
   return (
-    <div className="rounded-2xl border border-border bg-card overflow-hidden">
-      <table className="w-full text-sm">
-        <thead className="bg-muted/50 text-muted-foreground text-left">
-          <tr>
-            <th className="px-4 py-3 font-medium">App</th>
-            <th className="px-4 py-3 font-medium">Status</th>
-            <th className="px-4 py-3 font-medium">Aceita novos</th>
-            <th className="px-4 py-3 font-medium">Cobrança</th>
-            <th className="px-4 py-3 font-medium">Ativo</th>
-            <th className="px-4 py-3 font-medium">Memberships</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row, i) => (
-            <tr key={row.slug} className={i % 2 === 0 ? "bg-background" : "bg-muted/20"}>
-              <td className="px-4 py-3">
-                <Link href={`/apps/${row.slug}`} className="hover:underline font-medium">
-                  {row.name}
-                </Link>
-                <span className="ml-2 text-xs text-muted-foreground font-mono">{row.slug}</span>
-              </td>
-              <td className="px-4 py-3">
-                <span
-                  className={`inline-block rounded-full border px-2 py-0.5 text-xs ${STATUS_TONE[row.status]}`}
-                >
-                  {STATUS_LABEL[row.status]}
-                </span>
-              </td>
-              <td className="px-4 py-3">{row.accepts_new_subscriptions ? "Sim" : "Não"}</td>
-              <td className="px-4 py-3">{row.billing_paused ? "Pausada" : "Ativa"}</td>
-              <td className="px-4 py-3">{row.active ? "Sim" : "Não"}</td>
-              <td className="px-4 py-3">{row.membership_count}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+    <DataTable
+      columns={columns}
+      data={rows}
+      getRowId={(row) => row.slug}
+      search={(row) => `${row.name} ${row.slug}`}
+      searchPlaceholder="Buscar app…"
+      initialSort={{ key: "name", dir: "asc" }}
+      onRowClick={(row) => router.push(`/apps/${row.slug}`)}
+      empty={<EmptyState title="Nenhum app cadastrado." />}
+    />
   );
 }

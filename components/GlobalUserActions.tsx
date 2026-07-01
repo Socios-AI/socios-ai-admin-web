@@ -4,6 +4,9 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import type { PlatformTier } from "@/lib/data";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { forceLogoutAction } from "@/app/_actions/force-logout";
 import { deleteUserAction } from "@/app/_actions/delete-user";
@@ -71,108 +74,97 @@ export function GlobalUserActions({ userId, email, tier }: Props) {
   }
 
   return (
-    <div className="rounded-2xl border border-border bg-card p-5 space-y-4 mb-6">
-      <div className="flex items-center justify-between">
-        <h2 className="font-display font-semibold text-lg">Ações</h2>
-        <span
-          className={
-            tier
-              ? "rounded-full bg-primary/10 text-primary px-2.5 py-0.5 text-xs font-medium"
-              : "rounded-full bg-muted text-muted-foreground px-2.5 py-0.5 text-xs font-medium"
-          }
-        >
-          Tier: {tierLabelOrFallback(tier)}
-        </span>
-      </div>
-
-      {/* Tier management (Plano M.2) · botões condicionais por tier atual */}
-      <div className="space-y-1">
-        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          Tier de plataforma
-        </p>
-        <div className="flex flex-wrap gap-2">
-          {tier !== "owner" && (
-            <button
-              type="button"
-              onClick={() => setMode({ kind: "promote-owner" })}
-              className="rounded-lg bg-primary text-primary-foreground px-3 py-1.5 text-sm font-medium hover:opacity-90"
-            >
-              Promover a Owner
-            </button>
-          )}
-          {tier === null && (
-            <button
-              type="button"
-              onClick={() => setMode({ kind: "promote-admin" })}
-              className="rounded-lg bg-primary text-primary-foreground px-3 py-1.5 text-sm font-medium hover:opacity-90"
-            >
-              Promover a Admin
-            </button>
-          )}
-          {tier === null && (
-            <button
-              type="button"
-              onClick={() => setMode({ kind: "promote-registrar" })}
-              className="rounded-lg bg-primary text-primary-foreground px-3 py-1.5 text-sm font-medium hover:opacity-90"
-            >
-              Promover a Cadastrador
-            </button>
-          )}
-          {tier === "registrar" && (
-            <button
-              type="button"
-              onClick={() => setMode({ kind: "demote-registrar" })}
-              className="rounded-lg bg-destructive text-destructive-foreground px-3 py-1.5 text-sm font-medium hover:opacity-90"
-            >
-              Demover Cadastrador
-            </button>
-          )}
-          {tier === "owner" && (
-            <button
-              type="button"
-              onClick={() => setMode({ kind: "demote-owner" })}
-              className="rounded-lg bg-destructive text-destructive-foreground px-3 py-1.5 text-sm font-medium hover:opacity-90"
-            >
-              Demover Owner
-            </button>
-          )}
-          {tier === "admin" && (
-            <button
-              type="button"
-              onClick={() => setMode({ kind: "demote-admin" })}
-              className="rounded-lg bg-destructive text-destructive-foreground px-3 py-1.5 text-sm font-medium hover:opacity-90"
-            >
-              Demover Admin
-            </button>
-          )}
+    <Card className="mb-6">
+      <CardContent className="space-y-4 p-5">
+        <div className="flex items-center justify-between">
+          <h2 className="font-display font-semibold text-lg">Ações</h2>
+          <Badge variant={tier ? "success" : "muted"}>
+            Tier: {tierLabelOrFallback(tier)}
+          </Badge>
         </div>
-      </div>
 
-      <div className="flex flex-wrap gap-2 pt-2 border-t border-border">
-        <button
-          type="button"
-          onClick={() => setMode({ kind: "force-logout" })}
-          className="rounded-lg bg-destructive text-destructive-foreground px-3 py-1.5 text-sm font-medium hover:opacity-90"
-        >
-          Forçar logout
-        </button>
-        <button
-          type="button"
-          onClick={() => setMode({ kind: "reset-mfa" })}
-          className="rounded-lg border border-border px-3 py-1.5 text-sm font-medium hover:bg-accent"
-        >
-          Resetar MFA
-        </button>
-        <button
-          type="button"
-          onClick={() => setMode({ kind: "delete" })}
-          className="rounded-lg border border-destructive text-destructive px-3 py-1.5 text-sm font-medium hover:bg-destructive/10"
-        >
-          Remover usuário
-        </button>
-      </div>
+        {/* Tier management (Plano M.2) · botões condicionais por tier atual */}
+        <div className="space-y-1.5">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Tier de plataforma
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {tier !== "owner" && (
+              <Button size="sm" onClick={() => setMode({ kind: "promote-owner" })}>
+                Promover a Owner
+              </Button>
+            )}
+            {tier === null && (
+              <Button size="sm" onClick={() => setMode({ kind: "promote-admin" })}>
+                Promover a Admin
+              </Button>
+            )}
+            {tier === null && (
+              <Button size="sm" onClick={() => setMode({ kind: "promote-registrar" })}>
+                Promover a Cadastrador
+              </Button>
+            )}
+            {tier === "registrar" && (
+              <Button
+                size="sm"
+                variant="destructive"
+                onClick={() => setMode({ kind: "demote-registrar" })}
+              >
+                Demover Cadastrador
+              </Button>
+            )}
+            {tier === "owner" && (
+              <Button
+                size="sm"
+                variant="destructive"
+                onClick={() => setMode({ kind: "demote-owner" })}
+              >
+                Demover Owner
+              </Button>
+            )}
+            {tier === "admin" && (
+              <Button
+                size="sm"
+                variant="destructive"
+                onClick={() => setMode({ kind: "demote-admin" })}
+              >
+                Demover Admin
+              </Button>
+            )}
+          </div>
+        </div>
 
-      <ConfirmDialog
+        <div className="space-y-1.5 border-t border-border pt-3">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Ações de conta
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              size="sm"
+              variant="destructive"
+              onClick={() => setMode({ kind: "force-logout" })}
+            >
+              Forçar logout
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setMode({ kind: "reset-mfa" })}
+            >
+              Resetar MFA
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="border-destructive text-destructive hover:bg-destructive/10"
+              onClick={() => setMode({ kind: "delete" })}
+            >
+              Remover usuário
+            </Button>
+          </div>
+        </div>
+
+        <ConfirmDialog
         open={mode.kind === "force-logout"}
         title={`Forçar logout de ${email}`}
         description="Todas as sessões ativas serão revogadas. O usuário precisará logar novamente."
@@ -295,6 +287,7 @@ export function GlobalUserActions({ userId, email, tier }: Props) {
           handle(demoteAdminAction({ userId, reason }), "Admin demovido")
         }
       />
-    </div>
+      </CardContent>
+    </Card>
   );
 }

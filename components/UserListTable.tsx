@@ -1,5 +1,12 @@
+"use client";
+
 import Link from "next/link";
+import { Users } from "lucide-react";
 import type { PartnerRole, UserRow } from "@/lib/data";
+import { DataTable, type Column } from "@/components/ui/data-table";
+import { Badge } from "@/components/ui/badge";
+import { EmptyState } from "@/components/ui/empty-state";
+import { buttonClasses } from "@/components/ui/button";
 
 const MAX_ORG_CHIPS = 3;
 
@@ -16,96 +23,117 @@ const STAFF_LABEL: Record<NonNullable<UserRow["staff_tier"]>, string> = {
   registrar: "Cadastrador",
 };
 
-function Badge({ children, className }: { children: React.ReactNode; className: string }) {
-  return (
-    <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium ${className}`}>
-      {children}
-    </span>
-  );
-}
+const columns: Column<UserRow>[] = [
+  {
+    key: "person",
+    header: "Pessoa",
+    cell: (row) => {
+      const name = row.full_name?.trim();
+      return (
+        <Link href={`/users/${row.id}`} className="group block">
+          <span className="font-medium group-hover:underline">{name || row.email}</span>
+          {name ? (
+            <span className="block text-muted-foreground text-xs">{row.email}</span>
+          ) : null}
+        </Link>
+      );
+    },
+    sortAccessor: (row) => (row.full_name?.trim() || row.email).toLowerCase(),
+  },
+  {
+    key: "links",
+    header: "Vínculos",
+    cell: (row) => {
+      const shown = row.orgs.slice(0, MAX_ORG_CHIPS);
+      const extra = row.orgs.length - shown.length;
+      const hasAnything = row.partner_role || row.staff_tier || row.orgs.length > 0;
+      return (
+        <span className="flex flex-wrap items-center gap-1">
+          {/* Papel de parceiro · destacado (roxo) quando ativo */}
+          {row.partner_role ? (
+            <Badge variant={row.partner_status === "active" ? "purple" : "muted"}>
+              {PARTNER_LABEL[row.partner_role]}
+              {row.partner_status && row.partner_status !== "active"
+                ? ` · ${row.partner_status}`
+                : ""}
+            </Badge>
+          ) : null}
+
+          {/* Staff */}
+          {row.staff_tier ? (
+            <Badge variant="sky">{STAFF_LABEL[row.staff_tier]}</Badge>
+          ) : null}
+
+          {/* Orgs (chips) */}
+          {shown.map((o) => (
+            <span
+              key={o.id}
+              className="rounded-md bg-muted px-2 py-0.5 text-xs"
+              title={o.name}
+            >
+              {o.name}
+            </span>
+          ))}
+          {extra > 0 ? (
+            <span className="rounded-md bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+              +{extra}
+            </span>
+          ) : null}
+
+          {!hasAnything ? (
+            <span className="text-muted-foreground">(sem vínculo)</span>
+          ) : null}
+        </span>
+      );
+    },
+  },
+  {
+    key: "super",
+    header: "Super admin",
+    cell: (row) =>
+      row.is_super_admin ? (
+        <Badge variant="navy">Super admin</Badge>
+      ) : (
+        <span className="text-muted-foreground">—</span>
+      ),
+    sortAccessor: (row) => (row.is_super_admin ? 1 : 0),
+  },
+  {
+    key: "created",
+    header: "Criado em",
+    cell: (row) => (
+      <span className="text-muted-foreground">
+        {new Date(row.created_at).toLocaleDateString("pt-BR")}
+      </span>
+    ),
+    sortAccessor: (row) => row.created_at,
+  },
+];
 
 export function UserListTable({ rows }: { rows: UserRow[] }) {
-  if (rows.length === 0) {
-    return (
-      <div className="rounded-2xl border border-border p-10 bg-card text-center">
-        <p className="text-muted-foreground">Nenhum usuário encontrado.</p>
-      </div>
-    );
-  }
   return (
-    <div className="rounded-2xl border border-border bg-card overflow-hidden">
-      <table className="w-full text-sm">
-        <thead className="bg-muted/50 text-muted-foreground text-left">
-          <tr>
-            <th className="px-4 py-3 font-medium">Pessoa</th>
-            <th className="px-4 py-3 font-medium">Orgs / Papel</th>
-            <th className="px-4 py-3 font-medium">Criado em</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row, i) => {
-            const name = row.full_name?.trim();
-            const shown = row.orgs.slice(0, MAX_ORG_CHIPS);
-            const extra = row.orgs.length - shown.length;
-            const hasAnything = row.partner_role || row.staff_tier || row.orgs.length > 0;
-            return (
-              <tr key={row.id} className={i % 2 === 0 ? "bg-background" : "bg-muted/20"}>
-                <td className="px-4 py-3">
-                  <Link href={`/users/${row.id}`} className="group block">
-                    <span className="font-medium group-hover:underline">{name || row.email}</span>
-                    {name ? (
-                      <span className="block text-muted-foreground text-xs">{row.email}</span>
-                    ) : null}
-                  </Link>
-                </td>
-                <td className="px-4 py-3">
-                  <span className="flex flex-wrap items-center gap-1">
-                    {/* Papel de parceiro · destacado (violeta) quando ativo */}
-                    {row.partner_role ? (
-                      <Badge
-                        className={
-                          row.partner_status === "active"
-                            ? "bg-violet-100 text-violet-800 border-violet-200"
-                            : "bg-muted text-muted-foreground border-border"
-                        }
-                      >
-                        {PARTNER_LABEL[row.partner_role]}
-                        {row.partner_status && row.partner_status !== "active"
-                          ? ` · ${row.partner_status}`
-                          : ""}
-                      </Badge>
-                    ) : null}
-
-                    {/* Staff */}
-                    {row.staff_tier ? (
-                      <Badge className="bg-sky-100 text-sky-800 border-sky-200">
-                        {STAFF_LABEL[row.staff_tier]}
-                      </Badge>
-                    ) : null}
-
-                    {/* Orgs (chips) */}
-                    {shown.map((o) => (
-                      <span key={o.id} className="rounded-md bg-muted px-2 py-0.5 text-xs" title={o.name}>
-                        {o.name}
-                      </span>
-                    ))}
-                    {extra > 0 ? (
-                      <span className="rounded-md bg-muted px-2 py-0.5 text-xs text-muted-foreground">
-                        +{extra}
-                      </span>
-                    ) : null}
-
-                    {!hasAnything ? <span className="text-muted-foreground">(sem vínculo)</span> : null}
-                  </span>
-                </td>
-                <td className="px-4 py-3 text-muted-foreground">
-                  {new Date(row.created_at).toLocaleDateString("pt-BR")}
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-    </div>
+    <DataTable
+      columns={columns}
+      data={rows}
+      getRowId={(r) => r.id}
+      search={(r) => `${r.full_name ?? ""} ${r.email}`}
+      searchPlaceholder="Filtrar nesta página…"
+      initialSort={{ key: "created", dir: "desc" }}
+      empty={
+        <EmptyState
+          icon={<Users />}
+          title="Nenhum usuário encontrado"
+          description="Convide um usuário para começar."
+          action={
+            <Link
+              href="/users/new"
+              className={buttonClasses({ variant: "primary", size: "sm" })}
+            >
+              Convidar usuário
+            </Link>
+          }
+        />
+      }
+    />
   );
 }

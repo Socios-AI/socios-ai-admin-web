@@ -1,6 +1,9 @@
 import Link from "next/link";
 import { AdminShell } from "@/components/AdminShell";
 import { LedgerTable } from "@/components/LedgerTable";
+import { PageHeader } from "@/components/ui/page-header";
+import { StatCard } from "@/components/ui/stat-card";
+import { buttonClasses } from "@/components/ui/button";
 import { getCallerJwt } from "@/lib/auth";
 import { listCommissionLedger, listPartners, resolveProfilesByIds } from "@/lib/data";
 
@@ -14,6 +17,10 @@ const STATUS_LABEL: Record<string, string> = {
   paid: "Pago",
   reversed: "Revertido",
 };
+
+function fmtMoney(amount: number, currency: string): string {
+  return new Intl.NumberFormat("pt-BR", { style: "currency", currency: currency.toUpperCase() }).format(amount);
+}
 
 export default async function CommissionsPage(props: {
   searchParams: Promise<{ status?: string; currency?: string }>;
@@ -49,6 +56,14 @@ export default async function CommissionsPage(props: {
   }
   void partnerToUser;
 
+  // Totais por moeda e por status, computados a partir do filtro atual.
+  const totalsByCurrency = new Map<string, number>();
+  for (const e of entries) {
+    totalsByCurrency.set(e.currency, (totalsByCurrency.get(e.currency) ?? 0) + e.amount);
+  }
+  const pendingCount = entries.filter((e) => e.status === "pending").length;
+  const paidCount = entries.filter((e) => e.status === "paid").length;
+
   const FilterLink = ({ kind, value, label, active }: { kind: "status" | "currency"; value: string; label: string; active: boolean }) => {
     const params = new URLSearchParams();
     if (kind === "status") {
@@ -62,10 +77,7 @@ export default async function CommissionsPage(props: {
     return (
       <Link
         href={qs ? `/commissions?${qs}` : "/commissions"}
-        className={
-          "rounded-md border px-3 py-1.5 text-sm transition " +
-          (active ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card hover:bg-muted")
-        }
+        className={buttonClasses({ variant: active ? "primary" : "outline", size: "sm" })}
       >
         {label}
       </Link>
@@ -74,12 +86,18 @@ export default async function CommissionsPage(props: {
 
   return (
     <AdminShell>
-      <header className="mb-6">
-        <h1 className="font-display font-semibold text-2xl">Comissões (extrato)</h1>
-        <p className="text-muted-foreground text-sm">
-          Lançamentos apurados por pagamento real · {entries.length} no filtro
-        </p>
-      </header>
+      <PageHeader
+        title="Comissões (extrato)"
+        subtitle={`Lançamentos apurados por pagamento real · ${entries.length} no filtro`}
+      />
+
+      <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <StatCard label="Lançamentos" value={entries.length} />
+        {[...totalsByCurrency.entries()].map(([cur, total]) => (
+          <StatCard key={cur} label={`Total ${cur.toUpperCase()}`} value={fmtMoney(total, cur)} />
+        ))}
+        <StatCard label="Pendentes" value={pendingCount} hint={`${paidCount} pagos`} />
+      </div>
 
       <div className="mb-4 flex flex-wrap items-center gap-2">
         {STATUSES.map((s) => (

@@ -1,3 +1,10 @@
+"use client";
+
+import * as React from "react";
+import { ChevronDown, ChevronRight } from "lucide-react";
+import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
+import { EmptyState } from "@/components/ui/empty-state";
+import { buttonClasses } from "@/components/ui/button";
 import type { AuditLogEntry } from "@/lib/data";
 
 export type AuditTableProps = {
@@ -21,68 +28,105 @@ function formatWhen(iso: string): string {
 }
 
 export function AuditTable({ rows, profileMap, filtersApplied }: AuditTableProps) {
+  const [expanded, setExpanded] = React.useState<Set<AuditLogEntry["id"]>>(new Set());
+
   if (rows.length === 0) {
-    return (
-      <div className="rounded-2xl border border-border bg-card p-6 text-center">
-        {filtersApplied ? (
-          <>
-            <p className="text-sm text-muted-foreground">Nenhum evento encontrado para os filtros atuais.</p>
-            <a href="/audit" className="text-sm text-primary hover:underline mt-2 inline-block">
-              Limpar filtros
-            </a>
-          </>
-        ) : (
-          <p className="text-sm text-muted-foreground">Nenhum evento registrado ainda.</p>
-        )}
-      </div>
+    return filtersApplied ? (
+      <EmptyState
+        title="Nenhum evento encontrado para os filtros atuais."
+        action={
+          <a href="/audit" className={buttonClasses({ variant: "outline", size: "sm" })}>
+            Limpar filtros
+          </a>
+        }
+      />
+    ) : (
+      <EmptyState title="Nenhum evento registrado ainda." />
     );
   }
 
+  function toggle(id: AuditLogEntry["id"]) {
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
   return (
-    <div className="rounded-2xl border border-border bg-card overflow-hidden">
-      <table className="w-full text-sm">
-        <thead className="bg-muted/50">
-          <tr>
-            <th scope="col" className="text-left px-4 py-2 font-medium text-muted-foreground">Quando</th>
-            <th scope="col" className="text-left px-4 py-2 font-medium text-muted-foreground">Evento</th>
-            <th scope="col" className="text-left px-4 py-2 font-medium text-muted-foreground">Ator</th>
-            <th scope="col" className="text-left px-4 py-2 font-medium text-muted-foreground">Alvo</th>
-            <th scope="col" className="text-left px-4 py-2 font-medium text-muted-foreground">App</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-border">
-          {rows.map((r) => (
-            <tr key={r.id}>
-              <td colSpan={5} className="p-0">
-                <details className="group">
-                  <summary className="grid grid-cols-[180px_1fr_1fr_1fr_140px] items-center gap-2 px-4 py-2 cursor-pointer hover:bg-muted/30">
-                    <span className="font-mono text-xs text-muted-foreground">{formatWhen(r.created_at)}</span>
-                    <span className="font-medium">{r.event_type}</span>
-                    <span className="text-muted-foreground truncate">{renderUserCell(r.actor_user_id, profileMap)}</span>
-                    <span className="text-muted-foreground truncate">{renderUserCell(r.target_user_id, profileMap)}</span>
-                    <span className="text-muted-foreground">{r.app_slug ?? "·"}</span>
-                  </summary>
-                  <div className="px-4 py-3 bg-muted/20 border-t border-border space-y-2">
-                    <div className="text-xs text-muted-foreground space-x-3">
-                      {r.app_slug && <span>App: {r.app_slug}</span>}
-                      {r.org_id && <span>Org: {r.org_id}</span>}
-                      {r.ip_address && <span>IP: <span>{r.ip_address}</span></span>}
-                    </div>
-                    {r.user_agent && (
-                      <div className="text-xs text-muted-foreground">
-                        User-Agent: <span className="font-mono">{r.user_agent}</span>
-                      </div>
+    <Table>
+      <THead>
+        <TR>
+          <TH>Quando</TH>
+          <TH>Evento</TH>
+          <TH>Ator</TH>
+          <TH>Alvo</TH>
+          <TH>App</TH>
+        </TR>
+      </THead>
+      <TBody>
+        {rows.map((r) => {
+          const isOpen = expanded.has(r.id);
+          return (
+            <React.Fragment key={r.id}>
+              <TR>
+                <TD className="whitespace-nowrap">
+                  <button
+                    type="button"
+                    onClick={() => toggle(r.id)}
+                    aria-expanded={isOpen}
+                    aria-label={isOpen ? "Recolher detalhes" : "Expandir detalhes"}
+                    className="inline-flex items-center gap-2 text-left transition-colors hover:text-foreground"
+                  >
+                    {isOpen ? (
+                      <ChevronDown className="h-3 w-3 shrink-0" aria-hidden="true" />
+                    ) : (
+                      <ChevronRight className="h-3 w-3 shrink-0" aria-hidden="true" />
                     )}
-                    <pre className="text-xs font-mono bg-background border border-border rounded p-3 overflow-x-auto">
-                      {JSON.stringify(r.metadata ?? {}, null, 2)}
-                    </pre>
-                  </div>
-                </details>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+                    <span className="font-mono text-xs text-muted-foreground">
+                      {formatWhen(r.created_at)}
+                    </span>
+                  </button>
+                </TD>
+                <TD className="font-medium">{r.event_type}</TD>
+                <TD className="truncate text-muted-foreground">
+                  {renderUserCell(r.actor_user_id, profileMap)}
+                </TD>
+                <TD className="truncate text-muted-foreground">
+                  {renderUserCell(r.target_user_id, profileMap)}
+                </TD>
+                <TD className="text-muted-foreground">{r.app_slug ?? "·"}</TD>
+              </TR>
+              {isOpen ? (
+                <TR>
+                  <TD colSpan={5} className="bg-muted/20">
+                    <div className="space-y-2">
+                      <div className="space-x-3 text-xs text-muted-foreground">
+                        {r.app_slug && <span>App: {r.app_slug}</span>}
+                        {r.org_id && <span>Org: {r.org_id}</span>}
+                        {r.ip_address && (
+                          <span>
+                            IP: <span>{r.ip_address}</span>
+                          </span>
+                        )}
+                      </div>
+                      {r.user_agent && (
+                        <div className="text-xs text-muted-foreground">
+                          User-Agent: <span className="font-mono">{r.user_agent}</span>
+                        </div>
+                      )}
+                      <pre className="overflow-x-auto rounded border border-border bg-background p-3 font-mono text-xs">
+                        {JSON.stringify(r.metadata ?? {}, null, 2)}
+                      </pre>
+                    </div>
+                  </TD>
+                </TR>
+              ) : null}
+            </React.Fragment>
+          );
+        })}
+      </TBody>
+    </Table>
   );
 }

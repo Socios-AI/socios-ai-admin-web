@@ -2,7 +2,12 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { updateOrgAction } from "@/app/_actions/update-org";
+import { Dialog, DialogFooter } from "@/components/ui/dialog";
+import { Field } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 
 export function OrgEditDialog({ orgId, initialName }: { orgId: string; initialName: string }) {
   const router = useRouter();
@@ -11,16 +16,10 @@ export function OrgEditDialog({ orgId, initialName }: { orgId: string; initialNa
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
-  if (!open) {
-    return (
-      <button
-        type="button"
-        onClick={() => { setName(initialName); setError(null); setOpen(true); }}
-        className="rounded-lg border border-input px-3 py-1.5 text-sm hover:bg-muted"
-      >
-        Editar
-      </button>
-    );
+  function openDialog() {
+    setName(initialName);
+    setError(null);
+    setOpen(true);
   }
 
   function save() {
@@ -29,6 +28,7 @@ export function OrgEditDialog({ orgId, initialName }: { orgId: string; initialNa
       const res = await updateOrgAction({ orgId, name });
       if (res.ok) {
         setOpen(false);
+        toast.success("Organização atualizada");
         router.refresh();
       } else {
         setError(res.message ?? res.error);
@@ -37,24 +37,38 @@ export function OrgEditDialog({ orgId, initialName }: { orgId: string; initialNa
   }
 
   return (
-    <div className="flex items-center gap-2">
-      <input
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-        minLength={2}
-        maxLength={200}
-        className="rounded-lg border border-input bg-background px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-        autoFocus
-      />
-      <button type="button" onClick={save} disabled={pending}
-        className="rounded-lg bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:opacity-90 disabled:opacity-50">
-        {pending ? "..." : "Salvar"}
-      </button>
-      <button type="button" onClick={() => setOpen(false)}
-        className="rounded-lg border border-input px-3 py-1.5 text-sm hover:bg-muted">
-        Cancelar
-      </button>
-      {error ? <span className="text-sm text-destructive">{error}</span> : null}
-    </div>
+    <>
+      <Button type="button" variant="outline" size="sm" onClick={openDialog}>
+        Editar
+      </Button>
+      <Dialog
+        open={open}
+        onClose={() => setOpen(false)}
+        title="Editar organização"
+        size="sm"
+      >
+        <Field label="Nome" htmlFor="org-edit-name" error={error ?? undefined}>
+          <Input
+            id="org-edit-name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") save();
+            }}
+            minLength={2}
+            maxLength={200}
+            autoFocus
+          />
+        </Field>
+        <DialogFooter>
+          <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+            Cancelar
+          </Button>
+          <Button type="button" onClick={save} loading={pending}>
+            Salvar
+          </Button>
+        </DialogFooter>
+      </Dialog>
+    </>
   );
 }

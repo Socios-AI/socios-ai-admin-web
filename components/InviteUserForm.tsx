@@ -7,6 +7,13 @@ import { inviteUserAction } from "@/app/_actions/invite-user";
 import { PartnerPicker } from "@/components/PartnerPicker";
 import type { PartnerSearchRow } from "@/app/_actions/search-partners";
 import { deriveAdminRoleSlug } from "@/lib/admin-role-slug";
+import { Card, CardContent } from "@/components/ui/card";
+import { Field } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/components/ui/button";
+import { copyToClipboard } from "@/lib/ui/clipboard";
 
 type AppOption = { slug: string; name: string; role_catalog: Record<string, string> };
 type Props = { apps: AppOption[] };
@@ -75,121 +82,119 @@ export function InviteUserForm({ apps }: Props) {
 
   if (actionLink) {
     return (
-      <div className="space-y-4 rounded-2xl border border-border bg-card p-6">
-        <h2 className="font-display font-semibold text-lg">Link gerado</h2>
-        <p className="text-sm text-muted-foreground">
-          Envie o link abaixo para o novo usuário definir a senha. O link expira em 24 horas.
-        </p>
-        <textarea
-          readOnly
-          value={actionLink}
-          className="w-full font-mono text-xs rounded-lg border border-input bg-background p-3"
-          rows={3}
-          onFocus={(e) => e.currentTarget.select()}
-        />
-        <div className="flex justify-end gap-2">
-          <button
-            type="button"
-            onClick={() => navigator.clipboard.writeText(actionLink).then(() => toast.success("Link copiado"))}
-            className="rounded-lg border border-input px-4 py-2 text-sm hover:bg-muted"
-          >
-            Copiar link
-          </button>
-          <button
-            type="button"
-            onClick={() => router.push("/users")}
-            className="rounded-lg bg-primary text-primary-foreground px-4 py-2 text-sm font-medium hover:opacity-90"
-          >
-            Voltar para Usuários
-          </button>
-        </div>
-      </div>
+      <Card className="max-w-xl">
+        <CardContent className="space-y-4 p-6">
+          <h2 className="font-display font-semibold text-lg">Link gerado</h2>
+          <p className="text-sm text-muted-foreground">
+            Envie o link abaixo para o novo usuário definir a senha. O link expira em 24 horas.
+          </p>
+          <Textarea
+            readOnly
+            value={actionLink}
+            className="font-mono text-xs"
+            rows={3}
+            onFocus={(e) => e.currentTarget.select()}
+          />
+          <div className="flex justify-end gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => copyToClipboard(actionLink, "Link copiado")}
+            >
+              Copiar link
+            </Button>
+            <Button type="button" onClick={() => router.push("/users")}>
+              Voltar para Usuários
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
     );
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4 max-w-xl">
-      <div className="space-y-1.5">
-        <label htmlFor="email" className="text-sm font-medium">Email</label>
-        <input
-          id="email"
-          type="email"
-          required
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm"
-        />
-      </div>
-      <div className="space-y-1.5">
-        <label htmlFor="fullName" className="text-sm font-medium">Nome completo</label>
-        <input
-          id="fullName"
-          type="text"
-          required
-          minLength={2}
-          value={fullName}
-          onChange={(e) => setFullName(e.target.value)}
-          className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm"
-        />
-      </div>
-      <div className="space-y-1.5">
-        <label htmlFor="app" className="text-sm font-medium">App</label>
-        <select
-          id="app"
-          required
-          value={appSlug}
-          onChange={(e) => onAppChange(e.target.value)}
-          className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm"
-        >
-          {apps.map((a) => (
-            <option key={a.slug} value={a.slug}>{a.name}</option>
-          ))}
-        </select>
-      </div>
-      <div className="space-y-1.5">
-        <label htmlFor="role" className="text-sm font-medium">Role</label>
-        <select
-          id="role"
-          required
-          value={roleSlug}
-          onChange={(e) => setRoleSlug(e.target.value)}
-          className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm"
-          disabled={roleOptions.length === 0}
-        >
-          {roleOptions.length === 0 ? (
-            <option value="">Este app não tem papel de admin no catálogo</option>
-          ) : (
-            roleOptions.map((r) => (
-              <option key={r.slug} value={r.slug}>{r.label} ({r.slug})</option>
-            ))
-          )}
-        </select>
-        <p className="text-xs text-muted-foreground">
-          Esta tela cadastra apenas o administrador da conta. Membros comuns são adicionados depois pelo próprio admin dentro do app.
-        </p>
-      </div>
-      <div className="space-y-1.5">
-        <label htmlFor="orgId" className="text-sm font-medium">Org ID (opcional)</label>
-        <input
-          id="orgId"
-          type="text"
-          value={orgId}
-          onChange={(e) => setOrgId(e.target.value)}
-          placeholder="00000000-0000-0000-0000-000000000000"
-          className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm font-mono"
-        />
-        <p className="text-xs text-muted-foreground">
-          Preencha só se o papel for escopado a um tenant/org específico.
-        </p>
-      </div>
-      <PartnerPicker value={indicante} onChange={setIndicante} />
-      <button
-        type="submit"
-        disabled={pending}
-        className="rounded-lg bg-primary text-primary-foreground px-5 py-2.5 text-sm font-medium hover:opacity-90 disabled:opacity-50"
-      >
-        {pending ? "Criando..." : "Convidar"}
-      </button>
-    </form>
+    <Card className="max-w-xl">
+      <CardContent className="p-6">
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <Field label="Email" htmlFor="email" required>
+            <Input
+              id="email"
+              type="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+          </Field>
+
+          <Field label="Nome completo" htmlFor="fullName" required>
+            <Input
+              id="fullName"
+              type="text"
+              required
+              minLength={2}
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+            />
+          </Field>
+
+          <Field label="App" htmlFor="app" required>
+            <Select
+              id="app"
+              required
+              value={appSlug}
+              onChange={(e) => onAppChange(e.target.value)}
+            >
+              {apps.map((a) => (
+                <option key={a.slug} value={a.slug}>{a.name}</option>
+              ))}
+            </Select>
+          </Field>
+
+          <Field
+            label="Role"
+            htmlFor="role"
+            required
+            hint="Esta tela cadastra apenas o administrador da conta. Membros comuns são adicionados depois pelo próprio admin dentro do app."
+          >
+            <Select
+              id="role"
+              required
+              value={roleSlug}
+              onChange={(e) => setRoleSlug(e.target.value)}
+              disabled={roleOptions.length === 0}
+            >
+              {roleOptions.length === 0 ? (
+                <option value="">Este app não tem papel de admin no catálogo</option>
+              ) : (
+                roleOptions.map((r) => (
+                  <option key={r.slug} value={r.slug}>{r.label} ({r.slug})</option>
+                ))
+              )}
+            </Select>
+          </Field>
+
+          <Field
+            label="Org ID (opcional)"
+            htmlFor="orgId"
+            hint="Preencha só se o papel for escopado a um tenant/org específico."
+          >
+            <Input
+              id="orgId"
+              type="text"
+              value={orgId}
+              onChange={(e) => setOrgId(e.target.value)}
+              placeholder="00000000-0000-0000-0000-000000000000"
+              className="font-mono"
+            />
+          </Field>
+
+          <PartnerPicker value={indicante} onChange={setIndicante} />
+
+          <Button type="submit" loading={pending} disabled={pending}>
+            {pending ? "Criando..." : "Convidar"}
+          </Button>
+        </form>
+      </CardContent>
+    </Card>
   );
 }

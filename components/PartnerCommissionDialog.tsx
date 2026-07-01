@@ -4,6 +4,11 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { updatePartnerCommissionAction } from "@/app/_actions/update-partner-commission";
+import { Dialog, DialogFooter } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Field } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 
 type Props = {
   partnerId: string;
@@ -53,72 +58,49 @@ export function PartnerCommissionDialog({ partnerId, currentPct }: Props) {
 
   return (
     <>
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className="rounded-lg border border-input bg-background px-3 py-1.5 text-sm hover:bg-muted"
-      >
+      <Button type="button" variant="outline" size="sm" onClick={() => setOpen(true)}>
         Editar comissão
-      </button>
-      {open && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
-        >
-          <form
-            onSubmit={onSubmit}
-            className="w-full max-w-md rounded-2xl border border-border bg-card p-6 shadow-lg space-y-4"
+      </Button>
+      <Dialog
+        open={open}
+        onClose={close}
+        title="Editar comissão custom"
+        dismissible={!isPending}
+      >
+        <form onSubmit={onSubmit} className="space-y-4">
+          <Field
+            label="Comissão (0 a 1, vazio para usar o padrão global)"
+            htmlFor="pct-input"
           >
-            <h2 className="font-display font-semibold text-lg">Editar comissão custom</h2>
-            <div>
-              <label htmlFor="pct-input" className="block text-sm font-medium mb-1">
-                Comissão (0 a 1, vazio para usar o padrão global)
-              </label>
-              <input
-                id="pct-input"
-                type="number"
-                min={0}
-                max={1}
-                step="0.01"
-                value={pctStr}
-                onChange={(e) => setPctStr(e.target.value)}
-                className="w-full rounded-lg border border-input bg-background px-3 py-2"
-              />
-            </div>
-            <div>
-              <label htmlFor="reason-input" className="block text-sm font-medium mb-1">
-                Motivo (mínimo 5 caracteres)
-              </label>
-              <textarea
-                id="reason-input"
-                value={reason}
-                onChange={(e) => setReason(e.target.value)}
-                rows={3}
-                className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm"
-                required
-              />
-            </div>
-            <div className="flex justify-end gap-2 pt-2">
-              <button
-                type="button"
-                onClick={close}
-                disabled={isPending}
-                className="rounded-lg border border-input bg-background px-4 py-2 text-sm hover:bg-muted disabled:opacity-50"
-              >
-                Cancelar
-              </button>
-              <button
-                type="submit"
-                disabled={isPending}
-                className="rounded-lg bg-primary text-primary-foreground px-4 py-2 text-sm font-medium hover:opacity-90 disabled:opacity-50"
-              >
-                Salvar
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
+            <Input
+              id="pct-input"
+              type="number"
+              min={0}
+              max={1}
+              step="0.01"
+              value={pctStr}
+              onChange={(e) => setPctStr(e.target.value)}
+            />
+          </Field>
+          <Field label="Motivo (mínimo 5 caracteres)" htmlFor="reason-input">
+            <Textarea
+              id="reason-input"
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              rows={3}
+              required
+            />
+          </Field>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={close} disabled={isPending}>
+              Cancelar
+            </Button>
+            <Button type="submit" loading={isPending}>
+              Salvar
+            </Button>
+          </DialogFooter>
+        </form>
+      </Dialog>
     </>
   );
 }
