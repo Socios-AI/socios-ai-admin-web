@@ -2,7 +2,7 @@ import Link from "next/link";
 import { AdminShell } from "@/components/AdminShell";
 import { OrgListTable } from "@/components/OrgListTable";
 import { RegistrarOrgsView } from "@/components/RegistrarOrgsView";
-import { getCallerJwt, getCallerClaims } from "@/lib/auth";
+import { getCallerJwt, getEffectiveRegistrar } from "@/lib/auth";
 import { listOrgs, listApps } from "@/lib/data";
 
 export const dynamic = "force-dynamic";
@@ -13,9 +13,10 @@ export default async function OrgsPage(props: {
   const { app: appParam } = await props.searchParams;
   const app = Array.isArray(appParam) ? appParam[0] : appParam;
 
-  // Cadastrador (registrar, não super_admin): view curada sem financeiro.
-  const claims = await getCallerClaims();
-  if (claims?.tier === "registrar" && claims?.super_admin !== true) {
+  // Cadastrador (registrar real OU super_admin em modo "ver como Cadastrador"):
+  // view curada sem financeiro.
+  const { isRegistrar } = await getEffectiveRegistrar();
+  if (isRegistrar) {
     return (
       <AdminShell>
         <RegistrarOrgsView />

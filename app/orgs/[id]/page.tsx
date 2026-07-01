@@ -4,7 +4,7 @@ import { AdminShell } from "@/components/AdminShell";
 import { OrgPlansSection } from "@/components/OrgPlansSection";
 import { OrgEditDialog } from "@/components/OrgEditDialog";
 import { RegistrarOrgDetailView } from "@/components/RegistrarOrgDetailView";
-import { getCallerJwt, getCallerClaims } from "@/lib/auth";
+import { getCallerJwt, getEffectiveRegistrar } from "@/lib/auth";
 import { loadOrg, listPlansCatalog } from "@/lib/data";
 
 export const dynamic = "force-dynamic";
@@ -19,10 +19,10 @@ export default async function OrgDetailPage(props: {
 }) {
   const { id } = await props.params;
 
-  // Cadastrador (registrar, não super_admin): view curada sem financeiro,
-  // org-cêntrica (não precisa de ?app=).
-  const claims = await getCallerClaims();
-  if (claims?.tier === "registrar" && claims?.super_admin !== true) {
+  // Cadastrador (registrar real OU super_admin em modo "ver como Cadastrador"):
+  // view curada sem financeiro, org-cêntrica (não precisa de ?app=).
+  const { isRegistrar } = await getEffectiveRegistrar();
+  if (isRegistrar) {
     return (
       <AdminShell>
         <RegistrarOrgDetailView orgId={id} />

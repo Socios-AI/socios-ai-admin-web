@@ -31,6 +31,41 @@ export async function getCallerClaims(): Promise<SuperAdminClaims | null> {
   return claims;
 }
 
+// Cookie (host-only no admin) que liga o modo "ver como Cadastrador" pra um
+// super_admin. Só afeta renderização; não dá nenhum poder extra (o super_admin
+// já tem acesso total). Ver app/_actions/view-as.ts.
+export const VIEW_AS_COOKIE = "admin_view_as";
+
+export type RegistrarView = {
+  isRegistrar: boolean; // renderizar as telas curadas do cadastrador
+  isPreview: boolean; // super_admin olhando "como cadastrador" (não é registrar de verdade)
+  isSuper: boolean; // pra decidir se mostra o botão de toggle
+};
+
+/**
+ * Decide se a UI deve renderizar a experiência do Cadastrador.
+ *
+ * - Cadastrador real (`tier === "registrar"` e não super_admin): sempre.
+ * - Super_admin com o cookie `admin_view_as=registrar`: modo preview, pra
+ *   testar/dar suporte vendo o que o cadastrador vê. As actions continuam
+ *   rodando como super_admin (auditável como ele mesmo).
+ */
+export async function getEffectiveRegistrar(): Promise<RegistrarView> {
+  const claims = await getCallerClaims();
+  const isSuper = claims?.super_admin === true;
+  const realRegistrar = claims?.tier === "registrar" && !isSuper;
+
+  const cookieStore = await cookies();
+  const viewAs = cookieStore.get(VIEW_AS_COOKIE)?.value;
+  const previewRegistrar = isSuper && viewAs === "registrar";
+
+  return {
+    isRegistrar: realRegistrar || previewRegistrar,
+    isPreview: previewRegistrar,
+    isSuper,
+  };
+}
+
 /**
  * Defense-in-depth gate for Server Actions that mutate via service_role.
  *
