@@ -3,7 +3,7 @@ import { AdminShell } from "@/components/AdminShell";
 import { PartnerListTable } from "@/components/PartnerListTable";
 import { PartnerInvitationsList } from "@/components/PartnerInvitationsList";
 import { RegistrarPartnersView } from "@/components/RegistrarPartnersView";
-import { getCallerJwt, getCallerClaims } from "@/lib/auth";
+import { getCallerJwt, getEffectiveRegistrar } from "@/lib/auth";
 import {
   listPartners,
   listPartnerInvitations,
@@ -26,9 +26,10 @@ export default async function PartnersPage(props: {
   const rawTier = Array.isArray(tierParam) ? tierParam[0] : tierParam;
   const tierFilter: TierFilter = isTierFilter(rawTier) ? rawTier : "all";
 
-  // Cadastrador (registrar, não super_admin): view curada sem financeiro.
-  const claims = await getCallerClaims();
-  if (claims?.tier === "registrar" && claims?.super_admin !== true) {
+  // Cadastrador (registrar real OU super_admin em modo "ver como Cadastrador"):
+  // view curada sem financeiro.
+  const { isRegistrar } = await getEffectiveRegistrar();
+  if (isRegistrar) {
     return (
       <AdminShell>
         <RegistrarPartnersView />

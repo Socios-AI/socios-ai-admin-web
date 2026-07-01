@@ -1,14 +1,15 @@
 import { AdminShell } from "@/components/AdminShell";
 import { DownlineTree } from "@/components/DownlineTree";
 import { RegistrarTreeView } from "@/components/RegistrarTreeView";
-import { getCallerJwt, getCallerClaims } from "@/lib/auth";
+import { getCallerJwt, getEffectiveRegistrar } from "@/lib/auth";
 import { listPartnerSubtree, resolveProfilesByIds } from "@/lib/data";
 
 export const dynamic = "force-dynamic";
 
 export default async function TreePage() {
-  const claims = await getCallerClaims();
-  if (claims?.tier === "registrar" && claims?.super_admin !== true) {
+  // Cadastrador (registrar real OU super_admin em modo "ver como Cadastrador").
+  const { isRegistrar } = await getEffectiveRegistrar();
+  if (isRegistrar) {
     return (
       <AdminShell>
         <RegistrarTreeView />

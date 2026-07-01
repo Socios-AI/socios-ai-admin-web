@@ -1,6 +1,7 @@
 import Link from "next/link";
-import { LayoutDashboard, Users, Building2, AppWindow, Tag, Package, Activity, FileText, Handshake, Megaphone, Network, Receipt, Target, LogOut } from "lucide-react";
+import { LayoutDashboard, Users, Building2, AppWindow, Tag, Package, Activity, FileText, Handshake, Megaphone, Network, Receipt, Target, LogOut, Eye, EyeOff } from "lucide-react";
 import { ThemeToggle } from "./ThemeToggle";
+import { enableRegistrarPreview, disableRegistrarPreview } from "@/app/_actions/view-as";
 
 // `registrarVisible`: itens que o papel "cadastrador" (tier registrar) enxerga.
 // Bate com a allowlist da middleware (/orgs, /partners, /tree).
@@ -20,7 +21,15 @@ const ITEMS = [
   { href: "/audit", label: "Auditoria", Icon: FileText },
 ];
 
-export function Sidebar({ isRegistrar = false }: { isRegistrar?: boolean }) {
+export function Sidebar({
+  isRegistrar = false,
+  isSuper = false,
+  isPreview = false,
+}: {
+  isRegistrar?: boolean;
+  isSuper?: boolean;
+  isPreview?: boolean;
+}) {
   const items = isRegistrar ? ITEMS.filter((i) => i.registrarVisible) : ITEMS;
   return (
     <aside className="w-56 shrink-0 border-r border-sidebar-border h-screen sticky top-0 p-4 flex flex-col gap-1 bg-sidebar-background text-sidebar-foreground">
@@ -58,6 +67,26 @@ export function Sidebar({ isRegistrar = false }: { isRegistrar?: boolean }) {
           ),
         )}
       </nav>
+      {/* Super_admin: alternar a visão do Cadastrador (testar/dar suporte). */}
+      {isSuper ? (
+        <form
+          action={isPreview ? disableRegistrarPreview : enableRegistrarPreview}
+          className="border-t border-sidebar-border pt-3 mt-3"
+        >
+          <button
+            type="submit"
+            className="w-full flex items-center gap-2 px-3 py-2 rounded-md text-sm text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition"
+          >
+            {isPreview ? (
+              <EyeOff className="h-4 w-4" aria-hidden="true" />
+            ) : (
+              <Eye className="h-4 w-4" aria-hidden="true" />
+            )}
+            {isPreview ? "Sair da visão de Cadastrador" : "Ver como Cadastrador"}
+          </button>
+        </form>
+      ) : null}
+
       {/* Footer: theme toggle + signout */}
       <div className="border-t border-sidebar-border pt-3 mt-3 flex items-center justify-between gap-2">
         <form action="/signout" method="POST" className="flex-1">
