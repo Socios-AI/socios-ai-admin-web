@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Users } from "lucide-react";
+import { Users, ShieldCheck } from "lucide-react";
 import type { PartnerRole, UserRow } from "@/lib/data";
 import { DataTable, type Column } from "@/components/ui/data-table";
 import { Badge } from "@/components/ui/badge";
@@ -32,6 +32,15 @@ const columns: Column<UserRow>[] = [
       return (
         <Link href={`/users/${row.id}`} className="group block">
           <span className="font-medium group-hover:underline">{name || row.email}</span>
+          {row.is_super_admin ? (
+            <span
+              title="Super admin"
+              aria-label="Super admin"
+              className="ml-1.5 inline-flex align-middle text-muted-foreground"
+            >
+              <ShieldCheck className="h-3.5 w-3.5" aria-hidden="true" />
+            </span>
+          ) : null}
           {name ? (
             <span className="block text-muted-foreground text-xs">{row.email}</span>
           ) : null}
@@ -86,17 +95,6 @@ const columns: Column<UserRow>[] = [
         </span>
       );
     },
-  },
-  {
-    key: "super",
-    header: "Super admin",
-    cell: (row) =>
-      row.is_super_admin ? (
-        <Badge variant="navy">Super admin</Badge>
-      ) : (
-        <span className="text-muted-foreground">—</span>
-      ),
-    sortAccessor: (row) => (row.is_super_admin ? 1 : 0),
   },
   {
     key: "created",
