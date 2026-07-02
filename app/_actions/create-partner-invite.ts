@@ -23,6 +23,8 @@ export async function createPartnerInviteAction(input: unknown): Promise<CreateP
 
   const sb = getSupabaseAdminClient();
 
+  const commissionPct = data.commissionPct ?? null;
+
   // Valida o upline (se informado): precisa existir e estar ativo.
   if (data.introducedByPartnerId) {
     const { data: up, error: upErr } = await sb
@@ -33,6 +35,24 @@ export async function createPartnerInviteAction(input: unknown): Promise<CreateP
     if (upErr) return { ok: false, error: "API_ERROR", message: upErr.message };
     if (!up || up.status !== "active") {
       return { ok: false, error: "VALIDATION", message: "Upline inválido ou inativo" };
+    }
+
+    // filho < pai: a comissão negociada não pode ser >= a taxa ativa do upline.
+    if (commissionPct !== null) {
+      const { data: uplineRate } = await sb
+        .from("partner_edge_rates")
+        .select("rate_pct")
+        .eq("child_partner_id", data.introducedByPartnerId)
+        .eq("revenue_kind", "subscription")
+        .is("effective_to", null)
+        .maybeSingle();
+      if (uplineRate && commissionPct >= Number(uplineRate.rate_pct)) {
+        return {
+          ok: false,
+          error: "VALIDATION",
+          message: `Comissão (${commissionPct}) deve ser menor que a do upline (${uplineRate.rate_pct}).`,
+        };
+      }
     }
   }
 
@@ -51,6 +71,7 @@ export async function createPartnerInviteAction(input: unknown): Promise<CreateP
     invite_token: inviteToken,
     expires_at: expiresAt,
     status: "sent",
+    custom_commission_pct: commissionPct,
   });
   if (insErr) {
     if (insErr.code === "23505") return { ok: false, error: "VALIDATION", message: insErr.message };
@@ -66,6 +87,7 @@ export async function createPartnerInviteAction(input: unknown): Promise<CreateP
       full_name: data.fullName,
       target_role: data.targetRole,
       introduced_by_partner_id: data.introducedByPartnerId ?? null,
+      commission_pct: commissionPct,
       no_payment: true,
     },
   });

@@ -387,6 +387,11 @@ export const createPartnerInviteSchema = z.object({
   targetRole: z.enum(["licenciado", "representante", "embaixador"]),
   introducedByPartnerId: z.string().uuid("Parceiro inválido").optional(),
   expiresInDays: z.number().int().min(1).max(30).optional(),
+  commissionPct: z
+    .number()
+    .min(0, "Comissão deve ser >= 0")
+    .max(1, "Comissão deve ser <= 1")
+    .optional(),
 });
 
 export type CreatePartnerInviteInput = z.infer<typeof createPartnerInviteSchema>;

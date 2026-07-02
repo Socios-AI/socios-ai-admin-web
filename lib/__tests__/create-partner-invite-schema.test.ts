@@ -18,4 +18,11 @@ describe("createPartnerInviteSchema", () => {
     expect(createPartnerInviteSchema.safeParse({ ...base, introducedByPartnerId: "b0000000-0000-0000-0000-000000000002" }).success).toBe(true);
     expect(createPartnerInviteSchema.safeParse({ ...base, introducedByPartnerId: "nope" }).success).toBe(false);
   });
+  it("aceita commissionPct em [0,1] e rejeita fora do intervalo", () => {
+    expect(createPartnerInviteSchema.safeParse({ ...base, commissionPct: 0.25 }).success).toBe(true);
+    expect(createPartnerInviteSchema.safeParse({ ...base, commissionPct: 0 }).success).toBe(true);
+    expect(createPartnerInviteSchema.safeParse({ ...base, commissionPct: 1 }).success).toBe(true);
+    expect(createPartnerInviteSchema.safeParse({ ...base, commissionPct: 1.5 }).success).toBe(false);
+    expect(createPartnerInviteSchema.safeParse({ ...base, commissionPct: -0.1 }).success).toBe(false);
+  });
 });
