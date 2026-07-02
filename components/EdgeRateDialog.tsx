@@ -29,8 +29,8 @@ export function EdgeRateDialog({ childPartnerId, childLabel, currentRate }: Prop
   const parsed = rateStr.trim() === "" ? null : Number(rateStr);
   const valid = parsed !== null && !Number.isNaN(parsed) && parsed >= 0 && parsed <= 1;
   const keepHint = valid
-    ? `Este ramo recebe ${(parsed * 100).toFixed(1)}% · você retém ${((1 - parsed) * 100).toFixed(1)}%`
-    : "Informe um valor entre 0 e 1 (ex: 0.5 = 50%).";
+    ? `${childLabel} ganha ${(parsed * 100).toFixed(1)}% do net. Deve ser menor que a do nível acima.`
+    : "Informe um valor entre 0 e 1 (ex: 0.25 = 25%).";
 
   function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -62,17 +62,17 @@ export function EdgeRateDialog({ childPartnerId, childLabel, currentRate }: Prop
       <Dialog
         open={open}
         onClose={isPending ? () => {} : close}
-        title="Taxa de repasse"
+        title="Comissão do parceiro"
         dismissible={!isPending}
       >
         <form onSubmit={onSubmit} className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            Quanto do que chega a você desce para{" "}
-            <span className="font-medium text-foreground">{childLabel}</span> (e a
-            rede abaixo dele) nas assinaturas.
+            % total que{" "}
+            <span className="font-medium text-foreground">{childLabel}</span> ganha
+            sobre o net das assinaturas. Deve ser menor que a do nível acima.
           </p>
           <Field
-            label="Taxa (0 a 1 · ex: 0.5 = 50%)"
+            label="Comissão (0 a 1 · ex: 0.25 = 25%)"
             htmlFor="rate-input"
             hint={keepHint}
           >

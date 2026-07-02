@@ -30,7 +30,12 @@ export async function setEdgeRateAction(input: unknown): Promise<SetEdgeRateResu
 
   if (error) {
     if (error.code === "42501") return { ok: false, error: "FORBIDDEN" };
-    if (error.code === "23514") return { ok: false, error: "VALIDATION", message: "Taxa deve estar entre 0 e 1." };
+    if (error.code === "23514") {
+      const message = /below parent/i.test(error.message)
+        ? "A comissão deve ser menor que a do nível acima."
+        : "Taxa deve estar entre 0 e 1.";
+      return { ok: false, error: "VALIDATION", message };
+    }
     return { ok: false, error: "API_ERROR", message: error.message };
   }
 

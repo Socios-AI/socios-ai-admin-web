@@ -390,16 +390,25 @@ export default async function PartnerDetailPage({
       {activeTab === "taxas" && (
         <div className="space-y-6 text-sm">
           <div className="rounded-lg border border-border bg-muted/30 p-4">
-            <p className="text-muted-foreground">Taxa que este parceiro recebe do nível acima</p>
-            <p className="text-lg font-medium tabular-nums mt-1">
-              {selfNode?.rate_to_parent == null
-                ? "não definida (0% até cadastrar)"
-                : `${(selfNode.rate_to_parent * 100).toFixed(1)}% do que chega ao pai desce até ele`}
-            </p>
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-muted-foreground">Comissão deste parceiro sobre o net</p>
+                <p className="text-lg font-medium tabular-nums mt-1">
+                  {selfNode?.rate_to_parent == null
+                    ? "não definida (0% até cadastrar)"
+                    : `${(selfNode.rate_to_parent * 100).toFixed(1)}% do net`}
+                </p>
+              </div>
+              <EdgeRateDialog
+                childPartnerId={partner.id}
+                childLabel={partnerName}
+                currentRate={selfNode?.rate_to_parent ?? null}
+              />
+            </div>
           </div>
 
           <div>
-            <h2 className="font-semibold mb-3">Taxas de repasse aos diretos ({downstream.length})</h2>
+            <h2 className="font-semibold mb-3">Comissão dos diretos ({downstream.length})</h2>
             {downstream.length === 0 ? (
               <p className="text-muted-foreground">Nenhum parceiro direto.</p>
             ) : (
@@ -408,7 +417,7 @@ export default async function PartnerDetailPage({
                   <thead className="bg-muted/50 text-left text-xs uppercase tracking-wide text-muted-foreground">
                     <tr>
                       <th className="px-4 py-3">Parceiro</th>
-                      <th className="px-4 py-3">Taxa de repasse</th>
+                      <th className="px-4 py-3">Comissão</th>
                       <th className="px-4 py-3"></th>
                     </tr>
                   </thead>
