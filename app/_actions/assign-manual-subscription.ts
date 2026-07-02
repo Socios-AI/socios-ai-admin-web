@@ -36,7 +36,7 @@ export async function assignManualSubscriptionAction(
   // 1. Plan must exist and be active
   const { data: plan, error: planError } = await sb
     .from("plans")
-    .select("id, slug, name, is_active")
+    .select("id, slug, name, is_active, price_amount, currency")
     .eq("id", data.planId)
     .single();
   if (planError || !plan) {
@@ -140,6 +140,28 @@ export async function assignManualSubscriptionAction(
     actor_user_id: adminId,
     metadata: auditMetadata,
   });
+
+  // 5b. Emit commission for the paid manual sale so the partner cascade fires.
+  // Best-effort: the sub is already created; list_commission_reconciliation() surfaces any miss.
+  // Free plans (price 0) never accrue. Idempotent by the synthetic 'manual-sub:<id>' event key.
+  const priceAmount = Number(plan.price_amount ?? 0);
+  if (priceAmount > 0) {
+    const { error: commissionError } = await sb.rpc("apply_stripe_subscription_event", {
+      p_stripe_event_id: `manual-sub:${inserted.id}`,
+      p_event_type: "manual.assigned",
+      p_subscription_id: inserted.id,
+      p_new_status: "manual",
+      p_app_slug: isOrg ? data.appSlug! : null,
+      p_amount_paid: priceAmount,
+      p_currency: plan.currency,
+    });
+    if (commissionError) {
+      console.error("assignManualSubscriptionAction: commission accrual failed", {
+        subscriptionId: inserted.id,
+        error: commissionError.message,
+      });
+    }
+  }
 
   // 6. Revalidate the right detail page
   if (isOrg) {

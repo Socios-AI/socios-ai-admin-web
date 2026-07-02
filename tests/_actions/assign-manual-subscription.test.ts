@@ -372,6 +372,72 @@ describe("assignManualSubscriptionAction · org branch", () => {
   });
 });
 
+describe("assignManualSubscriptionAction · commission accrual", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    authMock.mockResolvedValue(SUPER_ADMIN_CLAIMS);
+  });
+
+  function buildSbWithRpc(plan: Record<string, unknown>) {
+    const planSelect = vi.fn(() => ({
+      eq: vi.fn(() => ({ single: vi.fn().mockResolvedValue({ data: plan, error: null }) })),
+    }));
+    const membershipSelect = vi.fn(() => ({
+      eq: vi.fn(() => ({ eq: vi.fn(() => ({ is: vi.fn().mockResolvedValue({ count: 1, error: null }) })) })),
+    }));
+    const dupSelect = vi.fn(() => ({
+      eq: vi.fn(() => ({
+        in: vi.fn(() => ({ eq: vi.fn(() => ({ maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }) })) })),
+      })),
+    }));
+    const subInsert = vi.fn(() => ({
+      select: vi.fn(() => ({ single: vi.fn().mockResolvedValue({ data: { id: "sub-xyz" }, error: null }) })),
+    }));
+    const auditInsert = vi.fn().mockResolvedValue({ error: null });
+    const from = vi.fn((table: string) => {
+      if (table === "plans") return { select: planSelect };
+      if (table === "app_memberships") return { select: membershipSelect };
+      if (table === "subscriptions") return { select: dupSelect, insert: subInsert };
+      if (table === "audit_log") return { insert: auditInsert };
+      throw new Error(`unexpected table ${table}`);
+    });
+    const rpc = vi.fn().mockResolvedValue({ data: null, error: null });
+    return { from, rpc };
+  }
+
+  it("paid plan → fires apply_stripe_subscription_event with amount + synthetic key", async () => {
+    const sb = buildSbWithRpc({
+      id: validOrgInput.planId, slug: "pro", name: "Pro", is_active: true, price_amount: 199, currency: "brl",
+    });
+    adminClientMock.mockReturnValue({ from: sb.from, rpc: sb.rpc });
+
+    const res = await assignManualSubscriptionAction(validOrgInput);
+    expect(res.ok).toBe(true);
+    expect(sb.rpc).toHaveBeenCalledWith(
+      "apply_stripe_subscription_event",
+      expect.objectContaining({
+        p_stripe_event_id: "manual-sub:sub-xyz",
+        p_subscription_id: "sub-xyz",
+        p_new_status: "manual",
+        p_app_slug: validOrgInput.appSlug,
+        p_amount_paid: 199,
+        p_currency: "brl",
+      }),
+    );
+  });
+
+  it("free plan (price 0) → does NOT fire commission", async () => {
+    const sb = buildSbWithRpc({
+      id: validOrgInput.planId, slug: "free", name: "Free", is_active: true, price_amount: 0, currency: "brl",
+    });
+    adminClientMock.mockReturnValue({ from: sb.from, rpc: sb.rpc });
+
+    const res = await assignManualSubscriptionAction(validOrgInput);
+    expect(res.ok).toBe(true);
+    expect(sb.rpc).not.toHaveBeenCalled();
+  });
+});
+
 describe("assignManualSubscriptionAction · user branch (regression)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
