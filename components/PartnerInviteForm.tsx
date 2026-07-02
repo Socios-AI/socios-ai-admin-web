@@ -24,6 +24,7 @@ export function PartnerInviteForm({ initialRole = "representante" }: { initialRo
   const [email, setEmail] = useState("");
   const [fullName, setFullName] = useState("");
   const [upline, setUpline] = useState<PartnerSearchRow | null>(null);
+  const [commissionPct, setCommissionPct] = useState("");
   const [pending, startTransition] = useTransition();
   const [result, setResult] = useState<{ kind: "ok" | "err"; text: string; url?: string } | null>(null);
 
@@ -36,6 +37,7 @@ export function PartnerInviteForm({ initialRole = "representante" }: { initialRo
         fullName,
         targetRole: role,
         introducedByPartnerId: upline?.partnerId,
+        commissionPct: commissionPct.trim() === "" ? undefined : Number(commissionPct),
       });
       if (r.ok) {
         setResult({ kind: "ok", text: "Convite criado.", url: r.invite_url });
@@ -67,6 +69,22 @@ export function PartnerInviteForm({ initialRole = "representante" }: { initialRo
       </Field>
 
       <PartnerPicker value={upline} onChange={setUpline} label="Indicado por (upline, opcional)" />
+
+      <Field
+        label="Comissão (0 a 1, opcional)"
+        htmlFor="commissionPct"
+        hint="Fração do net que este parceiro ganha (ex.: 0,25 = 25%). Deve ser menor que a do upline."
+      >
+        <Input
+          id="commissionPct"
+          type="number"
+          min={0}
+          max={1}
+          step={0.01}
+          value={commissionPct}
+          onChange={(e) => setCommissionPct(e.target.value)}
+        />
+      </Field>
 
       <Button type="submit" loading={pending}>
         Criar convite
