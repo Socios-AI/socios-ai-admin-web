@@ -74,7 +74,11 @@ export async function createConnectAccountLink(
 
 export function verifyStripeWebhookSignature(rawBody: string, signature: string): boolean {
   if (!isStripeConnectEnabled()) {
-    return signature === "MOCK_SIGNATURE";
+    // Mock mode: accept only when an env secret is set AND matches. Production
+    // does not set this env, so the route stays fail-closed instead of
+    // accepting the public "MOCK_SIGNATURE" constant.
+    const mockSecret = process.env.STRIPE_CONNECT_WEBHOOK_MOCK_SECRET;
+    return Boolean(mockSecret) && signature === mockSecret;
   }
   void rawBody;
   void signature;

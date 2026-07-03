@@ -8,6 +8,7 @@ import {
 describe("dropbox-sign-sync (mock mode)", () => {
   beforeEach(() => {
     delete process.env.DROPBOX_SIGN_API_KEY;
+    delete process.env.DROPBOX_SIGN_WEBHOOK_MOCK_SECRET;
   });
 
   it("isDropboxSignEnabled returns false when key absent", () => {
@@ -31,8 +32,14 @@ describe("dropbox-sign-sync (mock mode)", () => {
     expect(r.signingUrl).toContain("mock-dropbox-sign");
   });
 
-  it("verifyDropboxWebhookSignature accepts MOCK_SIGNATURE in mock mode", () => {
-    expect(verifyDropboxWebhookSignature("body", "MOCK_SIGNATURE")).toBe(true);
+  it("verifyDropboxWebhookSignature accepts the configured mock secret in mock mode", () => {
+    process.env.DROPBOX_SIGN_WEBHOOK_MOCK_SECRET = "s3cret-mock-value";
+    expect(verifyDropboxWebhookSignature("body", "s3cret-mock-value")).toBe(true);
+  });
+
+  it("verifyDropboxWebhookSignature rejects the public MOCK_SIGNATURE when no secret is set", () => {
+    // Fail-closed in prod: without the env secret, the old public constant is rejected.
+    expect(verifyDropboxWebhookSignature("body", "MOCK_SIGNATURE")).toBe(false);
   });
 
   it("verifyDropboxWebhookSignature rejects non-mock when disabled", () => {
