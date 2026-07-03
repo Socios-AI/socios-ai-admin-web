@@ -45,9 +45,13 @@ export function CreateOrgForm({
   const [adminName, setAdminName] = useState(initialAdminName);
   const [adminEmail, setAdminEmail] = useState(initialAdminEmail);
   const [niche, setNiche] = useState("");
-  // Modo "adicionar app a cliente existente": identidade travada, escolhe só
-  // App + Nicho (+ indicante). Sinalizado pela presença do email pré-preenchido.
+  // Modo "adicionar app a cliente existente": escolhe só App + Nicho (+ indicante).
+  // Cada campo trava só se veio pré-preenchido · assim um link sem algum dado
+  // (ex. antigo, sem clientName) não deixa um campo vazio e travado (beco).
   const identityLocked = initialAdminEmail.trim() !== "";
+  const clientLocked = initialClientName.trim() !== "";
+  const nameLocked = initialAdminName.trim() !== "";
+  const emailLocked = initialAdminEmail.trim() !== "";
 
   const [partnerQuery, setPartnerQuery] = useState("");
   const [partnerResults, setPartnerResults] = useState<PartnerSearchRow[]>([]);
@@ -132,8 +136,8 @@ export function CreateOrgForm({
             minLength={2}
             maxLength={100}
             required
-            readOnly={identityLocked}
-            className={identityLocked ? "cursor-not-allowed opacity-70" : undefined}
+            readOnly={clientLocked}
+            className={clientLocked ? "cursor-not-allowed opacity-70" : undefined}
           />
         </Field>
 
@@ -146,8 +150,8 @@ export function CreateOrgForm({
             maxLength={100}
             placeholder="Nome completo de quem vai administrar"
             required
-            readOnly={identityLocked}
-            className={identityLocked ? "cursor-not-allowed opacity-70" : undefined}
+            readOnly={nameLocked}
+            className={nameLocked ? "cursor-not-allowed opacity-70" : undefined}
           />
         </Field>
 
@@ -158,8 +162,8 @@ export function CreateOrgForm({
             value={adminEmail}
             onChange={(e) => setAdminEmail(e.target.value)}
             required
-            readOnly={identityLocked}
-            className={identityLocked ? "cursor-not-allowed opacity-70" : undefined}
+            readOnly={emailLocked}
+            className={emailLocked ? "cursor-not-allowed opacity-70" : undefined}
           />
         </Field>
 
