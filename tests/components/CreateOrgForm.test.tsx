@@ -16,24 +16,39 @@ const apps = [
 ];
 
 describe("CreateOrgForm prefill", () => {
-  it("prefills the responsible name/email from props (Dar acesso a outro app)", () => {
+  it("prefills client + responsible and locks identity fields (Dar acesso a outro app)", () => {
     render(
       <CreateOrgForm
         apps={apps}
+        initialClientName="Antonio Sanches - TESTE"
         initialAdminName="Antonio Sanches"
         initialAdminEmail="pepoclv+master@hotmail.com"
       />,
     );
-    expect((screen.getByLabelText(/nome do responsável/i) as HTMLInputElement).value).toBe(
-      "Antonio Sanches",
-    );
-    expect((screen.getByLabelText(/email do responsável/i) as HTMLInputElement).value).toBe(
-      "pepoclv+master@hotmail.com",
-    );
+    const client = screen.getByLabelText(/nome do cliente/i) as HTMLInputElement;
+    const name = screen.getByLabelText(/nome do responsável/i) as HTMLInputElement;
+    const email = screen.getByLabelText(/email do responsável/i) as HTMLInputElement;
+
+    expect(client.value).toBe("Antonio Sanches - TESTE");
+    expect(name.value).toBe("Antonio Sanches");
+    expect(email.value).toBe("pepoclv+master@hotmail.com");
+
+    // Cliente existente → identidade travada (read-only).
+    expect(client.readOnly).toBe(true);
+    expect(name.readOnly).toBe(true);
+    expect(email.readOnly).toBe(true);
+
+    expect(screen.getByText(/cliente existente/i)).toBeTruthy();
   });
 
-  it("starts empty when no prefill is given", () => {
+  it("starts empty and editable when no prefill is given", () => {
     render(<CreateOrgForm apps={apps} />);
-    expect((screen.getByLabelText(/email do responsável/i) as HTMLInputElement).value).toBe("");
+    const client = screen.getByLabelText(/nome do cliente/i) as HTMLInputElement;
+    const email = screen.getByLabelText(/email do responsável/i) as HTMLInputElement;
+    expect(client.value).toBe("");
+    expect(email.value).toBe("");
+    expect(client.readOnly).toBe(false);
+    expect(email.readOnly).toBe(false);
+    expect(screen.queryByText(/cliente existente/i)).toBeNull();
   });
 });

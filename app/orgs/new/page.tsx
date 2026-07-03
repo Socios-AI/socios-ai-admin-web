@@ -7,9 +7,9 @@ import { getCallerJwt } from "@/lib/auth";
 export const dynamic = "force-dynamic";
 
 export default async function NewOrgPage(props: {
-  searchParams: Promise<{ adminName?: string; adminEmail?: string }>;
+  searchParams: Promise<{ clientName?: string; adminName?: string; adminEmail?: string }>;
 }) {
-  const { adminName, adminEmail } = await props.searchParams;
+  const { clientName, adminName, adminEmail } = await props.searchParams;
   const jwt = await getCallerJwt();
   if (!jwt) {
     return (
@@ -44,6 +44,7 @@ export default async function NewOrgPage(props: {
       />
       <CreateOrgForm
         apps={apps}
+        initialClientName={clientName ?? ""}
         initialAdminName={adminName ?? ""}
         initialAdminEmail={adminEmail ?? ""}
       />
