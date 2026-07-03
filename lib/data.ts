@@ -191,20 +191,57 @@ export async function getUser(args: { callerJwt: string; userId: string }): Prom
   };
 }
 
-export type AppRow = { slug: string; name: string; role_catalog: Record<string, string> };
+export type AppRow = {
+  slug: string;
+  name: string;
+  role_catalog: Record<string, string>;
+  // Apps multi-nicho (ex. beauty) declaram os nichos em metadata.niche_catalog.
+  // Vazio quando o app não é escopado por nicho.
+  niche_catalog: Record<string, string>;
+};
 
 export async function listApps(args: { callerJwt: string }): Promise<AppRow[]> {
   const sb = getCallerClient({ callerJwt: args.callerJwt });
   const { data, error } = await sb
     .from("apps")
-    .select("slug, name, role_catalog")
+    .select("slug, name, role_catalog, metadata")
     .order("name", { ascending: true });
   if (error) throw new Error(`listApps failed: ${error.message}`);
-  return (data ?? []).map((r: Record<string, unknown>) => ({
-    slug: r.slug as string,
-    name: r.name as string,
-    role_catalog: (r.role_catalog as Record<string, string> | null) ?? {},
-  }));
+  return (data ?? []).map((r: Record<string, unknown>) => {
+    const metadata = (r.metadata as { niche_catalog?: Record<string, string> } | null) ?? {};
+    return {
+      slug: r.slug as string,
+      name: r.name as string,
+      role_catalog: (r.role_catalog as Record<string, string> | null) ?? {},
+      niche_catalog: metadata.niche_catalog ?? {},
+    };
+  });
+}
+
+// Tenants escopados por nicho (o nicho vive em orgs.metadata.niche, gravado no
+// create_org_for_app). Usado pelo modal "Conceder membership" pra, dado um
+// nicho, listar as orgs candidatas. Só apps com niche_catalog (beauty) geram
+// essas orgs, então filtrar por metadata.niche já as isola.
+export type NicheOrgRow = { id: string; name: string | null; niche: string };
+
+export async function listNicheOrgs(args: { callerJwt: string }): Promise<NicheOrgRow[]> {
+  const sb = getCallerClient({ callerJwt: args.callerJwt });
+  const { data, error } = await sb
+    .from("orgs")
+    .select("id, name, metadata")
+    .not("metadata->>niche", "is", null)
+    .order("name", { ascending: true });
+  if (error) throw new Error(`listNicheOrgs failed: ${error.message}`);
+  return (data ?? [])
+    .map((r: Record<string, unknown>) => {
+      const metadata = (r.metadata as { niche?: string } | null) ?? {};
+      return {
+        id: r.id as string,
+        name: (r.name as string | null) ?? null,
+        niche: metadata.niche ?? "",
+      };
+    })
+    .filter((o) => o.niche !== "");
 }
 
 // =============================================================

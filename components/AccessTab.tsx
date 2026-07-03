@@ -20,12 +20,20 @@ type Membership = {
   revoked_at: string | null;
 };
 
-type App = { slug: string; name: string };
+type App = {
+  slug: string;
+  name: string;
+  role_catalog: Record<string, string>;
+  niche_catalog: Record<string, string>;
+};
+
+type NicheOrg = { id: string; name: string | null; niche: string };
 
 type Props = {
   userId: string;
   memberships: Membership[];
   apps: App[];
+  nicheOrgs: NicheOrg[];
 };
 
 type Mode =
@@ -35,7 +43,7 @@ type Mode =
 
 const APPLY_NOW_REASON = "Aplicar mudança de acesso";
 
-export function AccessTab({ userId, memberships, apps }: Props) {
+export function AccessTab({ userId, memberships, apps, nicheOrgs }: Props) {
   const router = useRouter();
   const [mode, setMode] = useState<Mode>({ kind: "none" });
   const [, startTransition] = useTransition();
@@ -140,6 +148,7 @@ export function AccessTab({ userId, memberships, apps }: Props) {
       <GrantMembershipDialog
         open={mode.kind === "grant"}
         apps={apps}
+        nicheOrgs={nicheOrgs}
         onCancel={close}
         onSubmit={handleGrant}
       />

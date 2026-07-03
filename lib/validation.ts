@@ -1,7 +1,4 @@
 import { z } from "zod";
-import { ROLES } from "./roles";
-
-const roleSlugs = ROLES.map((r) => r.slug) as [string, ...string[]];
 
 export const reasonSchema = z
   .string({ required_error: "Motivo é obrigatório" })
@@ -29,19 +26,16 @@ export const forceLogoutSchema = z.object({ userId: userIdSchema, reason: reason
 export const deleteUserSchema = z.object({ userId: userIdSchema, reason: reasonSchema });
 export const resetUserMfaSchema = z.object({ userId: userIdSchema, reason: reasonSchema });
 
-export const grantMembershipSchema = z
-  .object({
-    userId: userIdSchema,
-    appSlug: z.string().trim().min(1),
-    roleSlug: z.enum(roleSlugs),
-    orgId: z.string().uuid().optional(),
-  })
-  .superRefine((val, ctx) => {
-    const def = ROLES.find((r) => r.slug === val.roleSlug);
-    if (def?.requiresOrg && !val.orgId) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["orgId"], message: "Esta role exige org_id" });
-    }
-  });
+// roleSlug é string genérica: a fonte da verdade é o role_catalog do app,
+// validado pela trigger no banco (role_slug not in apps.role_catalog). Mesmo
+// padrão do inviteUserSchema. org_id opcional (o modal exige quando o app é
+// escopado por nicho/tenant; apps app-level dispensam).
+export const grantMembershipSchema = z.object({
+  userId: userIdSchema,
+  appSlug: z.string().trim().min(1),
+  roleSlug: z.string().trim().min(1, "Role é obrigatória"),
+  orgId: z.string().uuid("Org ID inválido").optional(),
+});
 
 export const revokeMembershipSchema = z.object({
   membershipId: membershipIdSchema,

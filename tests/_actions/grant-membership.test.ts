@@ -54,15 +54,37 @@ describe("grantMembershipAction", () => {
     expect(grantMock).not.toHaveBeenCalled();
   });
 
-  it("roleSlug 'partner-admin' without orgId → VALIDATION error", async () => {
+  it("empty roleSlug → VALIDATION error, wrapper not called", async () => {
     authMock.mockResolvedValue({ claims: { super_admin: true, sub: "u1", aal: "aal2", exp: 9999999999 }, jwt: "jwt-1" });
 
     const result = await grantMembershipAction({
       userId: "33333333-3333-3333-3333-333333333333",
       appSlug: "case-predictor",
-      roleSlug: "partner-admin",
+      roleSlug: "",
     });
 
     expect(result).toMatchObject({ ok: false, error: "VALIDATION" });
+    expect(grantMock).not.toHaveBeenCalled();
+  });
+
+  it("accepts any catalog role slug (beauty org_admin) with an org", async () => {
+    authMock.mockResolvedValue({ claims: { super_admin: true, sub: "u1", aal: "aal2", exp: 9999999999 }, jwt: "jwt-1" });
+    grantMock.mockResolvedValue({ membershipId: "m-2" });
+
+    const result = await grantMembershipAction({
+      userId: "33333333-3333-3333-3333-333333333333",
+      appSlug: "beauty",
+      roleSlug: "org_admin",
+      orgId: "44444444-4444-4444-4444-444444444444",
+    });
+
+    expect(result).toEqual({ ok: true, membershipId: "m-2", suggestForceLogout: true });
+    expect(grantMock).toHaveBeenCalledWith({
+      userId: "33333333-3333-3333-3333-333333333333",
+      appSlug: "beauty",
+      roleSlug: "org_admin",
+      orgId: "44444444-4444-4444-4444-444444444444",
+      callerJwt: "jwt-1",
+    });
   });
 });

@@ -12,6 +12,7 @@ import {
   getUser,
   getUserTier,
   listApps,
+  listNicheOrgs,
   listPlansCatalog,
   listUserSubscriptions,
 } from "@/lib/data";
@@ -51,9 +52,10 @@ export default async function UserDetailPage(props: {
     );
   }
 
-  const [user, apps, plansCatalog, subscriptions, tier] = await Promise.all([
+  const [user, apps, nicheOrgs, plansCatalog, subscriptions, tier] = await Promise.all([
     getUser({ callerJwt: jwt, userId: id }),
     listApps({ callerJwt: jwt }),
+    listNicheOrgs({ callerJwt: jwt }),
     listPlansCatalog({ callerJwt: jwt }),
     listUserSubscriptions({ callerJwt: jwt, userId: id }),
     getUserTier({ callerJwt: jwt, userId: id }),
@@ -99,7 +101,12 @@ export default async function UserDetailPage(props: {
       <TabNav items={TAB_ITEMS} active={activeTab} />
 
       <div role="tabpanel" hidden={activeTab !== "access"}>
-        <AccessTab userId={user.id} memberships={user.memberships} apps={apps} />
+        <AccessTab
+          userId={user.id}
+          memberships={user.memberships}
+          apps={apps}
+          nicheOrgs={nicheOrgs}
+        />
       </div>
 
       <div role="tabpanel" hidden={activeTab !== "plans"}>

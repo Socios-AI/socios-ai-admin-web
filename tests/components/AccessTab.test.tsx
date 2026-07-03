@@ -37,7 +37,15 @@ vi.mock("../../app/_actions/force-logout", () => ({
 import { AccessTab } from "../../components/AccessTab";
 
 const userId = "11111111-1111-1111-1111-111111111111";
-const apps = [{ slug: "case-predictor", name: "Case Predictor" }];
+const apps = [
+  {
+    slug: "case-predictor",
+    name: "Case Predictor",
+    role_catalog: { "case-predictor-admin": "CP Admin" },
+    niche_catalog: {},
+  },
+];
+const nicheOrgs: { id: string; name: string | null; niche: string }[] = [];
 
 beforeEach(() => {
   grantMock.mockReset();
@@ -50,7 +58,7 @@ beforeEach(() => {
 
 describe("AccessTab", () => {
   it("shows empty state when no active memberships", () => {
-    render(<AccessTab userId={userId} memberships={[]} apps={apps} />);
+    render(<AccessTab userId={userId} memberships={[]} apps={apps} nicheOrgs={nicheOrgs} />);
     expect(screen.getByText(/sem memberships ativas/i)).toBeTruthy();
   });
 
@@ -63,6 +71,7 @@ describe("AccessTab", () => {
           { id: "m2", app_slug: "lead-pro", role_slug: "end-user", org_id: null, revoked_at: "2026-04-20" },
         ]}
         apps={apps}
+        nicheOrgs={nicheOrgs}
       />,
     );
     expect(screen.getByText("case-predictor")).toBeTruthy();
@@ -77,7 +86,7 @@ describe("AccessTab", () => {
       suggestForceLogout: true,
     });
 
-    render(<AccessTab userId={userId} memberships={[]} apps={apps} />);
+    render(<AccessTab userId={userId} memberships={[]} apps={apps} nicheOrgs={nicheOrgs} />);
 
     await user.click(screen.getByText(/conceder acesso/i));
     // dialog opens; submit immediately with defaults
@@ -102,7 +111,7 @@ describe("AccessTab", () => {
     });
     forceLogoutMock.mockResolvedValue({ ok: true });
 
-    render(<AccessTab userId={userId} memberships={[]} apps={apps} />);
+    render(<AccessTab userId={userId} memberships={[]} apps={apps} nicheOrgs={nicheOrgs} />);
 
     await user.click(screen.getByText(/conceder acesso/i));
     await user.click(screen.getByText(/^conceder$/i));
@@ -123,7 +132,7 @@ describe("AccessTab", () => {
     const user = userEvent.setup();
     grantMock.mockResolvedValue({ ok: false, error: "API_ERROR", message: "boom" });
 
-    render(<AccessTab userId={userId} memberships={[]} apps={apps} />);
+    render(<AccessTab userId={userId} memberships={[]} apps={apps} nicheOrgs={nicheOrgs} />);
 
     await user.click(screen.getByText(/conceder acesso/i));
     await user.click(screen.getByText(/^conceder$/i));
