@@ -6,7 +6,10 @@ import { getCallerJwt } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
-export default async function NewOrgPage() {
+export default async function NewOrgPage(props: {
+  searchParams: Promise<{ adminName?: string; adminEmail?: string }>;
+}) {
+  const { adminName, adminEmail } = await props.searchParams;
   const jwt = await getCallerJwt();
   if (!jwt) {
     return (
@@ -39,7 +42,11 @@ export default async function NewOrgPage() {
         subtitle="Cadastra um tenant e, se for o caso, registra o parceiro que indicou."
         breadcrumbs={[{ label: "Organizações", href: "/orgs" }, { label: "Novo cliente" }]}
       />
-      <CreateOrgForm apps={apps} />
+      <CreateOrgForm
+        apps={apps}
+        initialAdminName={adminName ?? ""}
+        initialAdminEmail={adminEmail ?? ""}
+      />
     </AdminShell>
   );
 }

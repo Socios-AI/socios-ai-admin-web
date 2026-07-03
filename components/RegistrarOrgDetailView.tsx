@@ -7,7 +7,9 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
+import { buttonClasses } from "@/components/ui/button";
 import { loadOrgForRegistrar } from "@/lib/data-registrar";
+import { newOrgHrefForPerson, pickPrimaryPerson } from "@/lib/grant-another-app";
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString("pt-BR");
@@ -19,6 +21,10 @@ function formatDate(iso: string): string {
 export async function RegistrarOrgDetailView({ orgId }: { orgId: string }) {
   const org = await loadOrgForRegistrar(orgId);
   if (!org) notFound();
+
+  // Pessoa da org → link pro "Novo cliente" já preenchido, pra dar +1 app a ela
+  // (cada app/nicho vira uma conta separada · é o modelo de acesso por-app).
+  const person = pickPrimaryPerson(org.members);
 
   return (
     <>
@@ -40,8 +46,21 @@ export async function RegistrarOrgDetailView({ orgId }: { orgId: string }) {
       </div>
 
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-start justify-between gap-4">
           <CardTitle>Membros</CardTitle>
+          {person && (
+            <div className="text-right">
+              <Link
+                href={newOrgHrefForPerson(person.name, person.email)}
+                className={buttonClasses({ variant: "primary", size: "sm" })}
+              >
+                Dar acesso a outro app
+              </Link>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Cria uma conta separada (por app/nicho) para {person.email} e envia o convite.
+              </p>
+            </div>
+          )}
         </CardHeader>
         <CardContent>
           {org.members.length === 0 ? (
