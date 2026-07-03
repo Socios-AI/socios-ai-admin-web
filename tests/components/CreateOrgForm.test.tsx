@@ -41,6 +41,23 @@ describe("CreateOrgForm prefill", () => {
     expect(screen.getByText(/cliente existente/i)).toBeTruthy();
   });
 
+  it("keeps a non-prefilled field editable even in add-to-existing mode (no dead-end)", () => {
+    // Link antigo: email preenchido, mas SEM clientName → o campo cliente não
+    // pode ficar vazio e travado.
+    render(
+      <CreateOrgForm
+        apps={apps}
+        initialAdminName="Antonio Sanches"
+        initialAdminEmail="pepoclv+master@hotmail.com"
+      />,
+    );
+    const client = screen.getByLabelText(/nome do cliente/i) as HTMLInputElement;
+    expect(client.value).toBe("");
+    expect(client.readOnly).toBe(false); // editável, sem beco
+    // os que vieram preenchidos seguem travados
+    expect((screen.getByLabelText(/email do responsável/i) as HTMLInputElement).readOnly).toBe(true);
+  });
+
   it("starts empty and editable when no prefill is given", () => {
     render(<CreateOrgForm apps={apps} />);
     const client = screen.getByLabelText(/nome do cliente/i) as HTMLInputElement;
