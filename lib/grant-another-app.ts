@@ -4,14 +4,18 @@
 // criar um tenant novo pra essa pessoa · aqui só pré-preenchemos o formulário
 // com o nome+email dela.
 
-// Link pro "Novo cliente" já com o responsável preenchido.
-export function newOrgHrefForPerson(
-  name: string | null | undefined,
-  email: string | null | undefined,
-): string {
+// Link pro "Novo cliente" já com o cliente + responsável preenchidos. A presença
+// de adminEmail sinaliza pro form o modo "adicionar app a cliente existente"
+// (campos de identidade travados).
+export function newOrgHrefForPerson(opts: {
+  clientName?: string | null;
+  adminName?: string | null;
+  adminEmail?: string | null;
+}): string {
   const params = new URLSearchParams();
-  if (name) params.set("adminName", name);
-  if (email) params.set("adminEmail", email);
+  if (opts.clientName) params.set("clientName", opts.clientName);
+  if (opts.adminName) params.set("adminName", opts.adminName);
+  if (opts.adminEmail) params.set("adminEmail", opts.adminEmail);
   const qs = params.toString();
   return qs ? `/orgs/new?${qs}` : "/orgs/new";
 }

@@ -29,20 +29,25 @@ const ROLE_LABEL: Record<string, string> = {
 
 export function CreateOrgForm({
   apps,
+  initialClientName = "",
   initialAdminName = "",
   initialAdminEmail = "",
 }: {
   apps: AppOption[];
+  initialClientName?: string;
   initialAdminName?: string;
   initialAdminEmail?: string;
 }) {
   const router = useRouter();
   const [appSlug, setAppSlug] = useState(apps[0]?.slug ?? "");
-  const [tenantName, setTenantName] = useState("");
-  // Pré-preenchido quando vem do "Dar acesso a outro app" (pessoa já conhecida).
+  // Pré-preenchido quando vem do "Dar acesso a outro app" (cliente já existe).
+  const [tenantName, setTenantName] = useState(initialClientName);
   const [adminName, setAdminName] = useState(initialAdminName);
   const [adminEmail, setAdminEmail] = useState(initialAdminEmail);
   const [niche, setNiche] = useState("");
+  // Modo "adicionar app a cliente existente": identidade travada, escolhe só
+  // App + Nicho (+ indicante). Sinalizado pela presença do email pré-preenchido.
+  const identityLocked = initialAdminEmail.trim() !== "";
 
   const [partnerQuery, setPartnerQuery] = useState("");
   const [partnerResults, setPartnerResults] = useState<PartnerSearchRow[]>([]);
@@ -101,6 +106,11 @@ export function CreateOrgForm({
   return (
     <Card className="max-w-xl p-6">
       <form onSubmit={onSubmit} className="space-y-4">
+        {identityLocked && (
+          <p className="rounded-md border border-primary/40 bg-primary/10 p-3 text-sm text-muted-foreground">
+            Adicionando um app a um cliente existente. Nome e e-mail ficam travados · escolha só o App e o Nicho.
+          </p>
+        )}
         <Field label="App" htmlFor="appSlug" required>
           <Select
             id="appSlug"
@@ -122,6 +132,8 @@ export function CreateOrgForm({
             minLength={2}
             maxLength={100}
             required
+            readOnly={identityLocked}
+            className={identityLocked ? "cursor-not-allowed opacity-70" : undefined}
           />
         </Field>
 
@@ -134,6 +146,8 @@ export function CreateOrgForm({
             maxLength={100}
             placeholder="Nome completo de quem vai administrar"
             required
+            readOnly={identityLocked}
+            className={identityLocked ? "cursor-not-allowed opacity-70" : undefined}
           />
         </Field>
 
@@ -144,6 +158,8 @@ export function CreateOrgForm({
             value={adminEmail}
             onChange={(e) => setAdminEmail(e.target.value)}
             required
+            readOnly={identityLocked}
+            className={identityLocked ? "cursor-not-allowed opacity-70" : undefined}
           />
         </Field>
 

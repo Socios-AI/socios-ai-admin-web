@@ -51,7 +51,11 @@ export async function RegistrarOrgDetailView({ orgId }: { orgId: string }) {
           {person && (
             <div className="text-right">
               <Link
-                href={newOrgHrefForPerson(person.name, person.email)}
+                href={newOrgHrefForPerson({
+                  clientName: org.name,
+                  adminName: person.name,
+                  adminEmail: person.email,
+                })}
                 className={buttonClasses({ variant: "primary", size: "sm" })}
               >
                 Dar acesso a outro app
