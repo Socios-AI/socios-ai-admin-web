@@ -27,12 +27,21 @@ const ROLE_LABEL: Record<string, string> = {
   afiliado: "Afiliado",
 };
 
-export function CreateOrgForm({ apps }: { apps: AppOption[] }) {
+export function CreateOrgForm({
+  apps,
+  initialAdminName = "",
+  initialAdminEmail = "",
+}: {
+  apps: AppOption[];
+  initialAdminName?: string;
+  initialAdminEmail?: string;
+}) {
   const router = useRouter();
   const [appSlug, setAppSlug] = useState(apps[0]?.slug ?? "");
   const [tenantName, setTenantName] = useState("");
-  const [adminName, setAdminName] = useState("");
-  const [adminEmail, setAdminEmail] = useState("");
+  // Pré-preenchido quando vem do "Dar acesso a outro app" (pessoa já conhecida).
+  const [adminName, setAdminName] = useState(initialAdminName);
+  const [adminEmail, setAdminEmail] = useState(initialAdminEmail);
   const [niche, setNiche] = useState("");
 
   const [partnerQuery, setPartnerQuery] = useState("");
