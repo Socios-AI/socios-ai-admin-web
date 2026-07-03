@@ -9,6 +9,7 @@ import {
 describe("stripe-connect-sync (mock mode)", () => {
   beforeEach(() => {
     delete process.env.STRIPE_CONNECT_SECRET_KEY;
+    delete process.env.STRIPE_CONNECT_WEBHOOK_MOCK_SECRET;
   });
 
   it("isStripeConnectEnabled false when key absent", () => {
@@ -51,8 +52,19 @@ describe("stripe-connect-sync (mock mode)", () => {
     expect(r.accountId).toMatch(/^acct_mock_22222222-2222-2222-2222-222222222222$/);
   });
 
-  it("verifyStripeWebhookSignature accepts MOCK_SIGNATURE in mock mode", () => {
-    expect(verifyStripeWebhookSignature("body", "MOCK_SIGNATURE")).toBe(true);
+  it("verifyStripeWebhookSignature accepts the configured mock secret in mock mode", () => {
+    process.env.STRIPE_CONNECT_WEBHOOK_MOCK_SECRET = "s3cret-mock-value";
+    expect(verifyStripeWebhookSignature("body", "s3cret-mock-value")).toBe(true);
+  });
+
+  it("verifyStripeWebhookSignature rejects the public MOCK_SIGNATURE when no secret is set", () => {
+    // Fail-closed in prod: without the env secret, the old public constant is rejected.
+    expect(verifyStripeWebhookSignature("body", "MOCK_SIGNATURE")).toBe(false);
+  });
+
+  it("verifyStripeWebhookSignature rejects a wrong value when a secret is set", () => {
+    process.env.STRIPE_CONNECT_WEBHOOK_MOCK_SECRET = "s3cret-mock-value";
+    expect(verifyStripeWebhookSignature("body", "MOCK_SIGNATURE")).toBe(false);
   });
 
   it("verifyStripeWebhookSignature rejects non-mock when disabled", () => {

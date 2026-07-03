@@ -47,7 +47,11 @@ export async function createEnvelopeForLicense(
 
 export function verifyDropboxWebhookSignature(rawBody: string, signature: string): boolean {
   if (!isDropboxSignEnabled()) {
-    return signature === "MOCK_SIGNATURE";
+    // Mock mode: accept only when an env secret is set AND matches. Production
+    // does not set this env, so the route stays fail-closed instead of
+    // accepting the public "MOCK_SIGNATURE" constant.
+    const mockSecret = process.env.DROPBOX_SIGN_WEBHOOK_MOCK_SECRET;
+    return Boolean(mockSecret) && signature === mockSecret;
   }
   // Live signature verification will be implemented when SDK is wired.
   // For now, in live mode we conservatively reject all signatures so a
