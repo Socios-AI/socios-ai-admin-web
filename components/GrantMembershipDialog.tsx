@@ -1,11 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import {
-  roleOptionsFromCatalog,
-  nicheOptionsFromCatalog,
-  filterOrgsByNiche,
-} from "@/lib/grant-membership-options";
+import { roleOptionsFromCatalog } from "@/lib/grant-membership-options";
 import { Dialog, DialogFooter } from "@/components/ui/dialog";
 import { Field } from "@/components/ui/field";
 import { Select } from "@/components/ui/select";
@@ -31,37 +27,26 @@ type Props = {
 
 export function GrantMembershipDialog({ open, apps, nicheOrgs, onSubmit, onCancel }: Props) {
   const [appSlug, setAppSlug] = useState(apps[0]?.slug ?? "");
-  const firstApp = apps.find((a) => a.slug === appSlug);
   const [roleSlug, setRoleSlug] = useState<string>(
-    roleOptionsFromCatalog(firstApp?.role_catalog)[0]?.slug ?? "",
+    roleOptionsFromCatalog(apps.find((a) => a.slug === appSlug)?.role_catalog)[0]?.slug ?? "",
   );
-  const [niche, setNiche] = useState("");
   const [orgId, setOrgId] = useState("");
 
   const app = apps.find((a) => a.slug === appSlug);
   const roleOptions = useMemo(() => roleOptionsFromCatalog(app?.role_catalog), [app]);
-  const nicheOptions = useMemo(() => nicheOptionsFromCatalog(app?.niche_catalog), [app]);
-  const hasNiche = nicheOptions.length > 0;
-  const orgsForNiche = useMemo(
-    () => (niche ? filterOrgsByNiche(nicheOrgs, niche) : []),
-    [nicheOrgs, niche],
-  );
+  // Apps multi-nicho (beauty) escolhem a conta numa lista de tenants existentes.
+  // Criar um cliente NOVO é o fluxo "Novo cliente" (create_org_for_app), não aqui.
+  const nicheCatalog = app?.niche_catalog ?? {};
+  const isNicheApp = Object.keys(nicheCatalog).length > 0;
 
   function onAppChange(next: string) {
     setAppSlug(next);
     const nextApp = apps.find((a) => a.slug === next);
     setRoleSlug(roleOptionsFromCatalog(nextApp?.role_catalog)[0]?.slug ?? "");
-    setNiche("");
     setOrgId("");
   }
 
-  function onNicheChange(next: string) {
-    setNiche(next);
-    setOrgId("");
-  }
-
-  const submittable =
-    roleSlug !== "" && (hasNiche ? niche !== "" && orgId !== "" : true);
+  const submittable = roleSlug !== "";
 
   return (
     <Dialog open={open} onClose={onCancel} title="Conceder membership" size="md">
@@ -105,43 +90,22 @@ export function GrantMembershipDialog({ open, apps, nicheOrgs, onSubmit, onCance
           )}
         </Field>
 
-        {hasNiche ? (
-          <>
-            <Field label="Nicho" htmlFor="g-niche">
-              <Select
-                id="g-niche"
-                required
-                value={niche}
-                onChange={(e) => onNicheChange(e.target.value)}
-              >
-                <option value="">Selecione o nicho…</option>
-                {nicheOptions.map((n) => (
-                  <option key={n.key} value={n.key}>{n.label}</option>
-                ))}
-              </Select>
-            </Field>
-
-            <Field label="Conta (tenant)" htmlFor="g-org">
-              <Select
-                id="g-org"
-                required
-                value={orgId}
-                onChange={(e) => setOrgId(e.target.value)}
-                disabled={!niche || orgsForNiche.length === 0}
-              >
-                <option value="">
-                  {!niche
-                    ? "Escolha um nicho primeiro"
-                    : orgsForNiche.length === 0
-                      ? "Nenhuma conta neste nicho"
-                      : "Selecione a conta…"}
+        {isNicheApp ? (
+          <Field
+            label="Conta (opcional)"
+            htmlFor="g-org"
+            hint="Anexa o usuário a um salão que já existe. Para cadastrar um cliente novo, use Organizações › Novo cliente."
+          >
+            <Select id="g-org" value={orgId} onChange={(e) => setOrgId(e.target.value)}>
+              <option value="">Sem conta (acesso ao app)</option>
+              {nicheOrgs.map((o) => (
+                <option key={o.id} value={o.id}>
+                  {(o.name ?? o.id)}
+                  {o.niche ? ` · ${nicheCatalog[o.niche] ?? o.niche}` : ""}
                 </option>
-                {orgsForNiche.map((o) => (
-                  <option key={o.id} value={o.id}>{o.name ?? o.id}</option>
-                ))}
-              </Select>
-            </Field>
-          </>
+              ))}
+            </Select>
+          </Field>
         ) : (
           <Field
             label="Org ID (opcional)"

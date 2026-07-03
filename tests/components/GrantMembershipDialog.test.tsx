@@ -91,23 +91,23 @@ describe("GrantMembershipDialog", () => {
     const roleSelect = screen.getByLabelText(/papel/i);
     expect(roleSelect).toBeTruthy();
     expect(within(roleSelect as HTMLElement).getByRole("option", { name: /org user/i })).toBeTruthy();
-    // platform tem nicho vazio → sem seletor de nicho.
-    expect(screen.queryByLabelText(/nicho/i)).toBeNull();
+    // platform não é multi-nicho → campo Org ID livre, sem seletor de conta.
+    expect(screen.getByLabelText(/org id/i)).toBeTruthy();
   });
 
-  it("filters the tenant list by the chosen niche", async () => {
-    const user = userEvent.setup();
+  it("for a niche app, lists existing tenants (no niche step) as an optional account", () => {
     renderDialog();
-    await user.selectOptions(screen.getByLabelText(/nicho/i), "salao_beleza");
+    expect(screen.queryByLabelText(/nicho/i)).toBeNull();
     const orgSelect = screen.getByLabelText(/conta/i) as HTMLElement;
-    expect(within(orgSelect).getByRole("option", { name: "Salão A" })).toBeTruthy();
-    expect(within(orgSelect).queryByRole("option", { name: "Barber B" })).toBeNull();
+    // Lista TODAS as contas existentes (sem filtrar por nicho), rotuladas.
+    expect(within(orgSelect).getByRole("option", { name: /Salão A/ })).toBeTruthy();
+    expect(within(orgSelect).getByRole("option", { name: /Barber B/ })).toBeTruthy();
+    expect(within(orgSelect).getByRole("option", { name: /sem conta/i })).toBeTruthy();
   });
 
   it("submits appSlug + auto role + chosen org for a niche app", async () => {
     const user = userEvent.setup();
     renderDialog();
-    await user.selectOptions(screen.getByLabelText(/nicho/i), "salao_beleza");
     await user.selectOptions(screen.getByLabelText(/conta/i), "org-salao");
     await user.click(screen.getByRole("button", { name: /^conceder$/i }));
 
@@ -118,12 +118,16 @@ describe("GrantMembershipDialog", () => {
     });
   });
 
-  it("does not submit a niche app until a tenant is chosen", async () => {
+  it("allows granting a niche app with no account (app-level access)", async () => {
     const user = userEvent.setup();
     renderDialog();
-    // niche app, nothing selected yet → submit disabled / no-op
     await user.click(screen.getByRole("button", { name: /^conceder$/i }));
-    expect(onSubmit).not.toHaveBeenCalled();
+
+    expect(onSubmit).toHaveBeenCalledWith({
+      appSlug: "beauty",
+      roleSlug: "org_admin",
+      orgId: undefined,
+    });
   });
 
   it("submits a non-niche single-role app with optional org id omitted", async () => {
