@@ -1,19 +1,16 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { extractAccessToken, readSessionCookie } from "./lib/session-cookie";
-import { decodeJwtPayload } from "./lib/jwt";
+import {
+  decodeJwtPayload,
+  extractAccessToken,
+  readSessionCookie,
+  sessionCookieName,
+} from "@socios-ai/auth/edge";
 
 const ID_LOGIN_URL = "https://id.sociosai.com/login";
 
-function getProjectRef(): string | null {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  if (!url) return null;
-  return url.replace(/^https?:\/\//, "").split(".")[0] ?? null;
-}
-
 function getCookieName(): string | null {
-  const ref = getProjectRef();
-  return ref ? `sb-${ref}-auth-token` : null;
+  return sessionCookieName(process.env.NEXT_PUBLIC_SUPABASE_URL);
 }
 
 function publicUrlFor(req: NextRequest): string {

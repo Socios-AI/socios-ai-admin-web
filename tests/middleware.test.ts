@@ -7,14 +7,15 @@ const { decodeMock, readSessionCookieMock, extractAccessTokenMock } = vi.hoisted
   extractAccessTokenMock: vi.fn(),
 }));
 
-vi.mock("../lib/jwt", () => ({
-  decodeJwtPayload: decodeMock,
-}));
-
-vi.mock("../lib/session-cookie", () => ({
-  readSessionCookie: readSessionCookieMock,
-  extractAccessToken: extractAccessTokenMock,
-}));
+vi.mock("@socios-ai/auth/edge", async (importActual) => {
+  const actual = await importActual<typeof import("@socios-ai/auth/edge")>();
+  return {
+    ...actual,
+    decodeJwtPayload: decodeMock,
+    readSessionCookie: readSessionCookieMock,
+    extractAccessToken: extractAccessTokenMock,
+  };
+});
 
 import { middleware } from "../middleware";
 

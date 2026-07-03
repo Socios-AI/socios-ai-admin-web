@@ -1,7 +1,11 @@
 import { cookies } from "next/headers";
 import type { MembershipClaim } from "@socios-ai/auth";
-import { decodeJwtPayload } from "./jwt";
-import { readSessionCookie, extractAccessToken } from "./session-cookie";
+import {
+  decodeJwtPayload,
+  extractAccessToken,
+  readSessionCookie,
+  sessionCookieName,
+} from "@socios-ai/auth/edge";
 
 export type SuperAdminClaims = {
   sub: string;
@@ -14,12 +18,10 @@ export type SuperAdminClaims = {
 };
 
 export async function getCallerJwt(): Promise<string | null> {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  if (!url) return null;
-  const projectRef = url.replace(/^https?:\/\//, "").split(".")[0];
-  if (!projectRef) return null;
+  const cookieName = sessionCookieName(process.env.NEXT_PUBLIC_SUPABASE_URL);
+  if (!cookieName) return null;
   const cookieStore = await cookies();
-  const cookieValue = readSessionCookie(cookieStore, `sb-${projectRef}-auth-token`);
+  const cookieValue = readSessionCookie(cookieStore, cookieName);
   if (!cookieValue) return null;
   return extractAccessToken(cookieValue);
 }

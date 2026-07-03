@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { readSessionCookie, extractAccessToken } from "../../lib/session-cookie";
+import { readSessionCookie, extractAccessToken } from "@socios-ai/auth/edge";
 
 function makeCookies(entries: Record<string, string>) {
   return {
