@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { decodeJwtPayload } from "../../lib/jwt";
+import { decodeJwtPayload } from "@socios-ai/auth/edge";
 
 function makeJwt(payload: object): string {
   const header = Buffer.from(JSON.stringify({ alg: "HS256", typ: "JWT" })).toString("base64url");
