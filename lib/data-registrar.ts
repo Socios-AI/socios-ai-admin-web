@@ -33,13 +33,74 @@ export type RegistrarInvite = {
   expiresAt: string;
 };
 
-export type RegistrarOrg = {
-  id: string;
-  name: string;
-  slug: string;
+// Uma org individual dentro do agrupamento por cliente.
+export type RegistrarClientOrg = {
+  orgId: string;
   niche: string | null;
   createdAt: string;
 };
+
+// Um "cliente" = todas as orgs do mesmo responsável (dono), colapsadas numa linha.
+export type RegistrarClient = {
+  key: string; // user_id do dono, ou `org:<id>` quando a org não tem membro
+  name: string; // rótulo (nome da org mais recente do grupo)
+  createdAt: string; // createdAt da org mais recente do grupo
+  orgs: RegistrarClientOrg[]; // orgs do cliente, mais recentes primeiro
+};
+
+type OrgRowForGroup = { id: string; name: string; niche: string | null; createdAt: string };
+type MemberRowForGroup = { orgId: string; userId: string | null; roleSlug: string; appSlug: string };
+
+// Agrupa orgs por responsável (dono). Dono = membro `org_admin` no app
+// `platform`; cai pra qualquer `org_admin`, depois qualquer membro. Org sem
+// membro vira seu próprio grupo. Espelha o padrão do admin (N coisas → 1 linha
+// com chips + expandir), aqui colapsando as N orgs/nichos de um mesmo cliente.
+export function groupOrgsByClient(
+  orgs: OrgRowForGroup[],
+  members: MemberRowForGroup[],
+): RegistrarClient[] {
+  const membersByOrg = new Map<string, MemberRowForGroup[]>();
+  for (const m of members) {
+    const arr = membersByOrg.get(m.orgId);
+    if (arr) arr.push(m);
+    else membersByOrg.set(m.orgId, [m]);
+  }
+  const ownerOf = (orgId: string): string | null => {
+    const ms = membersByOrg.get(orgId) ?? [];
+    const platformAdmin = ms.find((m) => m.appSlug === "platform" && m.roleSlug === "org_admin" && m.userId);
+    if (platformAdmin?.userId) return platformAdmin.userId;
+    const anyAdmin = ms.find((m) => m.roleSlug === "org_admin" && m.userId);
+    if (anyAdmin?.userId) return anyAdmin.userId;
+    return ms.find((m) => m.userId)?.userId ?? null;
+  };
+
+  const groups = new Map<
+    string,
+    { key: string; name: string; latest: string; orgs: RegistrarClientOrg[] }
+  >();
+  for (const o of orgs) {
+    const key = ownerOf(o.id) ?? `org:${o.id}`;
+    let g = groups.get(key);
+    if (!g) {
+      g = { key, name: o.name, latest: o.createdAt, orgs: [] };
+      groups.set(key, g);
+    }
+    g.orgs.push({ orgId: o.id, niche: o.niche, createdAt: o.createdAt });
+    if (o.createdAt > g.latest) {
+      g.latest = o.createdAt;
+      g.name = o.name;
+    }
+  }
+
+  return [...groups.values()]
+    .map((g) => ({
+      key: g.key,
+      name: g.name,
+      createdAt: g.latest,
+      orgs: [...g.orgs].sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1)),
+    }))
+    .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
+}
 
 export type RegistrarOrgDetail = {
   id: string;
@@ -126,23 +187,43 @@ export async function listInvitesForRegistrar(): Promise<RegistrarInvite[]> {
   }));
 }
 
-export async function listOrgsForRegistrar(): Promise<RegistrarOrg[]> {
+export async function listOrgsForRegistrar(): Promise<RegistrarClient[]> {
   const sb = getSupabaseAdminClient();
   const { data, error } = await sb
     .from("orgs")
-    .select("id, name, slug, metadata, created_at")
+    .select("id, name, metadata, created_at")
     .order("created_at", { ascending: false });
   if (error) throw new Error(`listOrgsForRegistrar failed: ${error.message}`);
-  return (data ?? []).map((r) => {
+  const orgRows: OrgRowForGroup[] = (data ?? []).map((r) => {
     const meta = (r.metadata && typeof r.metadata === "object" ? r.metadata : {}) as Record<string, unknown>;
     return {
       id: String(r.id),
       name: String(r.name),
-      slug: String(r.slug),
       niche: (meta.niche as string | null) ?? null,
       createdAt: String(r.created_at),
     };
   });
+
+  // Resolver o dono de cada org para agrupar por cliente. SELECT sem colunas
+  // financeiras (regra do arquivo).
+  const orgIds = orgRows.map((o) => o.id);
+  let memberRows: MemberRowForGroup[] = [];
+  if (orgIds.length > 0) {
+    const { data: mData, error: mErr } = await sb
+      .from("app_memberships")
+      .select("org_id, user_id, role_slug, app_slug")
+      .in("org_id", orgIds)
+      .is("revoked_at", null);
+    if (mErr) throw new Error(`listOrgsForRegistrar (members) failed: ${mErr.message}`);
+    memberRows = ((mData ?? []) as Array<Record<string, unknown>>).map((r) => ({
+      orgId: String(r.org_id),
+      userId: r.user_id ? String(r.user_id) : null,
+      roleSlug: String(r.role_slug),
+      appSlug: String(r.app_slug),
+    }));
+  }
+
+  return groupOrgsByClient(orgRows, memberRows);
 }
 
 // Detalhe curado de uma org pro cadastrador: nome/slug/nicho + membros por app.

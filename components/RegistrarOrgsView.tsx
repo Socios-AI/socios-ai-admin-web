@@ -4,15 +4,17 @@ import { RegistrarOrgsTable } from "@/components/RegistrarOrgsTable";
 import { buttonClasses } from "@/components/ui/button";
 import { listOrgsForRegistrar } from "@/lib/data-registrar";
 
-// View curada do cadastrador · orgs sem nenhum dado de assinatura/financeiro.
+// View curada do cadastrador · orgs sem nenhum dado de assinatura/financeiro,
+// agrupadas por cliente (mesmo responsável em vários nichos vira uma linha).
 export async function RegistrarOrgsView() {
-  const orgs = await listOrgsForRegistrar();
+  const clients = await listOrgsForRegistrar();
+  const totalOrgs = clients.reduce((n, c) => n + c.orgs.length, 0);
 
   return (
     <>
       <PageHeader
         title="Organizações"
-        subtitle={`${orgs.length} no total`}
+        subtitle={`${totalOrgs} no total`}
         actions={
           <Link href="/orgs/new" className={buttonClasses({ variant: "primary" })}>
             Novo cliente
@@ -20,7 +22,7 @@ export async function RegistrarOrgsView() {
         }
       />
 
-      <RegistrarOrgsTable orgs={orgs} />
+      <RegistrarOrgsTable clients={clients} />
     </>
   );
 }
