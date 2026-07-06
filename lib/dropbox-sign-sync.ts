@@ -45,6 +45,26 @@ export async function createEnvelopeForLicense(
   );
 }
 
+// Task 9 stub: destrava a action de aprovação enquanto a implementação live
+// (envio real ao Dropbox Sign) chega na Task 11.
+export type CreateSignatureRequestInput = {
+  contractId: string;
+  invitationId: string;
+  candidateName: string;
+  candidateEmail: string;
+  pdf: Buffer;
+};
+export type CreateSignatureRequestResult = { envelopeId: string; mocked: boolean };
+
+export async function createSignatureRequestForContract(
+  input: CreateSignatureRequestInput,
+): Promise<CreateSignatureRequestResult> {
+  if (!isDropboxSignEnabled()) {
+    return { envelopeId: `MOCK_SR_${input.contractId}`, mocked: true };
+  }
+  throw new Error("Dropbox Sign live mode not implemented yet.");
+}
+
 export function verifyDropboxWebhookSignature(rawBody: string, signature: string): boolean {
   if (!isDropboxSignEnabled()) {
     // Mock mode: accept only when an env secret is set AND matches. Production
