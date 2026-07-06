@@ -77,6 +77,19 @@ describe("buildContractPayload", () => {
     expect(a.payloadHash).toMatch(/^[0-9a-f]{64}$/);
   });
 
+  it("payloads diferentes geram hashes diferentes", () => {
+    const a = buildContractPayload(brCompany);
+    const b = buildContractPayload({ ...brCompany, licenseAmountUsd: 20000 });
+    if (!a.ok || !b.ok) throw new Error("build falhou");
+    expect(a.payloadHash).not.toBe(b.payloadHash);
+  });
+
+  it("não trata 'nonexclusive' nem 'non - exclusive' como exclusivo", () => {
+    for (const territory of ["nonexclusive territory", "non - exclusive"]) {
+      expect(buildContractPayload({ ...brCompany, territory }).ok).toBe(true);
+    }
+  });
+
   it("fail-closed: país não suportado", () => {
     const res = buildContractPayload({ ...brCompany, counterparty: { ...brCompany.counterparty, country: "PT" as unknown as "BR" } });
     expect(res.ok).toBe(false);

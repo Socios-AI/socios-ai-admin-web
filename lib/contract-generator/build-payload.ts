@@ -24,19 +24,22 @@ function joinAddress(c: BuildContractInput["counterparty"]): string {
     .join(", ");
 }
 
-// Hash canônico: chaves ordenadas para ser determinístico.
-function canonicalHash(payload: ContractPayload): string {
-  const canonical = JSON.stringify(payload, Object.keys(flatten(payload)).sort());
-  return createHash("sha256").update(canonical).digest("hex");
-}
-function flatten(obj: unknown, prefix = "", out: Record<string, true> = {}): Record<string, true> {
-  if (obj && typeof obj === "object") {
-    for (const k of Object.keys(obj as Record<string, unknown>)) {
-      out[prefix + k] = true;
-      flatten((obj as Record<string, unknown>)[k], prefix + k + ".", out);
+// Canonicaliza (chaves ordenadas recursivamente) para um hash determinístico
+// independente da ordem de inserção das chaves.
+function canonicalize(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(canonicalize);
+  if (value && typeof value === "object") {
+    const sorted: Record<string, unknown> = {};
+    for (const k of Object.keys(value as Record<string, unknown>).sort()) {
+      sorted[k] = canonicalize((value as Record<string, unknown>)[k]);
     }
+    return sorted;
   }
-  return out;
+  return value;
+}
+
+function canonicalHash(payload: ContractPayload): string {
+  return createHash("sha256").update(JSON.stringify(canonicalize(payload))).digest("hex");
 }
 
 export function buildContractPayload(input: BuildContractInput): BuildResult {
@@ -45,7 +48,8 @@ export function buildContractPayload(input: BuildContractInput): BuildResult {
   if (c.country !== "BR" && c.country !== "US") {
     return { ok: false, reason: "UNSUPPORTED_COUNTRY", message: `País sem rota aprovada: ${c.country}. Revisão manual.` };
   }
-  if (/(?<!non-)(?<!non )exclusiv/i.test(input.territory)) {
+  const territoryNorm = input.territory.toLowerCase().replace(/non[\s-]*exclusiv\w*/g, "");
+  if (/exclusiv/.test(territoryNorm)) {
     return { ok: false, reason: "EXCLUSIVE_TERRITORY", message: "Território exclusivo exige revisão jurídica manual." };
   }
   const isCompany = c.person_type === "company";
