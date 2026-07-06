@@ -10,7 +10,20 @@ const eq = vi.fn().mockReturnThis();
 const select = vi.fn().mockReturnThis();
 const maybeSingle = vi.fn();
 const insert = vi.fn().mockResolvedValue({ error: null });
-const from = vi.fn(() => ({ update, eq, select, maybeSingle, insert }));
+// A chained `.update(...).eq(...).eq(...).select("id")` (or without the trailing
+// `.select()`, as in rejectContractAction) must itself be awaitable. Since
+// update/eq/select all return `this` via mockReturnThis, we make the shared
+// chain object thenable so `await` on it resolves via `updateSelect`.
+const updateSelect = vi.fn().mockResolvedValue({ data: [{ id: "c1" }], error: null });
+const from = vi.fn(() => ({
+  update,
+  eq,
+  select,
+  maybeSingle,
+  insert,
+  then: (resolve: (v: unknown) => unknown, reject?: (e: unknown) => unknown) =>
+    updateSelect().then(resolve, reject),
+}));
 const download = vi.fn().mockResolvedValue({ data: { arrayBuffer: async () => new ArrayBuffer(8) }, error: null });
 const storageFrom = vi.fn(() => ({ download }));
 vi.mock("@socios-ai/auth/admin", () => ({ getSupabaseAdminClient: () => ({ from, storage: { from: storageFrom } }) }));
@@ -20,7 +33,11 @@ vi.mock("../../lib/dropbox-sign-sync", () => ({ createSignatureRequestForContrac
 
 import { approveAndSendContractAction, rejectContractAction } from "../../app/_actions/contracts";
 
-beforeEach(() => { vi.clearAllMocks(); requireSuperAdminAAL2.mockResolvedValue({ claims: { sub: "admin-1" } }); });
+beforeEach(() => {
+  vi.clearAllMocks();
+  requireSuperAdminAAL2.mockResolvedValue({ claims: { sub: "admin-1" } });
+  updateSelect.mockResolvedValue({ data: [{ id: "c1" }], error: null });
+});
 
 describe("contracts actions", () => {
   it("approve exige AAL2", async () => {
@@ -30,11 +47,40 @@ describe("contracts actions", () => {
   });
 
   it("approve envia ao Dropbox Sign e marca sent", async () => {
-    maybeSingle.mockResolvedValue({ data: { id: "c1", status: "pending_review", storage_path_generated: "generated/c1.pdf", partner_invitation_id: "inv-1" }, error: null });
+    maybeSingle
+      .mockResolvedValueOnce({ data: { id: "c1", status: "pending_review", storage_path_generated: "generated/c1.pdf", partner_invitation_id: "inv-1" }, error: null })
+      .mockResolvedValueOnce({ data: { email: "a@b.com", full_name: "Ana" }, error: null });
     createSignatureRequestForContract.mockResolvedValue({ envelopeId: "sr_1" });
     const r = await approveAndSendContractAction({ contractId: "c1" });
     expect(r.ok).toBe(true);
     expect(createSignatureRequestForContract).toHaveBeenCalled();
+    expect(update).toHaveBeenCalledWith(expect.objectContaining({ status: "sent", envelope_id: "sr_1" }));
+  });
+
+  it("approve com contrato fora de pending_review retorna INVALID_STATE e não chama Dropbox Sign", async () => {
+    maybeSingle.mockResolvedValueOnce({ data: { id: "c1", status: "sent", storage_path_generated: "generated/c1.pdf", partner_invitation_id: "inv-1" }, error: null });
+    const r = await approveAndSendContractAction({ contractId: "c1" });
+    expect(r).toEqual({ ok: false, error: "INVALID_STATE", message: "sent" });
+    expect(createSignatureRequestForContract).not.toHaveBeenCalled();
+  });
+
+  it("approve quando Dropbox Sign rejeita retorna DROPBOX_SIGN_ERROR e não marca sent", async () => {
+    maybeSingle
+      .mockResolvedValueOnce({ data: { id: "c1", status: "pending_review", storage_path_generated: "generated/c1.pdf", partner_invitation_id: "inv-1" }, error: null })
+      .mockResolvedValueOnce({ data: { email: "a@b.com", full_name: "Ana" }, error: null });
+    createSignatureRequestForContract.mockRejectedValue(new Error("boom"));
+    const r = await approveAndSendContractAction({ contractId: "c1" });
+    expect(r).toEqual({ ok: false, error: "DROPBOX_SIGN_ERROR", message: "boom" });
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  it("approve quando convite não tem e-mail retorna erro e não chama Dropbox Sign", async () => {
+    maybeSingle
+      .mockResolvedValueOnce({ data: { id: "c1", status: "pending_review", storage_path_generated: "generated/c1.pdf", partner_invitation_id: "inv-1" }, error: null })
+      .mockResolvedValueOnce({ data: { email: null, full_name: "Ana" }, error: null });
+    const r = await approveAndSendContractAction({ contractId: "c1" });
+    expect(r.ok).toBe(false);
+    expect(createSignatureRequestForContract).not.toHaveBeenCalled();
   });
 
   it("reject marca rejected com motivo", async () => {
@@ -42,5 +88,10 @@ describe("contracts actions", () => {
     const r = await rejectContractAction({ contractId: "c1", reason: "dados errados" });
     expect(r.ok).toBe(true);
     expect(update).toHaveBeenCalledWith(expect.objectContaining({ status: "rejected", reject_reason: "dados errados" }));
+  });
+
+  it("reject com motivo vazio retorna VALIDATION", async () => {
+    const r = await rejectContractAction({ contractId: "c1", reason: "" });
+    expect(r).toEqual({ ok: false, error: "VALIDATION" });
   });
 });

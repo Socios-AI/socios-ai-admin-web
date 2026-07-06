@@ -67,11 +67,13 @@ export async function approveAndSendContractAction(
   if (!c) return { ok: false, error: "NOT_FOUND" };
   if (c.status !== "pending_review") return { ok: false, error: "INVALID_STATE", message: c.status as string };
 
-  const { data: inv } = await sb
+  const { data: inv, error: invErr } = await sb
     .from("partner_invitations")
     .select("email, full_name")
     .eq("id", c.partner_invitation_id as string)
     .maybeSingle();
+  if (invErr) return { ok: false, error: "API_ERROR", message: invErr.message };
+  if (!inv?.email) return { ok: false, error: "NOT_FOUND", message: "convite sem e-mail do candidato" };
 
   // Baixa o PDF gerado do storage para enviar ao provedor.
   const { data: file, error: dlErr } = await sb.storage
@@ -85,19 +87,22 @@ export async function approveAndSendContractAction(
     sr = await createSignatureRequestForContract({
       contractId: c.id as string,
       invitationId: c.partner_invitation_id as string,
-      candidateName: inv?.full_name ?? "",
-      candidateEmail: inv?.email ?? "",
+      candidateName: inv.full_name ?? "",
+      candidateEmail: inv.email,
       pdf,
     });
   } catch (e) {
     return { ok: false, error: "DROPBOX_SIGN_ERROR", message: e instanceof Error ? e.message : String(e) };
   }
 
-  await sb
+  const { data: marked, error: updateErr } = await sb
     .from("partner_contracts")
     .update({ status: "sent", envelope_id: sr.envelopeId, reviewed_by: auth.claims.sub, reviewed_at: new Date().toISOString(), sent_at: new Date().toISOString() })
     .eq("id", c.id as string)
-    .eq("status", "pending_review");
+    .eq("status", "pending_review")
+    .select("id");
+  if (updateErr) return { ok: false, error: "API_ERROR", message: updateErr.message };
+  if (!marked || marked.length === 0) return { ok: false, error: "INVALID_STATE", message: "status mudou durante o envio" };
 
   await sb.from("audit_log").insert({
     event_type: "partner_contract.approved_sent",
