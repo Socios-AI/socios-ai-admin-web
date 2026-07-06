@@ -11,7 +11,7 @@ const SOCIOS_DEFAULTS = {
 };
 
 const TEMPLATE_ID = "GLOBAL_MASTER_PARTNER_BR_BILINGUAL";
-const TEMPLATE_VERSION = "2026.07-final-review-v1";
+export const TEMPLATE_VERSION = "2026.07-final-review-v1";
 
 function taxIdLabel(country: ContractCountry, personType: "individual" | "company"): string {
   if (country === "BR") return personType === "company" ? "CNPJ" : "CPF";

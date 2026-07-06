@@ -6,6 +6,7 @@ import { getSupabaseAdminClient } from "@socios-ai/auth/admin";
 import { requireRegistrarOrAdminAAL2 } from "@/lib/auth";
 import { createPartnerInviteSchema } from "@/lib/validation";
 import { generateAndStoreContract } from "@/lib/contract-generator/generate-and-store";
+import { TEMPLATE_VERSION } from "@/lib/contract-generator/build-payload";
 
 export type CreatePartnerInviteResult =
   | { ok: true; invite_url: string }
@@ -79,6 +80,8 @@ export async function createPartnerInviteAction(input: unknown): Promise<CreateP
     return { ok: false, error: "API_ERROR", message: insErr.message };
   }
 
+  let prefillPersistError: string | null = null;
+
   // Licenciado com dados do contrato: gera o PDF draft e grava partner_contracts.
   if (data.targetRole === "licenciado" && data.contractProfile) {
     const cp = data.contractProfile;
@@ -114,23 +117,27 @@ export async function createPartnerInviteAction(input: unknown): Promise<CreateP
     });
 
     // Persiste o perfil no convite (materializado no aceite) e o registro do contrato.
-    await sb.from("partner_invitations").update({
+    const { error: updErr } = await sb.from("partner_invitations").update({
       prefill_profile: cp,
       license_amount_usd: data.licenseAmountUsd ?? null,
     }).eq("id", invitationId);
+    if (updErr) prefillPersistError = updErr.message;
 
-    await sb.from("partner_contracts").insert({
+    const { error: contractErr } = await sb.from("partner_contracts").insert({
       id: contractId,
       partner_invitation_id: invitationId,
       status: gen.ok ? "pending_review" : "generation_failed",
       country: cp.country,
-      template_version: gen.ok ? gen.templateVersion : "2026.07-final-review-v1",
+      template_version: gen.ok ? gen.templateVersion : TEMPLATE_VERSION,
       payload_schema_version: "2026.07-base-v1",
       payload_hash: gen.ok ? gen.payloadHash : "",
       payload: gen.ok ? gen.payload : { error: gen.message },
       storage_path_generated: gen.ok ? gen.storagePath : null,
       error_message: gen.ok ? null : gen.message,
     });
+    if (contractErr) {
+      return { ok: false, error: "API_ERROR", message: contractErr.message };
+    }
   }
 
   await sb.from("audit_log").insert({
@@ -144,6 +151,7 @@ export async function createPartnerInviteAction(input: unknown): Promise<CreateP
       introduced_by_partner_id: data.introducedByPartnerId ?? null,
       commission_pct: commissionPct,
       no_payment: true,
+      prefill_persist_error: prefillPersistError,
     },
   });
 

@@ -32,4 +32,20 @@ describe("generateAndStoreContract", () => {
     if (r.ok) return;
     expect(r.reason).toBe("EXCLUSIVE_TERRITORY");
   });
+
+  it("render falhando devolve ok:false (não lança)", async () => {
+    const { renderContractPdf } = await import("../../../lib/contract-generator/render-pdf");
+    (renderContractPdf as unknown as { mockRejectedValueOnce: (e: Error) => void }).mockRejectedValueOnce(new Error("chromium down"));
+    const r = await generateAndStoreContract({ contractId: "c1", input });
+    expect(r.ok).toBe(false);
+    if (r.ok) return;
+    expect(r.reason).toBe("GENERATION_FAILED");
+    expect(r.message).toContain("chromium down");
+  });
+
+  it("storage falhando devolve ok:false (não lança)", async () => {
+    storeGeneratedPdf.mockRejectedValueOnce(new Error("bucket down"));
+    const r = await generateAndStoreContract({ contractId: "c1", input });
+    expect(r.ok).toBe(false);
+  });
 });
