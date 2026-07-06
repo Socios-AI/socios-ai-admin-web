@@ -106,19 +106,3 @@ export async function downloadSignedPdf(signatureRequestId: string): Promise<Buf
   const body = res.body as unknown as Buffer | ArrayBuffer;
   return Buffer.isBuffer(body) ? body : Buffer.from(body as ArrayBuffer);
 }
-
-export function verifyDropboxWebhookSignature(rawBody: string, signature: string): boolean {
-  if (!isDropboxSignEnabled()) {
-    // Mock mode: accept only when an env secret is set AND matches. Production
-    // does not set this env, so the route stays fail-closed instead of
-    // accepting the public "MOCK_SIGNATURE" constant.
-    const mockSecret = process.env.DROPBOX_SIGN_WEBHOOK_MOCK_SECRET;
-    return Boolean(mockSecret) && signature === mockSecret;
-  }
-  // Live signature verification will be implemented when SDK is wired.
-  // For now, in live mode we conservatively reject all signatures so a
-  // misconfigured prod cannot be exploited.
-  void rawBody;
-  void signature;
-  return false;
-}
