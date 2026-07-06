@@ -26,7 +26,7 @@ export async function listPendingContractsAction(): Promise<
   const { data, error } = await sb
     .from("partner_contracts")
     .select("id, status, country, created_at, storage_path_generated, partner_invitations(email, full_name)")
-    .eq("status", "pending_review")
+    .in("status", ["pending_review", "generation_failed"])
     .order("created_at", { ascending: false });
   if (error) return { ok: false, error: error.message };
 

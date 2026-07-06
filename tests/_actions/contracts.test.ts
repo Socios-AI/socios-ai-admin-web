@@ -8,17 +8,23 @@ vi.mock("../../lib/auth", () => ({ requireSuperAdminAAL2: () => requireSuperAdmi
 const update = vi.fn().mockReturnThis();
 const eq = vi.fn().mockReturnThis();
 const select = vi.fn().mockReturnThis();
+const inFilter = vi.fn().mockReturnThis();
+const order = vi.fn().mockReturnThis();
 const maybeSingle = vi.fn();
 const insert = vi.fn().mockResolvedValue({ error: null });
 // A chained `.update(...).eq(...).eq(...).select("id")` (or without the trailing
 // `.select()`, as in rejectContractAction) must itself be awaitable. Since
 // update/eq/select all return `this` via mockReturnThis, we make the shared
 // chain object thenable so `await` on it resolves via `updateSelect`.
+// The same mechanism covers `.select(...).in(...).order(...)` used by
+// listPendingContractsAction.
 const updateSelect = vi.fn().mockResolvedValue({ data: [{ id: "c1" }], error: null });
 const from = vi.fn(() => ({
   update,
   eq,
   select,
+  in: inFilter,
+  order,
   maybeSingle,
   insert,
   then: (resolve: (v: unknown) => unknown, reject?: (e: unknown) => unknown) =>
@@ -31,7 +37,7 @@ vi.mock("../../lib/contract-storage", () => ({ getContractPreviewUrl: vi.fn().mo
 const createSignatureRequestForContract = vi.fn();
 vi.mock("../../lib/dropbox-sign-sync", () => ({ createSignatureRequestForContract: (...a: unknown[]) => createSignatureRequestForContract(...a) }));
 
-import { approveAndSendContractAction, rejectContractAction } from "../../app/_actions/contracts";
+import { approveAndSendContractAction, listPendingContractsAction, rejectContractAction } from "../../app/_actions/contracts";
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -93,5 +99,35 @@ describe("contracts actions", () => {
   it("reject com motivo vazio retorna VALIDATION", async () => {
     const r = await rejectContractAction({ contractId: "c1", reason: "" });
     expect(r).toEqual({ ok: false, error: "VALIDATION" });
+  });
+
+  it("listPendingContractsAction inclui pending_review e generation_failed", async () => {
+    updateSelect.mockResolvedValueOnce({
+      data: [
+        {
+          id: "c1",
+          status: "pending_review",
+          country: "BR",
+          created_at: "2026-07-04T00:00:00Z",
+          storage_path_generated: "generated/c1.pdf",
+          partner_invitations: { email: "a@b.com", full_name: "Ana" },
+        },
+        {
+          id: "c2",
+          status: "generation_failed",
+          country: "BR",
+          created_at: "2026-07-04T00:00:00Z",
+          storage_path_generated: null,
+          partner_invitations: { email: "c@d.com", full_name: "Carlos" },
+        },
+      ],
+      error: null,
+    });
+    const r = await listPendingContractsAction();
+    expect(inFilter).toHaveBeenCalledWith("status", ["pending_review", "generation_failed"]);
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.rows.map((x) => x.status)).toEqual(["pending_review", "generation_failed"]);
+    }
   });
 });

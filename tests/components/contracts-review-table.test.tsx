@@ -23,4 +23,14 @@ describe("ContractsReviewTable", () => {
     render(<ContractsReviewTable rows={[]} />);
     expect(screen.getByText(/Nenhum contrato aguardando/i)).toBeInTheDocument();
   });
+
+  it("contrato com generation_failed mostra badge de falha, sem botão de aprovar, mas com Rejeitar", () => {
+    const failedRows = [
+      { id: "c2", status: "generation_failed", country: "BR", createdAt: "2026-07-04T00:00:00Z", email: "c@d.com", fullName: "Carlos", previewUrl: null },
+    ];
+    render(<ContractsReviewTable rows={failedRows} />);
+    expect(screen.getByText("Falha na geração")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Aprovar e enviar/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Rejeitar/i })).toBeInTheDocument();
+  });
 });

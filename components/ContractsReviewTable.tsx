@@ -45,12 +45,15 @@ export function ContractsReviewTable({ rows }: { rows: ContractRow[] }) {
             <p className="text-xs text-muted-foreground">{r.email}</p>
           </div>
           {r.country ? <Badge variant="muted">{r.country}</Badge> : null}
+          {r.status === "generation_failed" ? <Badge variant="destructive">Falha na geração</Badge> : null}
           {r.previewUrl ? (
             <a href={r.previewUrl} target="_blank" rel="noreferrer" className="text-sm underline">Ver PDF</a>
           ) : (
             <span className="text-xs text-destructive">PDF indisponível</span>
           )}
-          <Button size="sm" onClick={() => approve(r.id)} loading={pending && busyId === r.id}>Aprovar e enviar</Button>
+          {r.status !== "generation_failed" ? (
+            <Button size="sm" onClick={() => approve(r.id)} loading={pending && busyId === r.id}>Aprovar e enviar</Button>
+          ) : null}
           <Button size="sm" variant="outline" onClick={() => reject(r.id)} disabled={pending && busyId === r.id}>Rejeitar</Button>
         </div>
       ))}

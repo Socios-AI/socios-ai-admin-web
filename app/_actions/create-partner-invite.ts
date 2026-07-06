@@ -86,6 +86,7 @@ export async function createPartnerInviteAction(input: unknown): Promise<CreateP
   if (data.targetRole === "licenciado" && data.contractProfile) {
     const cp = data.contractProfile;
     const contractId = randomUUID();
+    const effectiveLicenseUsd = data.licenseAmountUsd ?? 15000;
     const gen = await generateAndStoreContract({
       contractId,
       input: {
@@ -110,7 +111,7 @@ export async function createPartnerInviteAction(input: unknown): Promise<CreateP
           address_city: cp.address_city,
           address_state: cp.address_state,
         },
-        licenseAmountUsd: data.licenseAmountUsd ?? 15000,
+        licenseAmountUsd: effectiveLicenseUsd,
         territory: data.territory ?? "Non-exclusive, no territorial restriction",
         commission: { negotiatedPct: commissionPct, recruitBonusPct: 0.5, residualOverridePct: 0.07 },
       },
@@ -119,7 +120,7 @@ export async function createPartnerInviteAction(input: unknown): Promise<CreateP
     // Persiste o perfil no convite (materializado no aceite) e o registro do contrato.
     const { error: updErr } = await sb.from("partner_invitations").update({
       prefill_profile: cp,
-      license_amount_usd: data.licenseAmountUsd ?? null,
+      license_amount_usd: effectiveLicenseUsd,
     }).eq("id", invitationId);
     if (updErr) prefillPersistError = updErr.message;
 

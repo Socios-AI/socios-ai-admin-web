@@ -118,7 +118,7 @@ export function PartnerInviteForm({ initialRole = "representante" }: { initialRo
           <p className="text-sm font-medium">Dados do contrato</p>
           <PartnerProfileFields value={profile} onChange={(patch) => setProfile((p) => ({ ...p, ...patch }))} />
           <Field label="Valor da licença (USD)" htmlFor="licenseAmountUsd">
-            <Input id="licenseAmountUsd" type="number" min={0} value={licenseAmountUsd} onChange={(e) => setLicenseAmountUsd(e.target.value)} />
+            <Input id="licenseAmountUsd" type="number" min={1} value={licenseAmountUsd} onChange={(e) => setLicenseAmountUsd(e.target.value)} />
           </Field>
           <Field label="Território" htmlFor="territory" hint="Exclusividade dispara revisão jurídica manual.">
             <Input id="territory" type="text" value={territory} onChange={(e) => setTerritory(e.target.value)} />
