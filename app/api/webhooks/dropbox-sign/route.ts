@@ -19,9 +19,9 @@ async function readEvent(req: Request): Promise<DbxEvent | null> {
   const ct = req.headers.get("content-type") ?? "";
   try {
     if (ct.includes("application/json")) return JSON.parse(await req.text()) as DbxEvent;
-    const form = new URLSearchParams(await req.text());
+    const form = await req.formData();
     const json = form.get("json");
-    return json ? (JSON.parse(json) as DbxEvent) : null;
+    return typeof json === "string" ? (JSON.parse(json) as DbxEvent) : null;
   } catch {
     return null;
   }
@@ -48,31 +48,42 @@ export async function POST(req: Request): Promise<NextResponse> {
   const sb = getSupabaseAdminClient();
 
   if (type === "signature_request_all_signed" && contractId && srId) {
-    const { data: c } = await sb
+    const { data: c, error: readErr } = await sb
       .from("partner_contracts")
-      .select("id, status, partner_id, partner_invitation_id")
+      .select("id, status, partner_id")
       .eq("id", contractId)
       .maybeSingle();
+    if (readErr) return new NextResponse("db error", { status: 500 });
 
     if (c && c.status !== "signed") {
-      const pdf = await downloadSignedPdf(srId);
-      const signedPath = await storeSignedPdf(contractId, pdf);
+      try {
+        const pdf = await downloadSignedPdf(srId);
+        const signedPath = await storeSignedPdf(contractId, pdf);
+        const { data: updated, error: updErr } = await sb
+          .from("partner_contracts")
+          .update({ status: "signed", storage_path_signed: signedPath, signed_at: new Date().toISOString() })
+          .eq("id", contractId)
+          .neq("status", "signed")
+          .select("id");
+        if (updErr) return new NextResponse("db error", { status: 500 });
 
-      await sb
-        .from("partner_contracts")
-        .update({ status: "signed", storage_path_signed: signedPath, signed_at: new Date().toISOString() })
-        .eq("id", contractId)
-        .neq("status", "signed");
-
-      if (c.partner_id) {
-        await sb.from("partners").update({ contract_signed_at: new Date().toISOString(), contract_envelope_id: srId }).eq("id", c.partner_id as string);
+        // Only run follow-on writes if THIS request won the update (row affected).
+        if (updated && updated.length > 0) {
+          if (c.partner_id) {
+            await sb
+              .from("partners")
+              .update({ contract_signed_at: new Date().toISOString(), contract_envelope_id: srId })
+              .eq("id", c.partner_id as string);
+          }
+          await sb.from("audit_log").insert({
+            event_type: "partner_contract.signed",
+            actor_user_id: null,
+            metadata: { contract_id: contractId, envelope_id: srId, source: "dropbox_sign_webhook" },
+          });
+        }
+      } catch {
+        return new NextResponse("processing error", { status: 500 });
       }
-
-      await sb.from("audit_log").insert({
-        event_type: "partner_contract.signed",
-        actor_user_id: null,
-        metadata: { contract_id: contractId, envelope_id: srId, source: "dropbox_sign_webhook" },
-      });
     }
   } else if (type === "signature_request_viewed" && contractId) {
     await sb.from("partner_contracts").update({ status: "viewed" }).eq("id", contractId).eq("status", "sent");
