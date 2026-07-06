@@ -1,36 +1,21 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import Handlebars from "handlebars";
+import { marked } from "marked";
 import type { ContractCountry, ContractPayload } from "./types";
 
 const DIR = join(process.cwd(), "lib/contract-generator/templates");
+
+marked.setOptions({ gfm: true });
+
+Handlebars.registerHelper("pct", (v) => (typeof v === "number" ? `${+(v * 100).toFixed(2)}%` : v));
 
 function read(name: string): string {
   return readFileSync(join(DIR, name), "utf-8");
 }
 
-// Markdown simples → HTML (títulos, parágrafos, listas). Evita dep pesada.
 function mdToHtml(md: string): string {
-  const lines = md.split("\n");
-  const out: string[] = [];
-  let inList = false;
-  for (const line of lines) {
-    const h = line.match(/^(#{1,4})\s+(.*)$/);
-    if (h) {
-      if (inList) { out.push("</ul>"); inList = false; }
-      out.push(`<h${h[1].length}>${h[2]}</h${h[1].length}>`);
-    } else if (/^\s*[-*]\s+/.test(line)) {
-      if (!inList) { out.push("<ul>"); inList = true; }
-      out.push(`<li>${line.replace(/^\s*[-*]\s+/, "")}</li>`);
-    } else if (line.trim() === "") {
-      if (inList) { out.push("</ul>"); inList = false; }
-    } else {
-      if (inList) { out.push("</ul>"); inList = false; }
-      out.push(`<p>${line}</p>`);
-    }
-  }
-  if (inList) out.push("</ul>");
-  return out.join("\n");
+  return marked.parse(md) as string;
 }
 
 function brandCss(): string {
@@ -63,9 +48,11 @@ export function renderContractHtml(
   if (opts.addenda.includes("BRAZIL_ADDENDUM_EN_PTBR")) {
     sections.push(`<div class="addendum">${mdToHtml(Handlebars.compile(read("brazil_addendum_en_ptbr.md"))(payload))}</div>`);
   }
-  if (opts.addenda.some((a) => a.endsWith("DPA"))) {
-    sections.push(`<div class="addendum">${mdToHtml(Handlebars.compile(read("global_dpa_base_en.md"))(payload))}</div>`);
-  }
+  // DPA é obrigatório sempre que há processamento de dados pessoais (§13 do master
+  // agreement), não só quando um addendum específico (ex.: LGPD_DPA) está presente.
+  // O próprio template global_dpa_base_en.md seleciona o módulo regional (US vs LGPD)
+  // via {{#unless agreement.reference_language}}.
+  sections.push(`<div class="addendum">${mdToHtml(Handlebars.compile(read("global_dpa_base_en.md"))(payload))}</div>`);
 
   return `<!doctype html><html><head><meta charset="utf-8"><style>${brandCss()}</style></head>
     <body>${sections.join("\n")}

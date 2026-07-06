@@ -28,9 +28,9 @@ Commissions are calculated on net amounts effectively received by the Company af
 
 | Commission Field | Value |
 |---|---:|
-| Net Profit Participation | {{commercial.commission.net_profit_percentage}} |
-| Licensing Fee Commission | {{commercial.commission.licensing_fee_percentage}} |
-| Residual Participation | {{commercial.commission.residual_percentage}} |
+| Net Profit Participation | {{pct commercial.commission.net_profit_percentage}} |
+| Licensing Fee Commission | {{pct commercial.commission.licensing_fee_percentage}} |
+| Residual Participation | {{pct commercial.commission.residual_percentage}} |
 | Calculation Basis | {{commercial.commission.calculation_basis}} |
 
 ## 5. Specific Conditions

@@ -10,7 +10,7 @@ This Master Software License, Commercial Partnership and Confidentiality Agreeme
 
 ### 1.1 Disclosing Party / Company
 
-**SOCIOS A.I USA LLC**, a Florida limited liability company, EIN No. **42-2315188**, with registered address at **7550 Futures Drive, Suite 204, Orlando, FL 32819, United States of America**, represented by its authorized representative **KAZAKS FORMULA FOR SUCCESS LLC** or by the authorized signatory identified below (the **"Company"** or **"Disclosing Party"**).
+**{{socios.legal_name}}**, a {{socios.entity_type}}, EIN No. **{{socios.ein}}**, with registered address at **{{socios.registered_address}}**, represented by its authorized representative **{{socios.authorized_representative}}** or by the authorized signatory identified below (the **"Company"** or **"Disclosing Party"**).
 
 ### 1.2 Receiving Party / Partner
 

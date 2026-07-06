@@ -37,4 +37,24 @@ describe("renderContractHtml", () => {
     const html = renderContractHtml(b.payload, { country: b.country, addenda: b.addenda });
     expect(html.toLowerCase()).not.toContain("brazil addendum");
   });
+
+  it("formata comissão como porcentagem, não fração", () => {
+    const b = buildContractPayload(input); if (!b.ok) throw new Error("build");
+    const html = renderContractHtml(b.payload, { country: b.country, addenda: b.addenda });
+    expect(html).toContain("50%");
+  });
+
+  it("converte tabelas markdown (sem separador cru |---)", () => {
+    const b = buildContractPayload(input); if (!b.ok) throw new Error("build");
+    const html = renderContractHtml(b.payload, { country: b.country, addenda: b.addenda });
+    expect(html).toContain("<table");
+    expect(html).not.toContain("|---");
+  });
+
+  it("US também recebe o DPA", () => {
+    const b = buildContractPayload({ ...input, counterparty: { ...input.counterparty, country: "US", tax_id_type: "ein", tax_id: "12-3456789" } });
+    if (!b.ok) throw new Error("build");
+    const html = renderContractHtml(b.payload, { country: b.country, addenda: b.addenda });
+    expect(html.toLowerCase()).toContain("data processing addendum");
+  });
 });
