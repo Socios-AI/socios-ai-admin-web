@@ -16,6 +16,7 @@
     "bench:audit": "tsx scripts/bench-audit.ts"
   },
   "dependencies": {
+    "@dropbox/sign": "^1.11.0",
     "@fontsource/dm-mono": "^5.1.0",
     "@fontsource/plus-jakarta-sans": "^5.1.0",
     "@fontsource/space-grotesk": "^5.1.0",

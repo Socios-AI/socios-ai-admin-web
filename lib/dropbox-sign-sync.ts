@@ -2,6 +2,8 @@
 // Mirrors lib/stripe-sync.ts mock pattern. Live SDK wired in K.1 follow-up
 // once an account exists.
 
+import { SignatureRequestApi, EventCallbackHelper, EventCallbackRequest } from "@dropbox/sign";
+
 export type CreateEnvelopeInput = {
   invitationId: string;
   candidateName: string;
@@ -59,10 +61,50 @@ export type CreateSignatureRequestResult = { envelopeId: string; mocked: boolean
 export async function createSignatureRequestForContract(
   input: CreateSignatureRequestInput,
 ): Promise<CreateSignatureRequestResult> {
-  if (!isDropboxSignEnabled()) {
+  const key = getKey();
+  if (!key) {
     return { envelopeId: `MOCK_SR_${input.contractId}`, mocked: true };
   }
-  throw new Error("Dropbox Sign live mode not implemented yet.");
+
+  const api = new SignatureRequestApi();
+  api.username = key;
+
+  const res = await api.signatureRequestSend({
+    title: "Contrato de Licenciamento Sócios AI",
+    subject: "Seu contrato de licenciado para assinatura",
+    message: "Por favor, revise e assine o contrato de licenciamento.",
+    signers: [{ name: input.candidateName, emailAddress: input.candidateEmail, order: 0 }],
+    files: [{ value: input.pdf, options: { filename: "contrato.pdf", contentType: "application/pdf" } }],
+    metadata: { contract_id: input.contractId, invitation_id: input.invitationId },
+    testMode: process.env.DROPBOX_SIGN_TEST_MODE === "true",
+  });
+
+  const id = res.body?.signatureRequest?.signatureRequestId;
+  if (!id) throw new Error("Dropbox Sign não retornou signature_request_id");
+  return { envelopeId: id, mocked: false };
+}
+
+// Verificação HMAC do callback (event_hash = HMAC-SHA256(eventTime+eventType, apiKey)).
+export function verifyDropboxWebhookEvent(eventJson: unknown): boolean {
+  const key = getKey();
+  if (!key) {
+    // Mock: sem chave live, não há como validar HMAC → fail-closed em prod.
+    return false;
+  }
+  const ev = EventCallbackRequest.init(eventJson as never);
+  return EventCallbackHelper.isValid(key, ev);
+}
+
+export async function downloadSignedPdf(signatureRequestId: string): Promise<Buffer> {
+  const key = getKey();
+  if (!key) throw new Error("Dropbox Sign live não configurado");
+  const api = new SignatureRequestApi();
+  api.username = key;
+  // signatureRequestFiles(signatureRequestId, fileType?, options?) → Promise<{ response, body: Buffer }>
+  // confirmado em node_modules/@dropbox/sign/types/api/signatureRequestApi.d.ts.
+  const res = await api.signatureRequestFiles(signatureRequestId, "pdf");
+  const body = res.body as unknown as Buffer | ArrayBuffer;
+  return Buffer.isBuffer(body) ? body : Buffer.from(body as ArrayBuffer);
 }
 
 export function verifyDropboxWebhookSignature(rawBody: string, signature: string): boolean {
