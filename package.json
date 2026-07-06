@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev -p 3001",
     "build": "next build",
+    "postinstall": "playwright install chromium || true",
     "start": "next start -p 3001",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
@@ -28,6 +29,7 @@
     "lucide-react": "^0.460.0",
     "marked": "^18.0.5",
     "next": "^15.5.18",
+    "playwright": "^1.61.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "resend": "^6.12.4",
