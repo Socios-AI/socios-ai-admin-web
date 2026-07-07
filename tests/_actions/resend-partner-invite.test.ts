@@ -134,4 +134,31 @@ describe("resendPartnerInviteAction", () => {
       expect(r.message).toBe("update boom");
     }
   });
+
+  it("invalid state quando update guardado retorna 0 rows (TOCTOU)", async () => {
+    authMock.mockResolvedValue(authOk);
+    const sb = buildSb(sentRow, { data: [], error: null });
+    adminClientMock.mockReturnValue(sb);
+    const r = await resendPartnerInviteAction(validInput);
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error).toBe("INVALID_STATE");
+    expect(sendMock).not.toHaveBeenCalled();
+  });
+
+  it("fallback to email local-part quando full_name está vazio", async () => {
+    authMock.mockResolvedValue(authOk);
+    const rowWithoutName = {
+      status: "sent",
+      email: "maria@example.com",
+      full_name: "",
+      invite_token: "tok123",
+    };
+    const sb = buildSb(rowWithoutName);
+    adminClientMock.mockReturnValue(sb);
+    const r = await resendPartnerInviteAction(validInput);
+    expect(r.ok).toBe(true);
+    expect(sendMock).toHaveBeenCalledTimes(1);
+    const sendArg = sendMock.mock.calls[0][0];
+    expect(sendArg.html).toContain("maria");
+  });
 });
