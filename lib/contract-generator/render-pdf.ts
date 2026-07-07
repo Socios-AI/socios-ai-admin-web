@@ -1,7 +1,11 @@
 import { chromium } from "playwright";
 
 export async function renderContractPdf(html: string): Promise<Buffer> {
-  const browser = await chromium.launch({ args: ["--no-sandbox"] });
+  // channel: "chromium" uses the full Chromium build (installed by
+  // `playwright install chromium` and shipped in the Playwright image),
+  // avoiding the separate chrome-headless-shell binary that isn't always
+  // present on CI runners.
+  const browser = await chromium.launch({ channel: "chromium", args: ["--no-sandbox"] });
   try {
     const page = await browser.newPage();
     await page.setContent(html, { waitUntil: "networkidle" });
