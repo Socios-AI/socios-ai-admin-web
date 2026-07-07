@@ -1,4 +1,6 @@
 import type { PartnerInvitationRow } from "@/lib/data";
+import { partnerOnboardingUrl } from "@/lib/partner-invite-url";
+import { PartnerInviteResendActions } from "@/components/PartnerInviteResendActions";
 
 function fmtDate(s: string | null): string {
   if (!s) return "-";
@@ -28,6 +30,7 @@ export function PartnerInvitationsList({ invitations }: { invitations: PartnerIn
             <th className="px-4 py-3">Status</th>
             <th className="px-4 py-3">Licença</th>
             <th className="px-4 py-3">Expira</th>
+            <th className="px-4 py-3 text-right">Ações</th>
           </tr>
         </thead>
         <tbody>
@@ -40,6 +43,13 @@ export function PartnerInvitationsList({ invitations }: { invitations: PartnerIn
                 {i.license_amount_usd == null ? "-" : `${fmtUsd(i.license_amount_usd)} (${i.installments}x)`}
               </td>
               <td className="px-4 py-3">{fmtDate(i.expires_at)}</td>
+              <td className="px-4 py-3 text-right">
+                <PartnerInviteResendActions
+                  invitationId={i.id}
+                  inviteUrl={partnerOnboardingUrl(i.invite_token)}
+                  email={i.email}
+                />
+              </td>
             </tr>
           ))}
         </tbody>

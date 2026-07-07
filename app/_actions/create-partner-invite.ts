@@ -7,6 +7,7 @@ import { requireRegistrarOrAdminAAL2 } from "@/lib/auth";
 import { createPartnerInviteSchema } from "@/lib/validation";
 import { generateAndStoreContract } from "@/lib/contract-generator/generate-and-store";
 import { TEMPLATE_VERSION } from "@/lib/contract-generator/build-payload";
+import { partnerOnboardingUrl } from "@/lib/partner-invite-url";
 
 export type CreatePartnerInviteResult =
   | { ok: true; invite_url: string }
@@ -156,7 +157,6 @@ export async function createPartnerInviteAction(input: unknown): Promise<CreateP
     },
   });
 
-  const base = process.env.PARTNERS_WEB_BASE_URL ?? "https://partners.sociosai.com";
   revalidatePath("/partners");
-  return { ok: true, invite_url: `${base.replace(/\/$/, "")}/onboarding/${inviteToken}` };
+  return { ok: true, invite_url: partnerOnboardingUrl(inviteToken) };
 }

@@ -8,6 +8,8 @@ import { Badge, type BadgeVariant } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { buttonClasses } from "@/components/ui/button";
 import { RegistrarInviteCancelButton } from "./RegistrarInviteCancelButton";
+import { PartnerInviteResendActions } from "./PartnerInviteResendActions";
+import { partnerOnboardingUrl } from "@/lib/partner-invite-url";
 
 const ROLE_LABEL: Record<string, string> = {
   licenciado: "Licenciado",
@@ -87,7 +89,14 @@ export async function RegistrarPartnersView() {
                       {new Date(i.expiresAt).toLocaleDateString("pt-BR")}
                     </TD>
                     <TD className="text-right">
-                      <RegistrarInviteCancelButton invitationId={i.id} email={i.email} />
+                      <div className="flex items-center justify-end gap-2">
+                        <PartnerInviteResendActions
+                          invitationId={i.id}
+                          inviteUrl={partnerOnboardingUrl(i.inviteToken)}
+                          email={i.email}
+                        />
+                        <RegistrarInviteCancelButton invitationId={i.id} email={i.email} />
+                      </div>
                     </TD>
                   </TR>
                 ))}

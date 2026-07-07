@@ -403,3 +403,11 @@ export type CreatePartnerInviteInput = z.infer<typeof createPartnerInviteSchema>
 export const markEntryFeePaidSchema = z.object({
   partnerId: z.string().uuid(),
 });
+
+// =============================================================
+// Resend partner invitation
+// =============================================================
+
+export const resendPartnerInviteSchema = z.object({
+  invitationId: z.string().uuid(),
+});
