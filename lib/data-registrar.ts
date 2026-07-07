@@ -31,6 +31,7 @@ export type RegistrarInvite = {
   targetRole: string | null;
   status: string;
   expiresAt: string;
+  inviteToken: string;
 };
 
 // Uma org individual dentro do agrupamento por cliente.
@@ -172,8 +173,8 @@ export async function listInvitesForRegistrar(): Promise<RegistrarInvite[]> {
   const sb = getSupabaseAdminClient();
   const { data, error } = await sb
     .from("partner_invitations")
-    // SEM license_amount_usd/payment_link_url/custom_commission_pct.
-    .select("id, email, full_name, target_role, status, expires_at")
+    // SEM license_amount_usd/payment_link_url/custom_commission_pct. invite_token nao e dado financeiro.
+    .select("id, email, full_name, target_role, status, expires_at, invite_token")
     .in("status", PENDING_INVITE_STATUSES)
     .order("expires_at", { ascending: true });
   if (error) throw new Error(`listInvitesForRegistrar failed: ${error.message}`);
@@ -184,6 +185,7 @@ export async function listInvitesForRegistrar(): Promise<RegistrarInvite[]> {
     targetRole: (r.target_role as string | null) ?? null,
     status: String(r.status),
     expiresAt: String(r.expires_at),
+    inviteToken: String(r.invite_token),
   }));
 }
 
