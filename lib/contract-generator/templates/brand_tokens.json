@@ -1,0 +1,76 @@
+{
+  "brand": {
+    "name": "Sócios AI",
+    "legal_name": "SOCIOS A.I USA LLC",
+    "contract_visual_tone": "legal-premium, international, clean, structured, technological",
+    "colors": {
+      "black": {
+        "name": "Preto",
+        "hex": "#000000",
+        "rgb": [
+          0,
+          0,
+          0
+        ],
+        "usage": "Primary text, headings, dark dividers, legal emphasis"
+      },
+      "off_white": {
+        "name": "Off white",
+        "hex": "#EDE7E6",
+        "rgb": [
+          237,
+          231,
+          230
+        ],
+        "usage": "Cover cards, table fills, document panels"
+      },
+      "prosperity_green": {
+        "name": "Verde Prosperidade",
+        "hex": "#8DF78D",
+        "rgb": [
+          141,
+          247,
+          141
+        ],
+        "usage": "Thin accents, dividers, small highlights"
+      },
+      "dark_petrol_support": {
+        "name": "Dark petrol support",
+        "hex": "#1F2C37",
+        "rgb": [
+          31,
+          44,
+          55
+        ],
+        "usage": "Optional premium divider pages"
+      }
+    },
+    "typography": {
+      "heading": {
+        "primary": "Space Grotesk",
+        "fallback_docx": "Aptos Display, Arial",
+        "usage": "Cover title, section headings"
+      },
+      "body": {
+        "primary": "Plus Jakarta Sans",
+        "fallback_docx": "Aptos, Arial",
+        "usage": "Clauses, definitions, long text"
+      },
+      "technical": {
+        "primary": "DM Mono",
+        "fallback_docx": "Consolas, Courier New",
+        "usage": "Variables, metadata, version IDs"
+      }
+    },
+    "logo_assets": {
+      "horizontal_dark": "assets/logos/sociosai_logo_horizontal_dark.png",
+      "horizontal_light": "assets/logos/sociosai_logo_horizontal_light.png",
+      "symbol_dark": "assets/logos/sociosai_symbol_dark.png"
+    },
+    "layout_rules": {
+      "page_size": "A4 by default for international execution; switchable to US Letter by configuration",
+      "green_usage": "Accent only; never as large legal text background except divider pages",
+      "logo_usage": "Horizontal dark on light cover/header; horizontal light on dark dividers; symbol dark in footer or watermark"
+    }
+  }
+}

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { prefillProfileSchema } from "@/lib/partner-validation";
 
 export const reasonSchema = z
   .string({ required_error: "Motivo é obrigatório" })
@@ -386,6 +387,11 @@ export const createPartnerInviteSchema = z.object({
     .min(0, "Comissão deve ser >= 0")
     .max(1, "Comissão deve ser <= 1")
     .optional(),
+  // Bloco de contrato (só usado quando targetRole=licenciado). Opcional para
+  // manter retrocompatibilidade dos convites sem contrato.
+  licenseAmountUsd: z.number().positive("Valor deve ser positivo").max(1_000_000).optional(),
+  territory: z.string().trim().min(1).max(200).optional(),
+  contractProfile: prefillProfileSchema.optional(),
 });
 
 export type CreatePartnerInviteInput = z.infer<typeof createPartnerInviteSchema>;

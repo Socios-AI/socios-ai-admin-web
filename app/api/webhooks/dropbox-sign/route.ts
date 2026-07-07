@@ -1,79 +1,95 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdminClient } from "@socios-ai/auth/admin";
-import { verifyDropboxWebhookSignature } from "@/lib/dropbox-sign-sync";
+import { verifyDropboxWebhookEvent, downloadSignedPdf } from "@/lib/dropbox-sign-sync";
+import { storeSignedPdf } from "@/lib/contract-storage";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-type DropboxSignEvent = {
-  event?: { event_type?: string };
-  signature_request?: {
-    signature_request_id?: string;
-    metadata?: { invitation_id?: string };
-  };
+// Dropbox Sign envia o callback como form field "json" e exige que a resposta
+// contenha o texto "Hello API Event Received".
+const ACK = "Hello API Event Received";
+
+type DbxEvent = {
+  event?: { event_type?: string; event_hash?: string; event_time?: string };
+  signature_request?: { signature_request_id?: string; metadata?: { contract_id?: string } };
 };
 
+async function readEvent(req: Request): Promise<DbxEvent | null> {
+  const ct = req.headers.get("content-type") ?? "";
+  try {
+    if (ct.includes("application/json")) return JSON.parse(await req.text()) as DbxEvent;
+    const form = await req.formData();
+    const json = form.get("json");
+    return typeof json === "string" ? (JSON.parse(json) as DbxEvent) : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function POST(req: Request): Promise<NextResponse> {
-  const signature = req.headers.get("x-dropbox-sign-signature");
-  const raw = await req.text();
-  if (!signature || !verifyDropboxWebhookSignature(raw, signature)) {
+  const event = await readEvent(req);
+  if (!event) return NextResponse.json({ error: "invalid_body" }, { status: 400 });
+
+  if (!verifyDropboxWebhookEvent(event)) {
     return NextResponse.json({ error: "invalid_signature" }, { status: 401 });
   }
 
-  let payload: DropboxSignEvent;
-  try {
-    payload = JSON.parse(raw) as DropboxSignEvent;
-  } catch {
-    return NextResponse.json({ error: "invalid_json" }, { status: 400 });
+  const type = event.event?.event_type;
+
+  // Evento de teste do provedor (verificação de endpoint): só ACK.
+  if (type === "callback_test") {
+    return new NextResponse(ACK, { status: 200 });
   }
 
-  const eventType = payload.event?.event_type;
-  if (eventType !== "signature_request_signed") {
-    return NextResponse.json({ ok: true, ignored: eventType ?? null });
-  }
-
-  const invitationId = payload.signature_request?.metadata?.invitation_id;
-  if (!invitationId) {
-    return NextResponse.json({ error: "missing_invitation_id" }, { status: 400 });
-  }
+  const contractId = event.signature_request?.metadata?.contract_id;
+  const srId = event.signature_request?.signature_request_id;
 
   const sb = getSupabaseAdminClient();
 
-  const { data: row, error: readError } = await sb
-    .from("partner_invitations")
-    .select("id, status")
-    .eq("id", invitationId)
-    .maybeSingle();
-  if (readError) {
-    return NextResponse.json({ error: "db_error", message: readError.message }, { status: 500 });
-  }
-  if (!row) {
-    return NextResponse.json({ error: "invitation_not_found" }, { status: 404 });
+  if (type === "signature_request_all_signed" && contractId && srId) {
+    const { data: c, error: readErr } = await sb
+      .from("partner_contracts")
+      .select("id, status, partner_id")
+      .eq("id", contractId)
+      .maybeSingle();
+    if (readErr) return new NextResponse("db error", { status: 500 });
+
+    if (c && c.status !== "signed") {
+      try {
+        const pdf = await downloadSignedPdf(srId);
+        const signedPath = await storeSignedPdf(contractId, pdf);
+        const { data: updated, error: updErr } = await sb
+          .from("partner_contracts")
+          .update({ status: "signed", storage_path_signed: signedPath, signed_at: new Date().toISOString() })
+          .eq("id", contractId)
+          .neq("status", "signed")
+          .select("id");
+        if (updErr) return new NextResponse("db error", { status: 500 });
+
+        // Only run follow-on writes if THIS request won the update (row affected).
+        if (updated && updated.length > 0) {
+          if (c.partner_id) {
+            await sb
+              .from("partners")
+              .update({ contract_signed_at: new Date().toISOString(), contract_envelope_id: srId })
+              .eq("id", c.partner_id as string);
+          }
+          await sb.from("audit_log").insert({
+            event_type: "partner_contract.signed",
+            actor_user_id: null,
+            metadata: { contract_id: contractId, envelope_id: srId, source: "dropbox_sign_webhook" },
+          });
+        }
+      } catch {
+        return new NextResponse("processing error", { status: 500 });
+      }
+    }
+  } else if (type === "signature_request_viewed" && contractId) {
+    await sb.from("partner_contracts").update({ status: "viewed" }).eq("id", contractId).eq("status", "sent");
+  } else if (type === "signature_request_declined" && contractId) {
+    await sb.from("partner_contracts").update({ status: "declined" }).eq("id", contractId).neq("status", "signed");
   }
 
-  // Idempotent: only progress from 'sent' to 'contract_signed'.
-  if (row.status !== "sent") {
-    return NextResponse.json({ ok: true, idempotent: true, status: row.status });
-  }
-
-  const { error: updateError } = await sb
-    .from("partner_invitations")
-    .update({ status: "contract_signed" })
-    .eq("id", invitationId)
-    .eq("status", "sent");
-  if (updateError) {
-    return NextResponse.json({ error: "db_error", message: updateError.message }, { status: 500 });
-  }
-
-  await sb.from("audit_log").insert({
-    event_type: "partner_invitation.contract_signed",
-    actor_user_id: null,
-    metadata: {
-      invitation_id: invitationId,
-      envelope_id: payload.signature_request?.signature_request_id ?? null,
-      source: "dropbox_sign_webhook",
-    },
-  });
-
-  return NextResponse.json({ ok: true });
+  return new NextResponse(ACK, { status: 200 });
 }

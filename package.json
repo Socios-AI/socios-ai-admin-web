@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev -p 3001",
     "build": "next build",
+    "postinstall": "playwright install chromium || true",
     "start": "next start -p 3001",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
@@ -15,6 +16,7 @@
     "bench:audit": "tsx scripts/bench-audit.ts"
   },
   "dependencies": {
+    "@dropbox/sign": "^1.11.0",
     "@fontsource/dm-mono": "^5.1.0",
     "@fontsource/plus-jakarta-sans": "^5.1.0",
     "@fontsource/space-grotesk": "^5.1.0",
@@ -22,10 +24,13 @@
     "@supabase/ssr": "^0.5.2",
     "@supabase/supabase-js": "^2.45.4",
     "clsx": "^2.1.1",
+    "handlebars": "^4.7.9",
     "jose": "^5.9.0",
     "libphonenumber-js": "^1.13.4",
     "lucide-react": "^0.460.0",
+    "marked": "^18.0.5",
     "next": "^15.5.18",
+    "playwright": "^1.61.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "resend": "^6.12.4",

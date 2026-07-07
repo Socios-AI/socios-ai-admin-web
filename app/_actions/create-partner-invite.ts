@@ -5,6 +5,8 @@ import { revalidatePath } from "next/cache";
 import { getSupabaseAdminClient } from "@socios-ai/auth/admin";
 import { requireRegistrarOrAdminAAL2 } from "@/lib/auth";
 import { createPartnerInviteSchema } from "@/lib/validation";
+import { generateAndStoreContract } from "@/lib/contract-generator/generate-and-store";
+import { TEMPLATE_VERSION } from "@/lib/contract-generator/build-payload";
 
 export type CreatePartnerInviteResult =
   | { ok: true; invite_url: string }
@@ -78,6 +80,67 @@ export async function createPartnerInviteAction(input: unknown): Promise<CreateP
     return { ok: false, error: "API_ERROR", message: insErr.message };
   }
 
+  let prefillPersistError: string | null = null;
+
+  // Licenciado com dados do contrato: gera o PDF draft e grava partner_contracts.
+  if (data.targetRole === "licenciado" && data.contractProfile) {
+    const cp = data.contractProfile;
+    const contractId = randomUUID();
+    const effectiveLicenseUsd = data.licenseAmountUsd ?? 15000;
+    const gen = await generateAndStoreContract({
+      contractId,
+      input: {
+        invitationId,
+        counterparty: {
+          display_name: data.fullName,
+          email: data.email,
+          person_type: cp.person_type,
+          country: cp.country,
+          tax_id: cp.tax_id,
+          tax_id_type: cp.tax_id_type,
+          company_legal_name: cp.company_legal_name,
+          company_trade_name: cp.company_trade_name,
+          legal_rep_name: cp.legal_rep_name,
+          legal_rep_tax_id: cp.legal_rep_tax_id,
+          phone: cp.phone,
+          address_postal_code: cp.address_postal_code,
+          address_line1: cp.address_line1,
+          address_number: cp.address_number,
+          address_complement: cp.address_complement,
+          address_district: cp.address_district,
+          address_city: cp.address_city,
+          address_state: cp.address_state,
+        },
+        licenseAmountUsd: effectiveLicenseUsd,
+        territory: data.territory ?? "Non-exclusive, no territorial restriction",
+        commission: { negotiatedPct: commissionPct, recruitBonusPct: 0.5, residualOverridePct: 0.07 },
+      },
+    });
+
+    // Persiste o perfil no convite (materializado no aceite) e o registro do contrato.
+    const { error: updErr } = await sb.from("partner_invitations").update({
+      prefill_profile: cp,
+      license_amount_usd: effectiveLicenseUsd,
+    }).eq("id", invitationId);
+    if (updErr) prefillPersistError = updErr.message;
+
+    const { error: contractErr } = await sb.from("partner_contracts").insert({
+      id: contractId,
+      partner_invitation_id: invitationId,
+      status: gen.ok ? "pending_review" : "generation_failed",
+      country: cp.country,
+      template_version: gen.ok ? gen.templateVersion : TEMPLATE_VERSION,
+      payload_schema_version: "2026.07-base-v1",
+      payload_hash: gen.ok ? gen.payloadHash : "",
+      payload: gen.ok ? gen.payload : { error: gen.message },
+      storage_path_generated: gen.ok ? gen.storagePath : null,
+      error_message: gen.ok ? null : gen.message,
+    });
+    if (contractErr) {
+      return { ok: false, error: "API_ERROR", message: contractErr.message };
+    }
+  }
+
   await sb.from("audit_log").insert({
     event_type: "partner_invitation.created",
     actor_user_id: auth.claims.sub,
@@ -89,6 +152,7 @@ export async function createPartnerInviteAction(input: unknown): Promise<CreateP
       introduced_by_partner_id: data.introducedByPartnerId ?? null,
       commission_pct: commissionPct,
       no_payment: true,
+      prefill_persist_error: prefillPersistError,
     },
   });
 
