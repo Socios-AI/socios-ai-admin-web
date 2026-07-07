@@ -18,6 +18,9 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
+      # Contract PDF rendering test launches headless Chromium; ensure the
+      # browser and its system libs are present on the CI runner.
+      - run: npx playwright install --with-deps chromium
       - run: npm run verify:deps
       - run: npm run lint
       - run: npm run typecheck

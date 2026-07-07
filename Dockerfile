@@ -22,7 +22,11 @@ ENV NEXT_PUBLIC_COOKIE_SAMESITE=$NEXT_PUBLIC_COOKIE_SAMESITE
 ENV NEXT_PUBLIC_COOKIE_SECURE=$NEXT_PUBLIC_COOKIE_SECURE
 RUN npm run build
 
-FROM node:20-alpine AS runner
+# Playwright-capable runner: contract PDF rendering launches headless Chromium,
+# which needs glibc + the browser preinstalled (not available on Alpine). This
+# image ships Node 20, Chromium, and its system deps at /ms-playwright, matching
+# the pinned playwright 1.61.1. The prebuilt browser (pwuser) already exists.
+FROM mcr.microsoft.com/playwright:v1.61.1-jammy AS runner
 WORKDIR /app
 ARG NEXT_PUBLIC_SUPABASE_URL
 ARG NEXT_PUBLIC_SUPABASE_ANON_KEY
@@ -35,10 +39,9 @@ ENV HOSTNAME=0.0.0.0
 # SUPABASE_ANON_KEY) works at runtime in server components.
 ENV SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL
 ENV SUPABASE_ANON_KEY=$NEXT_PUBLIC_SUPABASE_ANON_KEY
-RUN addgroup -g 1001 -S nodejs && adduser -S nextjs -u 1001
-COPY --from=builder --chown=nextjs:nodejs /app/public ./public
-COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
-COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
-USER nextjs
+COPY --from=builder --chown=pwuser:pwuser /app/public ./public
+COPY --from=builder --chown=pwuser:pwuser /app/.next/standalone ./
+COPY --from=builder --chown=pwuser:pwuser /app/.next/static ./.next/static
+USER pwuser
 EXPOSE 3001
 CMD ["node", "server.js"]
