@@ -36,6 +36,7 @@ describe("listInvitesForRegistrar", () => {
     expect(selectArg).toContain("invite_token");
     expect(selectArg).not.toContain("license_amount_usd");
     expect(selectArg).not.toContain("payment_link_url");
+    expect(selectArg).not.toContain("custom_commission_pct");
     expect(rows[0].inviteToken).toBe("tok-xyz");
   });
 });

@@ -15,14 +15,17 @@ import { resendPartnerInviteAction } from "../../app/_actions/resend-partner-inv
 
 type Row = { status: string; email: string; full_name: string; invite_token: string } | null;
 
-function buildSb(row: Row) {
-  const updateEq2 = vi.fn().mockResolvedValue({ error: null });
+function buildSb(row: Row, updateSelectResult: { data: unknown; error: unknown } = { data: [{ id: "id-1" }], error: null }) {
+  const updateSelect = vi.fn().mockResolvedValue(updateSelectResult);
+  const updateEq2 = vi.fn(() => ({ select: updateSelect }));
   const update = vi.fn(() => ({ eq: vi.fn(() => ({ eq: updateEq2 })) }));
   const maybeSingle = vi.fn().mockResolvedValue({ data: row, error: null });
   const select = vi.fn(() => ({ eq: vi.fn(() => ({ maybeSingle })) }));
   const audit = vi.fn().mockResolvedValue({ error: null });
   return {
     _updateEq2: updateEq2,
+    _updateSelect: updateSelect,
+    _maybeSingle: maybeSingle,
     _audit: audit,
     from: vi.fn((table: string) => {
       if (table === "audit_log") return { insert: audit };
@@ -88,6 +91,7 @@ describe("resendPartnerInviteAction", () => {
     const r = await resendPartnerInviteAction(validInput);
     expect(r.ok).toBe(true);
     expect(sb._updateEq2).toHaveBeenCalledTimes(1); // update expires_at aplicado
+    expect(sb._updateEq2).toHaveBeenCalledWith("status", sentRow.status);
     expect(sendMock).toHaveBeenCalledTimes(1);
     const sendArg = sendMock.mock.calls[0][0];
     expect(sendArg.to).toBe("maria@example.com");
@@ -104,5 +108,30 @@ describe("resendPartnerInviteAction", () => {
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.error).toBe("EMAIL_FAILED");
     expect(sb._updateEq2).toHaveBeenCalledTimes(1); // validade renovada antes do envio
+  });
+
+  it("API_ERROR quando a leitura falha", async () => {
+    authMock.mockResolvedValue(authOk);
+    const sb = buildSb(sentRow);
+    sb._maybeSingle.mockResolvedValue({ data: null, error: { message: "read boom" } });
+    adminClientMock.mockReturnValue(sb);
+    const r = await resendPartnerInviteAction(validInput);
+    expect(r.ok).toBe(false);
+    if (!r.ok) {
+      expect(r.error).toBe("API_ERROR");
+      expect(r.message).toBe("read boom");
+    }
+  });
+
+  it("API_ERROR quando o update guardado falha", async () => {
+    authMock.mockResolvedValue(authOk);
+    const sb = buildSb(sentRow, { data: null, error: { message: "update boom" } });
+    adminClientMock.mockReturnValue(sb);
+    const r = await resendPartnerInviteAction(validInput);
+    expect(r.ok).toBe(false);
+    if (!r.ok) {
+      expect(r.error).toBe("API_ERROR");
+      expect(r.message).toBe("update boom");
+    }
   });
 });

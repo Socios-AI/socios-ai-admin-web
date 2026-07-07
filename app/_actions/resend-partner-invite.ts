@@ -42,17 +42,23 @@ export async function resendPartnerInviteAction(input: unknown): Promise<ResendP
 
   // Renova a validade mantendo o mesmo token: links antigos continuam valendo.
   const newExpiresAt = new Date(Date.now() + 30 * 86400_000).toISOString();
-  const { error: updateError } = await sb
+  const { data: updated, error: updateError } = await sb
     .from("partner_invitations")
     .update({ expires_at: newExpiresAt })
     .eq("id", invitationId)
-    .eq("status", row.status as string);
+    .eq("status", row.status as string)
+    .select("id");
   if (updateError) return { ok: false, error: "API_ERROR", message: updateError.message };
+  if (!updated || updated.length === 0) {
+    return { ok: false, error: "INVALID_STATE", message: "convite mudou de estado, tente novamente" };
+  }
 
   const inviteUrl = partnerOnboardingUrl(row.invite_token as string);
   const email = row.email as string;
+  const rawName = (row.full_name as string | null) ?? "";
+  const fullName = rawName.trim() || email.split("@")[0];
   const { subject, html } = partnerInvitationEmail({
-    fullName: (row.full_name as string) ?? "",
+    fullName,
     inviteUrl,
     expiresAt: newExpiresAt,
   });
