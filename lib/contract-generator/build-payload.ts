@@ -18,6 +18,10 @@ function taxIdLabel(country: ContractCountry, personType: "individual" | "compan
   return personType === "company" ? "EIN" : "SSN/ITIN";
 }
 
+function buildDocumentId(contractId: string, country: ContractCountry, generatedDate: string): string {
+  return `SAI-${country}-${generatedDate.slice(0, 4)}-${contractId.replace(/-/g, "").slice(0, 8)}`;
+}
+
 function joinAddress(c: BuildContractInput["counterparty"]): string {
   return [c.address_line1, c.address_number, c.address_complement, c.address_district, c.address_city, c.address_state, c.address_postal_code]
     .filter((p) => p && p.trim() !== "")
@@ -62,6 +66,9 @@ export function buildContractPayload(input: BuildContractInput): BuildResult {
 
   const routing = resolveRouting(c.country);
   const negotiated = input.commission.negotiatedPct ?? 0.5;
+  const signatory = isCompany
+    ? { full_name: c.legal_rep_name ?? c.display_name, title: c.signatory_title?.trim() || "Legal Representative" }
+    : { full_name: c.display_name, title: "Holder" };
 
   const payload: ContractPayload = {
     agreement: {
@@ -72,12 +79,16 @@ export function buildContractPayload(input: BuildContractInput): BuildResult {
       governing_law: "Florida, United States",
       arbitration_seat: "Miami, Florida, United States",
       arbitration_rules: "ICDR International Arbitration Rules",
+      document_id: buildDocumentId(input.contractId, c.country, input.generatedDate),
+      effective_date: input.generatedDate,
     },
     socios: { ...SOCIOS_DEFAULTS },
     counterparty: {
       display_name: c.display_name,
       email: c.email,
       is_legal_entity: isCompany,
+      is_individual: !isCompany,
+      signatory,
       legal_name: c.company_legal_name ?? null,
       trade_name: c.company_trade_name ?? null,
       primary_tax_id_label: c.tax_id ? taxIdLabel(c.country, c.person_type) : null,

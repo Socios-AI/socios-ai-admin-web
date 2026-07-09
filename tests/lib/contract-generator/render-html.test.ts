@@ -5,6 +5,8 @@ import type { BuildContractInput } from "../../../lib/contract-generator/types";
 
 const input: BuildContractInput = {
   invitationId: "inv-1",
+  contractId: "92a6fe79-9ec9-442b-b0cc-aa825f2fc850",
+  generatedDate: "2026-07-09",
   counterparty: {
     display_name: "Salão Beleza LTDA", email: "dono@example.com", person_type: "company", country: "BR",
     tax_id: "11444777000161", tax_id_type: "cnpj", company_legal_name: "Salão Beleza LTDA",

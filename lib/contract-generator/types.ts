@@ -20,10 +20,13 @@ export type CounterpartyInput = {
   address_district?: string;
   address_city?: string;
   address_state?: string;
+  signatory_title?: string;
 };
 
 export type BuildContractInput = {
   invitationId: string;
+  contractId: string;
+  generatedDate: string; // YYYY-MM-DD, determinístico (passado pelo caller)
   counterparty: CounterpartyInput;
   licenseAmountUsd: number;
   territory: string;
@@ -43,6 +46,8 @@ export type ContractPayload = {
     governing_law: string;
     arbitration_seat: string;
     arbitration_rules: string;
+    document_id: string;
+    effective_date: string;
   };
   socios: {
     legal_name: string;
@@ -55,6 +60,8 @@ export type ContractPayload = {
     display_name: string;
     email: string;
     is_legal_entity: boolean;
+    is_individual: boolean;
+    signatory: { full_name: string; title: string };
     legal_name: string | null;
     trade_name: string | null;
     primary_tax_id_label: string | null;

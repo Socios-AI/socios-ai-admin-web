@@ -92,6 +92,8 @@ export async function createPartnerInviteAction(input: unknown): Promise<CreateP
       contractId,
       input: {
         invitationId,
+        contractId,
+        generatedDate: new Date().toISOString().slice(0, 10),
         counterparty: {
           display_name: data.fullName,
           email: data.email,

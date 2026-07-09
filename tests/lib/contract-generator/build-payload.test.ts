@@ -5,6 +5,8 @@ import type { BuildContractInput } from "../../../lib/contract-generator/types";
 
 const brCompany: BuildContractInput = {
   invitationId: "inv-1",
+  contractId: "92a6fe79-9ec9-442b-b0cc-aa825f2fc850",
+  generatedDate: "2026-07-09",
   counterparty: {
     display_name: "Salão Beleza LTDA",
     email: "dono@example.com",
@@ -109,5 +111,46 @@ describe("buildContractPayload", () => {
     expect(res.ok).toBe(false);
     if (res.ok) return;
     expect(res.reason).toBe("MISSING_FIELD");
+  });
+
+  it("gera document_id determinístico SAI-{PAÍS}-{ANO}-{8hex}", () => {
+    const b = buildContractPayload(brCompany);
+    if (!b.ok) throw new Error("build falhou");
+    expect(b.payload.agreement.document_id).toBe("SAI-BR-2026-92a6fe79");
+  });
+
+  it("effective_date é a data de geração passada", () => {
+    const b = buildContractPayload(brCompany);
+    if (!b.ok) throw new Error("build falhou");
+    expect(b.payload.agreement.effective_date).toBe("2026-07-09");
+  });
+
+  it("PJ: signatory usa legal_rep_name + signatory_title informado", () => {
+    const b = buildContractPayload({
+      ...brCompany,
+      counterparty: { ...brCompany.counterparty, legal_rep_name: "Antonio Sanches", signatory_title: "Sócio Administrador" },
+    });
+    if (!b.ok) throw new Error("build falhou");
+    expect(b.payload.counterparty.signatory).toEqual({ full_name: "Antonio Sanches", title: "Sócio Administrador" });
+    expect(b.payload.counterparty.is_individual).toBe(false);
+  });
+
+  it("PJ: signatory_title vazio cai no fallback 'Legal Representative'", () => {
+    const b = buildContractPayload({
+      ...brCompany,
+      counterparty: { ...brCompany.counterparty, legal_rep_name: "Antonio Sanches", signatory_title: undefined },
+    });
+    if (!b.ok) throw new Error("build falhou");
+    expect(b.payload.counterparty.signatory.title).toBe("Legal Representative");
+  });
+
+  it("PF: signatory é o próprio titular", () => {
+    const b = buildContractPayload({
+      ...brCompany,
+      counterparty: { ...brCompany.counterparty, person_type: "individual", company_legal_name: undefined, display_name: "Maria Souza" },
+    });
+    if (!b.ok) throw new Error("build falhou");
+    expect(b.payload.counterparty.signatory).toEqual({ full_name: "Maria Souza", title: "Holder" });
+    expect(b.payload.counterparty.is_individual).toBe(true);
   });
 });
