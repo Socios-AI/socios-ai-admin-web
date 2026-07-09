@@ -1,8 +1,10 @@
 # MASTER SOFTWARE LICENSE, COMMERCIAL PARTNERSHIP AND CONFIDENTIALITY AGREEMENT
 
-**Template Version:** `{{agreement.version}}`  
-**Controlling Language:** `{{agreement.controlling_language}}`  
-**Reference Language:** `{{agreement.reference_language}}`
+**Document ID:** {{agreement.document_id}}  
+**Effective Date:** {{agreement.effective_date}}  
+**Template Version:** {{agreement.version}}  
+**Controlling Language:** {{agreement.controlling_language}}  
+{{#if agreement.reference_language}}**Reference Language:** {{agreement.reference_language}}  {{/if}}
 
 This Master Software License, Commercial Partnership and Confidentiality Agreement (the **"Agreement"**) is entered into as of the date of electronic acceptance by the Receiving Party by and between:
 
@@ -15,11 +17,11 @@ This Master Software License, Commercial Partnership and Confidentiality Agreeme
 ### 1.2 Receiving Party / Partner
 
 {{#if counterparty.is_legal_entity}}
-**{{counterparty.legal_name}}**, {{counterparty.primary_tax_id_label}} No. **{{counterparty.primary_tax_id_value}}**, with registered address at {{counterparty.address_full}}, represented by {{counterparty.legal_rep_name}}, email {{counterparty.email}} (the **"Receiving Party"** or **"Partner"**).
+**{{counterparty.legal_name}}**{{#if counterparty.primary_tax_id_value}}, {{counterparty.primary_tax_id_label}} No. {{counterparty.primary_tax_id_value}}{{/if}}{{#if counterparty.address_full}}, with registered address at {{counterparty.address_full}}{{/if}}, represented by {{counterparty.signatory.full_name}}, {{counterparty.signatory.title}}, email {{counterparty.email}} (the **"Receiving Party"** or **"Partner"**).
 {{/if}}
 
 {{#unless counterparty.is_legal_entity}}
-**{{counterparty.display_name}}**, {{counterparty.primary_tax_id_label}} No. **{{counterparty.primary_tax_id_value}}**, residing at {{counterparty.address_full}}, email {{counterparty.email}} (the **"Receiving Party"** or **"Partner"**).
+**{{counterparty.display_name}}**{{#if counterparty.primary_tax_id_value}}, {{counterparty.primary_tax_id_label}} No. {{counterparty.primary_tax_id_value}}{{/if}}{{#if counterparty.address_full}}, residing at {{counterparty.address_full}}{{/if}}, email {{counterparty.email}} (the **"Receiving Party"** or **"Partner"**).
 {{/unless}}
 
 The Company and the Receiving Party are individually referred to as a **"Party"** and collectively as the **"Parties"**.
@@ -139,11 +141,11 @@ This Agreement, the Commercial Terms Schedule, Data Processing Addendum, Country
 ## 24. Signature Blocks
 
 **SOCIOS A.I USA LLC**  
-By: `{{socios.authorized_representative}}`  
+By: {{socios.authorized_representative}}  
 Title: Authorized Representative  
 Date: ____________________
 
 **{{counterparty.display_name}}**  
-By: `{{#if counterparty.legal_rep_name}}{{counterparty.legal_rep_name}}{{else}}{{counterparty.display_name}}{{/if}}`  
-Title: ____________________  
+By: {{counterparty.signatory.full_name}}  
+Title: {{counterparty.signatory.title}}  
 Date: ____________________

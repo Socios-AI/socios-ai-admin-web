@@ -41,5 +41,7 @@ The Company shall not use customer personal data submitted through the platform 
 
 ## 10. Regional Modules
 
-- Brazil/LGPD Module: `{{#if agreement.reference_language}}attached{{/if}}`
-- U.S. Privacy Module: `{{#unless agreement.reference_language}}attached{{/unless}}`
+{{#if agreement.reference_language}}- Brazil/LGPD Module: attached
+{{/if}}
+{{#unless agreement.reference_language}}- U.S. Privacy Module: attached
+{{/unless}}

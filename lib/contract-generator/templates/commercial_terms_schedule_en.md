@@ -8,7 +8,8 @@
 | Field | Value |
 |---|---|
 | Partner Name | `{{counterparty.display_name}}` |
-| {{counterparty.primary_tax_id_label}} | `{{counterparty.primary_tax_id_value}}` |
+{{#if counterparty.primary_tax_id_value}}| {{counterparty.primary_tax_id_label}} | {{counterparty.primary_tax_id_value}} |
+{{/if}}
 | Territory | `{{commercial.territory}}` |
 | Exclusivity | `{{commercial.territory_exclusivity}}` |
 

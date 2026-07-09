@@ -59,4 +59,33 @@ describe("renderContractHtml", () => {
     const html = renderContractHtml(b.payload, { country: b.country, addenda: b.addenda });
     expect(html.toLowerCase()).toContain("data processing addendum");
   });
+
+  it("payload esparso (PF sem tax_id nem endereço) não gera artefato ****/crase/residing at ,", () => {
+    const b = buildContractPayload({
+      ...input,
+      counterparty: {
+        display_name: "Maria Souza", email: "maria@example.com", person_type: "individual", country: "BR",
+      },
+    });
+    if (!b.ok) throw new Error("build falhou");
+    const html = renderContractHtml(b.payload, { country: b.country, addenda: b.addenda });
+    expect(html).not.toContain("****");
+    expect(html).not.toContain("``");
+    expect(html).not.toMatch(/residing at\s*,/i);
+    expect(html).not.toMatch(/No\.\s*,/);
+    expect(html).not.toMatch(/\{\{/);
+  });
+
+  it("inclui signatário nomeado, document_id e effective_date", () => {
+    const b = buildContractPayload({
+      ...input,
+      counterparty: { ...input.counterparty, legal_rep_name: "Antonio Sanches", signatory_title: "Sócio Administrador" },
+    });
+    if (!b.ok) throw new Error("build falhou");
+    const html = renderContractHtml(b.payload, { country: b.country, addenda: b.addenda });
+    expect(html).toContain("Antonio Sanches");
+    expect(html).toContain("Sócio Administrador");
+    expect(html).toContain("SAI-BR-2026-92a6fe79");
+    expect(html).toContain("2026-07-09");
+  });
 });
