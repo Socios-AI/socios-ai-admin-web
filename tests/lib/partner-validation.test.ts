@@ -85,3 +85,18 @@ describe("prefillProfileSchema", () => {
     expect(prefillProfileSchema.safeParse(noPayout).success).toBe(true);
   });
 });
+
+describe("prefillProfileSchema · signatory_title", () => {
+  it("aceita signatory_title", () => {
+    const r = prefillProfileSchema.safeParse({
+      country: "BR", person_type: "company", company_legal_name: "ACME LTDA", signatory_title: "Sócio Administrador",
+    });
+    expect(r.success).toBe(true);
+    if (r.success) expect(r.data.signatory_title).toBe("Sócio Administrador");
+  });
+
+  it("signatory_title é opcional", () => {
+    const r = prefillProfileSchema.safeParse({ country: "BR", person_type: "individual" });
+    expect(r.success).toBe(true);
+  });
+});

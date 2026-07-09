@@ -63,6 +63,7 @@ export const partnerProfileSchema = z
     company_entity_type: optStr,
     legal_rep_name: optStr,
     legal_rep_tax_id: optStr,
+    signatory_title: z.string().trim().optional(),
     phone: z.string().trim().optional(),
     birth_date: optStr,
     address_postal_code: z.string().trim().optional(),

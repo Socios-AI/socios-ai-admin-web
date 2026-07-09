@@ -105,6 +105,7 @@ export async function createPartnerInviteAction(input: unknown): Promise<CreateP
           company_trade_name: cp.company_trade_name,
           legal_rep_name: cp.legal_rep_name,
           legal_rep_tax_id: cp.legal_rep_tax_id,
+          signatory_title: cp.signatory_title,
           phone: cp.phone,
           address_postal_code: cp.address_postal_code,
           address_line1: cp.address_line1,

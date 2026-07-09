@@ -14,6 +14,7 @@ export type ProfileValue = {
   company_entity_type: string;
   legal_rep_name: string;
   legal_rep_tax_id: string;
+  signatory_title: string;
   phone: string;
   birth_date: string;
   address_postal_code: string;
@@ -41,7 +42,7 @@ export type ProfileValue = {
 export const emptyProfileValue: ProfileValue = {
   country: "BR", person_type: "individual", tax_id: "",
   company_legal_name: "", company_trade_name: "", company_entity_type: "",
-  legal_rep_name: "", legal_rep_tax_id: "", phone: "", birth_date: "",
+  legal_rep_name: "", legal_rep_tax_id: "", signatory_title: "", phone: "", birth_date: "",
   address_postal_code: "", address_line1: "", address_number: "",
   address_complement: "", address_district: "", address_city: "",
   address_state: "", cnpj_status: "",
@@ -171,6 +172,7 @@ export function PartnerProfileFields({
           {!isBR && renderField("company_entity_type", "Entity type (LLC, C-Corp...)")}
           {isBR && renderField("legal_rep_name", "Responsável legal")}
           {isBR && renderField("legal_rep_tax_id", "CPF do responsável")}
+          {renderField("signatory_title", "Cargo de quem assina (ex.: Sócio Administrador)")}
         </div>
       )}
 
@@ -287,6 +289,7 @@ export function toProfilePayload(v: ProfileValue): Record<string, unknown> {
   put("company_entity_type", v.company_entity_type);
   put("legal_rep_name", v.legal_rep_name);
   put("legal_rep_tax_id", v.legal_rep_tax_id);
+  put("signatory_title", v.signatory_title);
   put("phone", v.phone);
   put("birth_date", v.birth_date);
   put("address_postal_code", v.address_postal_code);
