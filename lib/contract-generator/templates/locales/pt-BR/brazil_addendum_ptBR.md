@@ -33,7 +33,3 @@ A Parte Receptora não poderá fazer promessas de renda garantida, renda passiva
 ## 8. Tributos; Nota Fiscal
 
 O pagamento de comissões pode ser condicionado a nota fiscal/invoice válida ou outro documento exigido pela lei aplicável e pelos procedimentos de pagamento da Empresa. A Parte Receptora é a única responsável por tributos brasileiros, obrigações contábeis, licenças, registros, obrigações trabalhistas e compliance local.
-
----
-
-A Parte Receptora declara ciência de que atua de forma independente, sem vínculo empregatício, franquia, representação comercial, agência ou mandato, salvo se houver instrumento específico em sentido diverso. A Parte Receptora deverá cumprir a LGPD quando houver tratamento de dados pessoais no Brasil, bem como observar regras de marketing, proteção de consumidores, emissão de nota fiscal/invoice e proibição de promessas de renda ou retorno garantido.

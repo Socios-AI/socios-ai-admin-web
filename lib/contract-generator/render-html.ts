@@ -30,7 +30,8 @@ function brandCss(): string {
   const off = color("off_white", "#EDE7E6");
   return `
     ${fontFaceCss()}
-    @page { size: Letter; margin: 24mm 18mm; }
+    /* Margens reais vêm do page.pdf() em render-pdf.ts (fonte única). */
+    @page { size: Letter; }
     body { font-family: "Plus Jakarta Sans", Arial, Calibri, sans-serif; color: ${black}; font-size: 10.5pt; line-height: 1.5; }
     /* Anti-viúva: evita transbordo mínimo virando página quase vazia. */
     table { page-break-inside: avoid; }
@@ -40,6 +41,9 @@ function brandCss(): string {
     p, li { text-align: justify; hyphens: auto; }
     p { orphans: 3; widows: 3; }
     .signature p, .signature h2, .signature h3 { page-break-inside: avoid; }
+    /* Página de assinatura é bilíngue (EN+PT misturados): hifenização
+       automática usaria o dicionário errado em metade do texto. */
+    .signature p { hyphens: manual; }
     h1, h2, h3 { font-family: "Space Grotesk", Arial, sans-serif; }
     h1 { font-size: 17pt; border-bottom: 3px solid ${green}; padding-bottom: 6px; }
     h2 { font-size: 13pt; margin-top: 18px; }
@@ -62,11 +66,19 @@ function brandCss(): string {
 function coverHtml(payload: ContractPayload, country: ContractCountry): string {
   const a = payload.agreement;
   const c = payload.counterparty;
+  const esc = Handlebars.escapeExpression;
   const partnerName = c.is_legal_entity ? (c.legal_name ?? c.display_name) : c.display_name;
-  const row = (label: string, value: string) => `<tr><th>${label}</th><td>${value}</td></tr>`;
+  // Título da capa = H1 do master template (fonte única; texto jurídico pode
+  // mudar na revisão e a capa acompanha).
+  const title =
+    /^# (.+)$/m.exec(read("master_partner_agreement_en.md"))?.[1] ??
+    "MASTER SOFTWARE LICENSE, COMMERCIAL PARTNERSHIP AND CONFIDENTIALITY AGREEMENT";
+  // Valores do payload são controlados por input do convite: escapar tudo
+  // (fora daqui, quem escapa é o Handlebars nos templates).
+  const row = (label: string, value: string) => `<tr><th>${label}</th><td>${esc(value)}</td></tr>`;
   return `<section class="cover">
     <img src="${logoDataUri()}" alt="Sócios AI" />
-    <h1>MASTER SOFTWARE LICENSE, COMMERCIAL PARTNERSHIP AND CONFIDENTIALITY AGREEMENT</h1>
+    <h1>${esc(title)}</h1>
     <div class="meta"><table>
       ${row("Document ID", a.document_id)}
       ${row("Template Version", a.version)}

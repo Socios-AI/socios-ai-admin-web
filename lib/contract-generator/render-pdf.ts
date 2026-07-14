@@ -1,8 +1,5 @@
+import Handlebars from "handlebars";
 import { chromium } from "playwright";
-
-function escapeHtml(s: string): string {
-  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-}
 
 export async function renderContractPdf(
   html: string,
@@ -16,9 +13,15 @@ export async function renderContractPdf(
   try {
     const page = await browser.newPage();
     await page.setContent(html, { waitUntil: "networkidle" });
+    // As fontes da marca chegam por @font-face data-URI e carregam de forma
+    // assíncrona; networkidle não cobre a decodificação. Sem esta espera o
+    // PDF pode sair na fonte fallback em runner lento.
+    await page.evaluate(async () => {
+      await document.fonts.ready;
+    });
     // Page numbering lives here (footerTemplate), not in the document CSS:
     // Chromium's print-to-PDF does not support @page margin boxes.
-    const docId = opts?.documentId ? escapeHtml(opts.documentId) : "";
+    const docId = opts?.documentId ? Handlebars.escapeExpression(opts.documentId) : "";
     const pdf = await page.pdf({
       format: "Letter",
       printBackground: true,

@@ -106,6 +106,25 @@ describe("renderContractHtml", () => {
     expect(html).not.toContain("<footer>");
   });
 
+  it("capa escapa valores do payload (nome com < não injeta HTML)", () => {
+    const b = buildContractPayload({
+      ...input,
+      counterparty: { ...input.counterparty, display_name: "Serviços <Beta> LTDA", company_legal_name: "Serviços <Beta> LTDA" },
+    });
+    if (!b.ok) throw new Error("build falhou");
+    const html = renderContractHtml(b.payload, { country: b.country, addenda: b.addenda });
+    const cover = /<section class="cover">([\s\S]*?)<\/section>/.exec(html)?.[1] ?? "";
+    expect(cover).toContain("Serviços &lt;Beta&gt; LTDA");
+    expect(cover).not.toContain("<Beta>");
+  });
+
+  it("página de assinatura não hifeniza (conteúdo bilíngue)", () => {
+    const b = buildContractPayload(input);
+    if (!b.ok) throw new Error("build falhou");
+    const html = renderContractHtml(b.payload, { country: b.country, addenda: b.addenda });
+    expect(html).toMatch(/\.signature[^}]*hyphens: manual/);
+  });
+
   it("texto justificado com hifenização por idioma (EN na Parte I, PT na Parte II)", () => {
     const b = buildContractPayload(input);
     if (!b.ok) throw new Error("build falhou");
@@ -154,12 +173,14 @@ describe("renderContractHtml", () => {
     expect(html).toContain("DISCLOSING PARTY / PARTE REVELADORA");
   });
 
-  it("Parte I é EN-only: addendum Brasil sem seção PT embutida", () => {
+  it("Parte I é EN-only: nenhuma tradução de referência antes do PART II", () => {
     const b = buildContractPayload(input);
     if (!b.ok) throw new Error("build falhou");
     const html = renderContractHtml(b.payload, { country: b.country, addenda: b.addenda });
     expect(html.toLowerCase()).toContain("brazil addendum");
-    expect(html).not.toContain("ADITIVO BRASIL - TRADUÇÃO DE REFERÊNCIA");
+    const partI = html.slice(html.indexOf("PART I"), html.indexOf("PART II"));
+    expect(partI.length).toBeGreaterThan(1000);
+    expect(partI.toUpperCase()).not.toContain("TRADUÇÃO DE REFERÊNCIA");
   });
 
   it("BR: Parte II PT presente com notice e seções espelhadas", () => {
