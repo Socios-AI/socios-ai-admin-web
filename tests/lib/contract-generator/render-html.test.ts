@@ -76,6 +76,36 @@ describe("renderContractHtml", () => {
     expect(html).not.toMatch(/\{\{/);
   });
 
+  it("capa: logo data URI + metadados na seção .cover", () => {
+    const b = buildContractPayload(input);
+    if (!b.ok) throw new Error("build falhou");
+    const html = renderContractHtml(b.payload, { country: b.country, addenda: b.addenda });
+    const cover = /<section class="cover">([\s\S]*?)<\/section>/.exec(html)?.[1] ?? "";
+    expect(cover).toContain("data:image/png;base64,");
+    expect(cover).toContain("SAI-BR-2026-92a6fe79");
+    expect(cover).toContain("2026-07-09");
+    expect(cover).toContain("SOCIOS A.I USA LLC");
+    expect(cover).toContain("Salão Beleza LTDA");
+  });
+
+  it("CSS: A4, fontes da marca embutidas como woff2", () => {
+    const b = buildContractPayload(input);
+    if (!b.ok) throw new Error("build falhou");
+    const html = renderContractHtml(b.payload, { country: b.country, addenda: b.addenda });
+    expect(html).toContain("size: A4");
+    expect(html).toContain("data:font/woff2;base64,");
+    expect(html).toContain('"Space Grotesk"');
+    expect(html).toContain('"Plus Jakarta Sans"');
+    expect(html).toContain('"DM Mono"');
+  });
+
+  it("footer fixo antigo saiu do body (rodapé agora é do Playwright)", () => {
+    const b = buildContractPayload(input);
+    if (!b.ok) throw new Error("build falhou");
+    const html = renderContractHtml(b.payload, { country: b.country, addenda: b.addenda });
+    expect(html).not.toContain("<footer>");
+  });
+
   it("inclui signatário nomeado, document_id e effective_date", () => {
     const b = buildContractPayload({
       ...input,

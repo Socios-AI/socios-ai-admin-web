@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import Handlebars from "handlebars";
 import { marked } from "marked";
+import { fontFaceCss, logoDataUri } from "./assets";
 import type { ContractCountry, ContractPayload } from "./types";
 
 const DIR = join(process.cwd(), "lib/contract-generator/templates");
@@ -19,22 +20,56 @@ function mdToHtml(md: string): string {
 }
 
 function brandCss(): string {
+  // brand_tokens.json usa o shape do kit: { brand: { colors: { black: { hex } } } }.
   const tokens = JSON.parse(read("brand_tokens.json")) as {
-    colors?: Record<string, string>;
+    brand?: { colors?: Record<string, { hex?: string }> };
   };
-  const black = tokens.colors?.black ?? "#000000";
-  const green = tokens.colors?.green ?? "#8DF78D";
-  const off = tokens.colors?.offwhite ?? "#EDE7E6";
+  const color = (key: string, fallback: string) => tokens.brand?.colors?.[key]?.hex ?? fallback;
+  const black = color("black", "#000000");
+  const green = color("prosperity_green", "#8DF78D");
+  const off = color("off_white", "#EDE7E6");
   return `
-    @page { margin: 24mm 18mm; }
-    body { font-family: Arial, Calibri, sans-serif; color: ${black}; font-size: 11pt; line-height: 1.5; }
-    h1 { font-size: 18pt; border-bottom: 3px solid ${green}; padding-bottom: 6px; }
-    h2 { font-size: 14pt; margin-top: 18px; }
-    h3 { font-size: 12pt; }
-    .cover { background: ${off}; padding: 24px; }
+    ${fontFaceCss()}
+    @page { size: A4; margin: 24mm 18mm; }
+    body { font-family: "Plus Jakarta Sans", Arial, Calibri, sans-serif; color: ${black}; font-size: 10.5pt; line-height: 1.5; }
+    h1, h2, h3 { font-family: "Space Grotesk", Arial, sans-serif; }
+    h1 { font-size: 17pt; border-bottom: 3px solid ${green}; padding-bottom: 6px; }
+    h2 { font-size: 13pt; margin-top: 18px; }
+    h3 { font-size: 11pt; }
+    code { font-family: "DM Mono", Consolas, monospace; font-size: 9.5pt; }
+    table { border-collapse: collapse; }
+    th, td { border: 1px solid #ccc; padding: 4px 8px; }
+    th { background: ${off}; text-align: left; }
+    .cover { page-break-after: always; padding-top: 36mm; }
+    .cover img { height: 40px; }
+    .cover h1 { border-bottom: none; font-size: 22pt; margin-top: 28mm; }
+    .cover .meta { background: ${off}; border-top: 4px solid ${green}; margin-top: 22mm; padding: 18px 22px; }
+    .cover .meta table { width: 100%; font-family: "DM Mono", Consolas, monospace; font-size: 9.5pt; }
+    .cover .meta th, .cover .meta td { border: none; padding: 5px 8px; }
+    .cover .meta th { background: none; white-space: nowrap; color: #444; font-weight: 400; }
     .addendum { page-break-before: always; }
-    footer { position: fixed; bottom: 0; font-size: 8pt; color: #666; }
   `;
+}
+
+function coverHtml(payload: ContractPayload, country: ContractCountry): string {
+  const a = payload.agreement;
+  const c = payload.counterparty;
+  const partnerName = c.is_legal_entity ? (c.legal_name ?? c.display_name) : c.display_name;
+  const row = (label: string, value: string) => `<tr><th>${label}</th><td>${value}</td></tr>`;
+  return `<section class="cover">
+    <img src="${logoDataUri()}" alt="Sócios AI" />
+    <h1>MASTER SOFTWARE LICENSE, COMMERCIAL PARTNERSHIP AND CONFIDENTIALITY AGREEMENT</h1>
+    <div class="meta"><table>
+      ${row("Document ID", a.document_id)}
+      ${row("Template Version", a.version)}
+      ${row("Effective Date", a.effective_date)}
+      ${row("Disclosing Party", payload.socios.legal_name)}
+      ${row("Receiving Party", partnerName)}
+      ${row("Country / Route", country)}
+      ${row("Controlling Language", a.controlling_language)}
+      ${a.reference_language ? row("Reference Language", a.reference_language) : ""}
+    </table></div>
+  </section>`;
 }
 
 export function renderContractHtml(
@@ -42,6 +77,7 @@ export function renderContractHtml(
   opts: { country: ContractCountry; addenda: string[] },
 ): string {
   const sections: string[] = [];
+  sections.push(coverHtml(payload, opts.country));
   sections.push(mdToHtml(Handlebars.compile(read("master_partner_agreement_en.md"))(payload)));
   sections.push(`<div class="addendum">${mdToHtml(Handlebars.compile(read("commercial_terms_schedule_en.md"))(payload))}</div>`);
 
@@ -54,8 +90,10 @@ export function renderContractHtml(
   // via {{#unless agreement.reference_language}}.
   sections.push(`<div class="addendum">${mdToHtml(Handlebars.compile(read("global_dpa_base_en.md"))(payload))}</div>`);
 
+  // Rodapé (Confidential + Document ID + página N/M) é responsabilidade do
+  // footerTemplate do Playwright em render-pdf.ts; Chromium não suporta
+  // @page margin boxes, então nada de footer fixo aqui.
   return `<!doctype html><html><head><meta charset="utf-8"><style>${brandCss()}</style></head>
     <body>${sections.join("\n")}
-    <footer>Confidential | SOCIOS A.I USA LLC</footer>
     </body></html>`;
 }

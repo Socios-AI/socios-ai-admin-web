@@ -17,7 +17,7 @@ export async function generateAndStoreContract(args: {
 
   try {
     const html = renderContractHtml(built.payload, { country: built.country, addenda: built.addenda });
-    const pdf = await renderContractPdf(html);
+    const pdf = await renderContractPdf(html, { documentId: built.payload.agreement.document_id });
     const storagePath = await storeGeneratedPdf(args.contractId, pdf);
     return {
       ok: true,
