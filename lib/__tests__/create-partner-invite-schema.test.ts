@@ -6,10 +6,18 @@ describe("createPartnerInviteSchema", () => {
   it("aceita payload válido sem upline", () => {
     expect(createPartnerInviteSchema.safeParse(base).success).toBe(true);
   });
-  it("aceita os três papéis", () => {
-    for (const targetRole of ["licenciado", "representante", "embaixador"]) {
+  it("aceita os três papéis (licenciado exige dados do contrato · trava F3)", () => {
+    for (const targetRole of ["representante", "embaixador"]) {
       expect(createPartnerInviteSchema.safeParse({ ...base, targetRole }).success).toBe(true);
     }
+    expect(createPartnerInviteSchema.safeParse({ ...base, targetRole: "licenciado" }).success).toBe(false);
+    expect(
+      createPartnerInviteSchema.safeParse({
+        ...base,
+        targetRole: "licenciado",
+        contractProfile: { country: "BR", person_type: "company", company_legal_name: "X LTDA" },
+      }).success,
+    ).toBe(true);
   });
   it("rejeita papel inválido (afiliado)", () => {
     expect(createPartnerInviteSchema.safeParse({ ...base, targetRole: "afiliado" }).success).toBe(false);

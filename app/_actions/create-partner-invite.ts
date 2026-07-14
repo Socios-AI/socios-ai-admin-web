@@ -6,7 +6,8 @@ import { getSupabaseAdminClient } from "@socios-ai/auth/admin";
 import { requireRegistrarOrAdminAAL2 } from "@/lib/auth";
 import { createPartnerInviteSchema } from "@/lib/validation";
 import { generateAndStoreContract } from "@/lib/contract-generator/generate-and-store";
-import { TEMPLATE_VERSION } from "@/lib/contract-generator/build-payload";
+import { buildContractPayload, TEMPLATE_VERSION } from "@/lib/contract-generator/build-payload";
+import type { BuildContractInput } from "@/lib/contract-generator/types";
 import { partnerOnboardingUrl } from "@/lib/partner-invite-url";
 
 export type CreatePartnerInviteResult =
@@ -64,31 +65,15 @@ export async function createPartnerInviteAction(input: unknown): Promise<CreateP
   const tierTarget = data.targetRole === "licenciado" ? "licensee" : "reseller";
   const expiresAt = new Date(Date.now() + expiresInDays * 86400_000).toISOString();
 
-  const { error: insErr } = await sb.from("partner_invitations").insert({
-    id: invitationId,
-    email: data.email,
-    full_name: data.fullName,
-    target_role: data.targetRole,
-    tier_target: tierTarget,
-    introduced_by_partner_id: data.introducedByPartnerId ?? null,
-    invite_token: inviteToken,
-    expires_at: expiresAt,
-    status: "sent",
-    custom_commission_pct: commissionPct,
-  });
-  if (insErr) {
-    if (insErr.code === "23505") return { ok: false, error: "VALIDATION", message: insErr.message };
-    return { ok: false, error: "API_ERROR", message: insErr.message };
-  }
-
-  let prefillPersistError: string | null = null;
-
-  // Licenciado com dados do contrato: gera o PDF draft e grava partner_contracts.
+  // Trava F3: valida os dados do contrato (dry-run do build, função pura)
+  // ANTES de criar qualquer coisa. Convite de licenciado com dado faltando
+  // não nasce; a mensagem lista os campos que faltam.
+  let contractPlan: { contractId: string; input: BuildContractInput } | null = null;
   if (data.targetRole === "licenciado" && data.contractProfile) {
     const cp = data.contractProfile;
     const contractId = randomUUID();
     const effectiveLicenseUsd = data.licenseAmountUsd ?? 15000;
-    const gen = await generateAndStoreContract({
+    contractPlan = {
       contractId,
       input: {
         invitationId,
@@ -119,17 +104,48 @@ export async function createPartnerInviteAction(input: unknown): Promise<CreateP
         territory: data.territory ?? "Non-exclusive, no territorial restriction",
         commission: { negotiatedPct: commissionPct, recruitBonusPct: 0.5, residualOverridePct: 0.07 },
       },
-    });
+    };
+    const dryRun = buildContractPayload(contractPlan.input);
+    if (!dryRun.ok) {
+      return { ok: false, error: "VALIDATION", message: dryRun.message };
+    }
+  }
+
+  const { error: insErr } = await sb.from("partner_invitations").insert({
+    id: invitationId,
+    email: data.email,
+    full_name: data.fullName,
+    target_role: data.targetRole,
+    tier_target: tierTarget,
+    introduced_by_partner_id: data.introducedByPartnerId ?? null,
+    invite_token: inviteToken,
+    expires_at: expiresAt,
+    status: "sent",
+    custom_commission_pct: commissionPct,
+  });
+  if (insErr) {
+    if (insErr.code === "23505") return { ok: false, error: "VALIDATION", message: insErr.message };
+    return { ok: false, error: "API_ERROR", message: insErr.message };
+  }
+
+  let prefillPersistError: string | null = null;
+
+  // Licenciado: gera o PDF draft e grava partner_contracts. Os dados já
+  // passaram no dry-run acima; falha aqui é técnica (render/storage) e mantém
+  // o comportamento atual (convite criado + contrato generation_failed).
+  if (contractPlan && data.contractProfile) {
+    const cp = data.contractProfile;
+    const gen = await generateAndStoreContract(contractPlan);
 
     // Persiste o perfil no convite (materializado no aceite) e o registro do contrato.
     const { error: updErr } = await sb.from("partner_invitations").update({
       prefill_profile: cp,
-      license_amount_usd: effectiveLicenseUsd,
+      license_amount_usd: contractPlan.input.licenseAmountUsd,
     }).eq("id", invitationId);
     if (updErr) prefillPersistError = updErr.message;
 
     const { error: contractErr } = await sb.from("partner_contracts").insert({
-      id: contractId,
+      id: contractPlan.contractId,
       partner_invitation_id: invitationId,
       status: gen.ok ? "pending_review" : "generation_failed",
       country: cp.country,
