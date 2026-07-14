@@ -144,6 +144,40 @@ describe("renderContractHtml", () => {
     expect(html).not.toContain("ADITIVO BRASIL - TRADUÇÃO DE REFERÊNCIA");
   });
 
+  it("BR: Parte II PT presente com notice e seções espelhadas", () => {
+    const b = buildContractPayload(input);
+    if (!b.ok) throw new Error("build falhou");
+    const html = renderContractHtml(b.payload, { country: b.country, addenda: b.addenda });
+    expect(html).toContain("PART I");
+    expect(html).toContain("PART II");
+    expect(html).toContain("tradução de referência, fornecida para conveniência");
+    const up = html.toUpperCase();
+    expect(up).toContain("PROPRIEDADE INTELECTUAL");
+    expect(up).toContain("NÃO CIRCUNVENÇÃO");
+    expect(up).toContain("LEI APLICÁVEL E ARBITRAGEM INTERNACIONAL");
+    expect(up).toContain("ADITIVO BRASIL");
+    expect(up).toContain("CONDIÇÕES COMERCIAIS");
+    expect(up).toContain("TRATAMENTO DE DADOS");
+  });
+
+  it("BR: Parte II renderiza os dados do payload (não só o texto fixo)", () => {
+    const b = buildContractPayload(input);
+    if (!b.ok) throw new Error("build falhou");
+    const html = renderContractHtml(b.payload, { country: b.country, addenda: b.addenda });
+    const partII = html.slice(html.indexOf("PART II"));
+    expect(partII).toContain("Salão Beleza LTDA");
+    expect(partII).toContain("11444777000161");
+    expect(partII).toContain("SAI-BR-2026-92a6fe79");
+  });
+
+  it("US: sem Parte II nem qualquer tradução de referência", () => {
+    const b = buildContractPayload({ ...input, counterparty: { ...input.counterparty, country: "US", tax_id_type: "ein", tax_id: "12-3456789" } });
+    if (!b.ok) throw new Error("build falhou");
+    const html = renderContractHtml(b.payload, { country: b.country, addenda: b.addenda });
+    expect(html).not.toContain("PART II");
+    expect(html).not.toContain("TRADUÇÃO DE REFERÊNCIA");
+  });
+
   it("inclui signatário nomeado, document_id e effective_date", () => {
     const b = buildContractPayload({
       ...input,
