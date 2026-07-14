@@ -376,23 +376,33 @@ export type CreateOrgInput = z.infer<typeof createOrgSchema>;
 // =============================================================
 // Convite de parceiro unificado · /partners/invite
 // =============================================================
-export const createPartnerInviteSchema = z.object({
-  email: z.string().trim().email("Email inválido"),
-  fullName: z.string().trim().min(2, "Nome muito curto"),
-  targetRole: z.enum(["licenciado", "representante", "embaixador"]),
-  introducedByPartnerId: z.string().uuid("Parceiro inválido").optional(),
-  expiresInDays: z.number().int().min(1).max(30).optional(),
-  commissionPct: z
-    .number()
-    .min(0, "Comissão deve ser >= 0")
-    .max(1, "Comissão deve ser <= 1")
-    .optional(),
-  // Bloco de contrato (só usado quando targetRole=licenciado). Opcional para
-  // manter retrocompatibilidade dos convites sem contrato.
-  licenseAmountUsd: z.number().positive("Valor deve ser positivo").max(1_000_000).optional(),
-  territory: z.string().trim().min(1).max(200).optional(),
-  contractProfile: prefillProfileSchema.optional(),
-});
+export const createPartnerInviteSchema = z
+  .object({
+    email: z.string().trim().email("Email inválido"),
+    fullName: z.string().trim().min(2, "Nome muito curto"),
+    targetRole: z.enum(["licenciado", "representante", "embaixador"]),
+    introducedByPartnerId: z.string().uuid("Parceiro inválido").optional(),
+    expiresInDays: z.number().int().min(1).max(30).optional(),
+    commissionPct: z
+      .number()
+      .min(0, "Comissão deve ser >= 0")
+      .max(1, "Comissão deve ser <= 1")
+      .optional(),
+    // Bloco de contrato: obrigatório pra licenciado (trava F3, superRefine
+    // abaixo); os demais papéis não têm contrato.
+    licenseAmountUsd: z.number().positive("Valor deve ser positivo").max(1_000_000).optional(),
+    territory: z.string().trim().min(1).max(200).optional(),
+    contractProfile: prefillProfileSchema.optional(),
+  })
+  .superRefine((v, ctx) => {
+    if (v.targetRole === "licenciado" && !v.contractProfile) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["contractProfile"],
+        message: "Convite de licenciado exige os dados do contrato.",
+      });
+    }
+  });
 
 export type CreatePartnerInviteInput = z.infer<typeof createPartnerInviteSchema>;
 

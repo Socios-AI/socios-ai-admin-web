@@ -4,8 +4,16 @@ import { createPartnerInviteSchema } from "../../lib/validation";
 const baseValid = { email: "a@b.com", fullName: "Ana Silva", targetRole: "licenciado" as const };
 
 describe("createPartnerInviteSchema · contrato", () => {
-  it("aceita convite sem bloco de contrato (retrocompatível)", () => {
-    expect(createPartnerInviteSchema.safeParse(baseValid).success).toBe(true);
+  it("licenciado SEM dados de contrato é rejeitado (F3)", () => {
+    const r = createPartnerInviteSchema.safeParse(baseValid);
+    expect(r.success).toBe(false);
+    if (r.success) return;
+    expect(r.error.issues[0]?.message).toContain("dados do contrato");
+  });
+
+  it("representante/embaixador sem contrato seguem aceitos", () => {
+    expect(createPartnerInviteSchema.safeParse({ ...baseValid, targetRole: "representante" }).success).toBe(true);
+    expect(createPartnerInviteSchema.safeParse({ ...baseValid, targetRole: "embaixador" }).success).toBe(true);
   });
 
   it("aceita bloco de contrato válido para licenciado", () => {
