@@ -88,11 +88,11 @@ describe("renderContractHtml", () => {
     expect(cover).toContain("Salão Beleza LTDA");
   });
 
-  it("CSS: A4, fontes da marca embutidas como woff2", () => {
+  it("CSS: Carta (Letter), fontes da marca embutidas como woff2", () => {
     const b = buildContractPayload(input);
     if (!b.ok) throw new Error("build falhou");
     const html = renderContractHtml(b.payload, { country: b.country, addenda: b.addenda });
-    expect(html).toContain("size: A4");
+    expect(html).toContain("size: Letter");
     expect(html).toContain("data:font/woff2;base64,");
     expect(html).toContain('"Space Grotesk"');
     expect(html).toContain('"Plus Jakarta Sans"');
@@ -104,6 +104,14 @@ describe("renderContractHtml", () => {
     if (!b.ok) throw new Error("build falhou");
     const html = renderContractHtml(b.payload, { country: b.country, addenda: b.addenda });
     expect(html).not.toContain("<footer>");
+  });
+
+  it("CSS anti-viúva: tabelas/headings não quebram e geram página quase vazia", () => {
+    const b = buildContractPayload(input);
+    if (!b.ok) throw new Error("build falhou");
+    const html = renderContractHtml(b.payload, { country: b.country, addenda: b.addenda });
+    expect(html).toContain("page-break-inside: avoid");
+    expect(html).toContain("page-break-after: avoid");
   });
 
   it("assinatura: página dedicada bilíngue, sem bloco embutido no master", () => {

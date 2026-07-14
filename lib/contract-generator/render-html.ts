@@ -30,8 +30,13 @@ function brandCss(): string {
   const off = color("off_white", "#EDE7E6");
   return `
     ${fontFaceCss()}
-    @page { size: A4; margin: 24mm 18mm; }
+    @page { size: Letter; margin: 24mm 18mm; }
     body { font-family: "Plus Jakarta Sans", Arial, Calibri, sans-serif; color: ${black}; font-size: 10.5pt; line-height: 1.5; }
+    /* Anti-viúva: evita transbordo mínimo virando página quase vazia. */
+    table { page-break-inside: avoid; }
+    h1, h2, h3 { page-break-after: avoid; page-break-inside: avoid; }
+    p { orphans: 3; widows: 3; }
+    .signature p, .signature h2, .signature h3 { page-break-inside: avoid; }
     h1, h2, h3 { font-family: "Space Grotesk", Arial, sans-serif; }
     h1 { font-size: 17pt; border-bottom: 3px solid ${green}; padding-bottom: 6px; }
     h2 { font-size: 13pt; margin-top: 18px; }
@@ -110,7 +115,7 @@ export function renderContractHtml(
 
   // Página de assinatura bilíngue dedicada, sempre a última seção do pacote
   // (o master não tem mais bloco de assinatura embutido).
-  sections.push(`<div class="addendum">${mdToHtml(Handlebars.compile(read("signature_page.md"))(payload))}</div>`);
+  sections.push(`<div class="addendum signature">${mdToHtml(Handlebars.compile(read("signature_page.md"))(payload))}</div>`);
 
   // Rodapé (Confidential + Document ID + página N/M) é responsabilidade do
   // footerTemplate do Playwright em render-pdf.ts; Chromium não suporta
