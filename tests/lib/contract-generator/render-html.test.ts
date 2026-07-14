@@ -106,6 +106,16 @@ describe("renderContractHtml", () => {
     expect(html).not.toContain("<footer>");
   });
 
+  it("texto justificado com hifenização por idioma (EN na Parte I, PT na Parte II)", () => {
+    const b = buildContractPayload(input);
+    if (!b.ok) throw new Error("build falhou");
+    const html = renderContractHtml(b.payload, { country: b.country, addenda: b.addenda });
+    expect(html).toContain("text-align: justify");
+    expect(html).toContain("hyphens: auto");
+    expect(html).toContain('lang="en"');
+    expect(html).toContain('lang="pt-BR"');
+  });
+
   it("CSS anti-viúva: tabelas/headings não quebram e geram página quase vazia", () => {
     const b = buildContractPayload(input);
     if (!b.ok) throw new Error("build falhou");
