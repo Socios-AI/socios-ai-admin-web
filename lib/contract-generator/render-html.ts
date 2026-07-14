@@ -81,8 +81,10 @@ export function renderContractHtml(
   sections.push(mdToHtml(Handlebars.compile(read("master_partner_agreement_en.md"))(payload)));
   sections.push(`<div class="addendum">${mdToHtml(Handlebars.compile(read("commercial_terms_schedule_en.md"))(payload))}</div>`);
 
+  // O token de routing continua BRAZIL_ADDENDUM_EN_PTBR (contrato bilíngue no
+  // pacote); o arquivo em si é só EN, a tradução PT vive na Parte II.
   if (opts.addenda.includes("BRAZIL_ADDENDUM_EN_PTBR")) {
-    sections.push(`<div class="addendum">${mdToHtml(Handlebars.compile(read("brazil_addendum_en_ptbr.md"))(payload))}</div>`);
+    sections.push(`<div class="addendum">${mdToHtml(Handlebars.compile(read("brazil_addendum_en.md"))(payload))}</div>`);
   }
   // DPA é obrigatório sempre que há processamento de dados pessoais (§13 do master
   // agreement), não só quando um addendum específico (ex.: LGPD_DPA) está presente.

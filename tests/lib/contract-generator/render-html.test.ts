@@ -136,6 +136,14 @@ describe("renderContractHtml", () => {
     expect(html).toContain("DISCLOSING PARTY / PARTE REVELADORA");
   });
 
+  it("Parte I é EN-only: addendum Brasil sem seção PT embutida", () => {
+    const b = buildContractPayload(input);
+    if (!b.ok) throw new Error("build falhou");
+    const html = renderContractHtml(b.payload, { country: b.country, addenda: b.addenda });
+    expect(html.toLowerCase()).toContain("brazil addendum");
+    expect(html).not.toContain("ADITIVO BRASIL - TRADUÇÃO DE REFERÊNCIA");
+  });
+
   it("inclui signatário nomeado, document_id e effective_date", () => {
     const b = buildContractPayload({
       ...input,

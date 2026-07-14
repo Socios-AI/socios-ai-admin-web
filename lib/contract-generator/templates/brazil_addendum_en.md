@@ -33,11 +33,3 @@ The Receiving Party shall not make promises of guaranteed income, passive income
 ## 8. Taxes; Invoice
 
 Payment of commissions may be conditioned on valid invoice/nota fiscal or other document required by applicable law and the Company's payment procedures. The Receiving Party is solely responsible for Brazilian taxes, accounting obligations, licenses, registrations, labor obligations, and local compliance.
-
----
-
-# ADITIVO BRASIL - TRADUÇÃO DE REFERÊNCIA
-
-Este Aditivo Brasil é fornecido também em português para transparência e compreensão da Parte Receptora. A versão em inglês prevalece, salvo quando norma obrigatória brasileira exigir tratamento diverso.
-
-A Parte Receptora declara ciência de que atua de forma independente, sem vínculo empregatício, franquia, representação comercial, agência ou mandato, salvo se houver instrumento específico em sentido diverso. A Parte Receptora deverá cumprir a LGPD quando houver tratamento de dados pessoais no Brasil, bem como observar regras de marketing, proteção de consumidores, emissão de nota fiscal/invoice e proibição de promessas de renda ou retorno garantido.
