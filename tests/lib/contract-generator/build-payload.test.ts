@@ -28,6 +28,76 @@ const brCompany: BuildContractInput = {
   commission: { negotiatedPct: null, recruitBonusPct: 0.5, residualOverridePct: 0.07 },
 };
 
+describe("buildContractPayload · trava de dados completos (F3)", () => {
+  it("falta tax_id → MISSING_FIELD nomeando o documento", () => {
+    const b = buildContractPayload({
+      ...brCompany,
+      counterparty: { ...brCompany.counterparty, tax_id: undefined },
+    });
+    expect(b.ok).toBe(false);
+    if (b.ok) return;
+    expect(b.reason).toBe("MISSING_FIELD");
+    expect(b.message).toContain("CNPJ");
+  });
+
+  it("falta endereço inteiro → lista logradouro, cidade, UF e CEP", () => {
+    const b = buildContractPayload({
+      ...brCompany,
+      counterparty: {
+        ...brCompany.counterparty,
+        address_line1: undefined, address_city: undefined, address_state: undefined, address_postal_code: undefined,
+      },
+    });
+    expect(b.ok).toBe(false);
+    if (b.ok) return;
+    expect(b.reason).toBe("MISSING_FIELD");
+    for (const campo of ["logradouro", "cidade", "UF", "CEP"]) {
+      expect(b.message).toContain(campo);
+    }
+  });
+
+  it("PJ sem legal_rep_name → exige representante legal", () => {
+    const b = buildContractPayload({
+      ...brCompany,
+      counterparty: { ...brCompany.counterparty, legal_rep_name: undefined },
+    });
+    expect(b.ok).toBe(false);
+    if (b.ok) return;
+    expect(b.message).toContain("representante legal");
+  });
+
+  it("PF completa não exige representante legal", () => {
+    const b = buildContractPayload({
+      ...brCompany,
+      counterparty: {
+        ...brCompany.counterparty,
+        person_type: "individual", company_legal_name: undefined, legal_rep_name: undefined,
+        display_name: "Maria Souza", tax_id: "39053344705", tax_id_type: "cpf",
+      },
+    });
+    expect(b.ok).toBe(true);
+  });
+
+  it("coleta TODOS os faltantes numa única mensagem", () => {
+    const b = buildContractPayload({
+      ...brCompany,
+      counterparty: {
+        ...brCompany.counterparty,
+        tax_id: undefined, legal_rep_name: undefined, address_city: undefined,
+      },
+    });
+    expect(b.ok).toBe(false);
+    if (b.ok) return;
+    expect(b.message).toContain("CNPJ");
+    expect(b.message).toContain("representante legal");
+    expect(b.message).toContain("cidade");
+  });
+
+  it("input completo segue ok", () => {
+    expect(buildContractPayload(brCompany).ok).toBe(true);
+  });
+});
+
 describe("resolveRouting", () => {
   it("BR → Brazil addendum + LGPD DPA + tradução pt-BR", () => {
     const r = resolveRouting("BR");

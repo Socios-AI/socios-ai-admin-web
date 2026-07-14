@@ -10,7 +10,8 @@ const input: BuildContractInput = {
   counterparty: {
     display_name: "Salão Beleza LTDA", email: "dono@example.com", person_type: "company", country: "BR",
     tax_id: "11444777000161", tax_id_type: "cnpj", company_legal_name: "Salão Beleza LTDA",
-    legal_rep_name: "Antonio Sanches", address_city: "São Paulo", address_state: "SP",
+    legal_rep_name: "Antonio Sanches", address_line1: "Av Paulista", address_number: "1000",
+    address_city: "São Paulo", address_state: "SP", address_postal_code: "01310100",
   },
   licenseAmountUsd: 15000, territory: "Non-exclusive, no territorial restriction",
   commission: { negotiatedPct: null, recruitBonusPct: 0.5, residualOverridePct: 0.07 },
@@ -61,13 +62,20 @@ describe("renderContractHtml", () => {
   });
 
   it("payload esparso (PF sem tax_id nem endereço) não gera artefato ****/crase/residing at ,", () => {
+    // A F3 travou o build pra dados incompletos; a robustez dos templates
+    // contra campo vazio (F1) continua defendida montando o payload direto.
     const b = buildContractPayload({
       ...input,
       counterparty: {
-        display_name: "Maria Souza", email: "maria@example.com", person_type: "individual", country: "BR",
+        ...input.counterparty,
+        person_type: "individual", company_legal_name: undefined, legal_rep_name: undefined,
+        display_name: "Maria Souza", tax_id: "39053344705", tax_id_type: "cpf",
       },
     });
     if (!b.ok) throw new Error("build falhou");
+    b.payload.counterparty.primary_tax_id_value = null;
+    b.payload.counterparty.primary_tax_id_label = null;
+    b.payload.counterparty.address_full = "";
     const html = renderContractHtml(b.payload, { country: b.country, addenda: b.addenda });
     expect(html).not.toContain("****");
     expect(html).not.toContain("``");

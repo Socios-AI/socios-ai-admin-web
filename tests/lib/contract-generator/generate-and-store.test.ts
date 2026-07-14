@@ -13,7 +13,7 @@ const input: BuildContractInput = {
   invitationId: "inv-1",
   contractId: "92a6fe79-9ec9-442b-b0cc-aa825f2fc850",
   generatedDate: "2026-07-09",
-  counterparty: { display_name: "X LTDA", email: "d@e.com", person_type: "company", country: "BR", tax_id: "11444777000161", tax_id_type: "cnpj", company_legal_name: "X LTDA" },
+  counterparty: { display_name: "X LTDA", email: "d@e.com", person_type: "company", country: "BR", tax_id: "11444777000161", tax_id_type: "cnpj", company_legal_name: "X LTDA", legal_rep_name: "Antonio Sanches", address_line1: "Av Paulista", address_city: "São Paulo", address_state: "SP", address_postal_code: "01310100" },
   licenseAmountUsd: 15000, territory: "Non-exclusive, no territorial restriction",
   commission: { negotiatedPct: null, recruitBonusPct: 0.5, residualOverridePct: 0.07 },
 };

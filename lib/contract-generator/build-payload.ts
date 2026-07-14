@@ -57,11 +57,26 @@ export function buildContractPayload(input: BuildContractInput): BuildResult {
     return { ok: false, reason: "EXCLUSIVE_TERRITORY", message: "Território exclusivo exige revisão jurídica manual." };
   }
   const isCompany = c.person_type === "company";
-  if (isCompany && !c.company_legal_name) {
-    return { ok: false, reason: "MISSING_FIELD", message: "Razão social obrigatória para PJ." };
-  }
-  if (!c.display_name || !c.email) {
-    return { ok: false, reason: "MISSING_FIELD", message: "Nome e e-mail obrigatórios." };
+
+  // Trava de dados completos (F3): nunca gerar contrato com campo obrigatório
+  // faltando. Coleta TODOS os faltantes numa única mensagem amigável.
+  const blank = (v: string | undefined) => !v || v.trim() === "";
+  const missing: string[] = [];
+  if (blank(c.display_name)) missing.push("nome");
+  if (blank(c.email)) missing.push("e-mail");
+  if (isCompany && blank(c.company_legal_name)) missing.push("razão social");
+  if (isCompany && blank(c.legal_rep_name)) missing.push("representante legal");
+  if (blank(c.tax_id)) missing.push(taxIdLabel(c.country, c.person_type));
+  if (blank(c.address_line1)) missing.push("endereço (logradouro)");
+  if (blank(c.address_city)) missing.push("endereço (cidade)");
+  if (blank(c.address_state)) missing.push("endereço (UF/estado)");
+  if (blank(c.address_postal_code)) missing.push(c.country === "BR" ? "endereço (CEP)" : "endereço (ZIP)");
+  if (missing.length > 0) {
+    return {
+      ok: false,
+      reason: "MISSING_FIELD",
+      message: `Campos obrigatórios do contrato faltando: ${missing.join(", ")}.`,
+    };
   }
 
   const routing = resolveRouting(c.country);
