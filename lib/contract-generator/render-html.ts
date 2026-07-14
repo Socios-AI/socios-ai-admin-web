@@ -90,6 +90,10 @@ export function renderContractHtml(
   // via {{#unless agreement.reference_language}}.
   sections.push(`<div class="addendum">${mdToHtml(Handlebars.compile(read("global_dpa_base_en.md"))(payload))}</div>`);
 
+  // Página de assinatura bilíngue dedicada, sempre a última seção do pacote
+  // (o master não tem mais bloco de assinatura embutido).
+  sections.push(`<div class="addendum">${mdToHtml(Handlebars.compile(read("signature_page.md"))(payload))}</div>`);
+
   // Rodapé (Confidential + Document ID + página N/M) é responsabilidade do
   // footerTemplate do Playwright em render-pdf.ts; Chromium não suporta
   // @page margin boxes, então nada de footer fixo aqui.

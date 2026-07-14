@@ -106,6 +106,36 @@ describe("renderContractHtml", () => {
     expect(html).not.toContain("<footer>");
   });
 
+  it("assinatura: página dedicada bilíngue, sem bloco embutido no master", () => {
+    const b = buildContractPayload({
+      ...input,
+      counterparty: { ...input.counterparty, signatory_title: "Sócio Administrador" },
+    });
+    if (!b.ok) throw new Error("build falhou");
+    const html = renderContractHtml(b.payload, { country: b.country, addenda: b.addenda });
+    expect(html).not.toContain("Signature Blocks");
+    expect(html).toContain("DISCLOSING PARTY / PARTE REVELADORA");
+    expect(html).toContain("RECEIVING PARTY / PARTE RECEPTORA");
+    expect(html).toContain("Antonio Sanches");
+    expect(html).toContain("Sócio Administrador");
+    expect(html).toMatch(/Date \/ Data/);
+  });
+
+  it("assinatura: BR tem a declaração de ciência de idioma (S2)", () => {
+    const b = buildContractPayload(input);
+    if (!b.ok) throw new Error("build falhou");
+    const html = renderContractHtml(b.payload, { country: b.country, addenda: b.addenda });
+    expect(html).toContain("DECLARAÇÃO DE CIÊNCIA");
+  });
+
+  it("assinatura: US não tem o S2", () => {
+    const b = buildContractPayload({ ...input, counterparty: { ...input.counterparty, country: "US", tax_id_type: "ein", tax_id: "12-3456789" } });
+    if (!b.ok) throw new Error("build falhou");
+    const html = renderContractHtml(b.payload, { country: b.country, addenda: b.addenda });
+    expect(html).not.toContain("DECLARAÇÃO DE CIÊNCIA");
+    expect(html).toContain("DISCLOSING PARTY / PARTE REVELADORA");
+  });
+
   it("inclui signatário nomeado, document_id e effective_date", () => {
     const b = buildContractPayload({
       ...input,

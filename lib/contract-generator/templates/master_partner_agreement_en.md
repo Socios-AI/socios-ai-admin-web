@@ -136,16 +136,4 @@ The Company may provide a Portuguese or other local-language translation for con
 
 ## 23. Entire Agreement
 
-This Agreement, the Commercial Terms Schedule, Data Processing Addendum, Country-Specific Addenda, Partner Code of Conduct, Brand Guidelines, Acceptable Use Policy, and incorporated policies constitute the entire agreement between the Parties and supersede prior discussions relating to the subject matter hereof.
-
-## 24. Signature Blocks
-
-**SOCIOS A.I USA LLC**  
-By: {{socios.authorized_representative}}  
-Title: Authorized Representative  
-Date: ____________________
-
-**{{counterparty.display_name}}**  
-By: {{counterparty.signatory.full_name}}  
-Title: {{counterparty.signatory.title}}  
-Date: ____________________
+This Agreement, the Commercial Terms Schedule, Data Processing Addendum, Country-Specific Addenda, Partner Code of Conduct, Brand Guidelines, Acceptable Use Policy, and incorporated policies constitute the entire agreement between the Parties and supersede prior discussions relating to the subject matter hereof. The Parties execute this Agreement on the dedicated execution page at the end of this signing package.
