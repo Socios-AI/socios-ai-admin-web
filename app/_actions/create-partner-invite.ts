@@ -28,6 +28,61 @@ export async function createPartnerInviteAction(input: unknown): Promise<CreateP
   const sb = getSupabaseAdminClient();
 
   const commissionPct = data.commissionPct ?? null;
+  const invitationId = randomUUID();
+
+  // Trava F3: valida os dados do contrato (dry-run do build, função pura)
+  // ANTES de qualquer ida ao banco. Convite de licenciado com dado faltando
+  // não nasce; a mensagem lista os campos que faltam. Outras falhas do build
+  // (território exclusivo, país sem rota) NÃO bloqueiam aqui: seguem o fluxo
+  // de revisão manual (convite + contrato generation_failed), como prometido
+  // no hint do formulário.
+  let contractPlan: {
+    contractId: string;
+    profile: NonNullable<typeof data.contractProfile>;
+    input: BuildContractInput;
+  } | null = null;
+  if (data.targetRole === "licenciado" && data.contractProfile) {
+    const cp = data.contractProfile;
+    const contractId = randomUUID();
+    const effectiveLicenseUsd = data.licenseAmountUsd ?? 15000;
+    contractPlan = {
+      contractId,
+      profile: cp,
+      input: {
+        invitationId,
+        contractId,
+        generatedDate: new Date().toISOString().slice(0, 10),
+        counterparty: {
+          display_name: data.fullName,
+          email: data.email,
+          person_type: cp.person_type,
+          country: cp.country,
+          tax_id: cp.tax_id,
+          tax_id_type: cp.tax_id_type,
+          company_legal_name: cp.company_legal_name,
+          company_trade_name: cp.company_trade_name,
+          legal_rep_name: cp.legal_rep_name,
+          legal_rep_tax_id: cp.legal_rep_tax_id,
+          signatory_title: cp.signatory_title,
+          phone: cp.phone,
+          address_postal_code: cp.address_postal_code,
+          address_line1: cp.address_line1,
+          address_number: cp.address_number,
+          address_complement: cp.address_complement,
+          address_district: cp.address_district,
+          address_city: cp.address_city,
+          address_state: cp.address_state,
+        },
+        licenseAmountUsd: effectiveLicenseUsd,
+        territory: data.territory ?? "Non-exclusive, no territorial restriction",
+        commission: { negotiatedPct: commissionPct, recruitBonusPct: 0.5, residualOverridePct: 0.07 },
+      },
+    };
+    const dryRun = buildContractPayload(contractPlan.input);
+    if (!dryRun.ok && dryRun.reason === "MISSING_FIELD") {
+      return { ok: false, error: "VALIDATION", message: dryRun.message };
+    }
+  }
 
   // Valida o upline (se informado): precisa existir e estar ativo.
   if (data.introducedByPartnerId) {
@@ -61,55 +116,8 @@ export async function createPartnerInviteAction(input: unknown): Promise<CreateP
   }
 
   const inviteToken = randomBytes(24).toString("base64url");
-  const invitationId = randomUUID();
   const tierTarget = data.targetRole === "licenciado" ? "licensee" : "reseller";
   const expiresAt = new Date(Date.now() + expiresInDays * 86400_000).toISOString();
-
-  // Trava F3: valida os dados do contrato (dry-run do build, função pura)
-  // ANTES de criar qualquer coisa. Convite de licenciado com dado faltando
-  // não nasce; a mensagem lista os campos que faltam.
-  let contractPlan: { contractId: string; input: BuildContractInput } | null = null;
-  if (data.targetRole === "licenciado" && data.contractProfile) {
-    const cp = data.contractProfile;
-    const contractId = randomUUID();
-    const effectiveLicenseUsd = data.licenseAmountUsd ?? 15000;
-    contractPlan = {
-      contractId,
-      input: {
-        invitationId,
-        contractId,
-        generatedDate: new Date().toISOString().slice(0, 10),
-        counterparty: {
-          display_name: data.fullName,
-          email: data.email,
-          person_type: cp.person_type,
-          country: cp.country,
-          tax_id: cp.tax_id,
-          tax_id_type: cp.tax_id_type,
-          company_legal_name: cp.company_legal_name,
-          company_trade_name: cp.company_trade_name,
-          legal_rep_name: cp.legal_rep_name,
-          legal_rep_tax_id: cp.legal_rep_tax_id,
-          signatory_title: cp.signatory_title,
-          phone: cp.phone,
-          address_postal_code: cp.address_postal_code,
-          address_line1: cp.address_line1,
-          address_number: cp.address_number,
-          address_complement: cp.address_complement,
-          address_district: cp.address_district,
-          address_city: cp.address_city,
-          address_state: cp.address_state,
-        },
-        licenseAmountUsd: effectiveLicenseUsd,
-        territory: data.territory ?? "Non-exclusive, no territorial restriction",
-        commission: { negotiatedPct: commissionPct, recruitBonusPct: 0.5, residualOverridePct: 0.07 },
-      },
-    };
-    const dryRun = buildContractPayload(contractPlan.input);
-    if (!dryRun.ok) {
-      return { ok: false, error: "VALIDATION", message: dryRun.message };
-    }
-  }
 
   const { error: insErr } = await sb.from("partner_invitations").insert({
     id: invitationId,
@@ -130,12 +138,13 @@ export async function createPartnerInviteAction(input: unknown): Promise<CreateP
 
   let prefillPersistError: string | null = null;
 
-  // Licenciado: gera o PDF draft e grava partner_contracts. Os dados já
-  // passaram no dry-run acima; falha aqui é técnica (render/storage) e mantém
-  // o comportamento atual (convite criado + contrato generation_failed).
-  if (contractPlan && data.contractProfile) {
-    const cp = data.contractProfile;
-    const gen = await generateAndStoreContract(contractPlan);
+  // Licenciado: gera o PDF draft e grava partner_contracts. Dados completos
+  // já passaram no dry-run; falha aqui é técnica (render/storage) ou caso de
+  // revisão manual (território exclusivo, país sem rota) e mantém o
+  // comportamento de convite criado + contrato generation_failed.
+  if (contractPlan) {
+    const cp = contractPlan.profile;
+    const gen = await generateAndStoreContract({ contractId: contractPlan.contractId, input: contractPlan.input });
 
     // Persiste o perfil no convite (materializado no aceite) e o registro do contrato.
     const { error: updErr } = await sb.from("partner_invitations").update({

@@ -86,6 +86,20 @@ describe("prefillProfileSchema", () => {
   });
 });
 
+describe("partnerProfileSchema · SSN/ITIN US pessoa física", () => {
+  it("rejeita SSN/ITIN com formato inválido", () => {
+    const r = partnerProfileSchema.safeParse({ country: "US", person_type: "individual", tax_id: "abc" });
+    expect(r.success).toBe(false);
+  });
+
+  it("aceita SSN válido (com e sem hífens)", () => {
+    for (const tax_id of ["123-45-6789", "123456789"]) {
+      const r = partnerProfileSchema.safeParse({ country: "US", person_type: "individual", tax_id });
+      expect(r.success).toBe(true);
+    }
+  });
+});
+
 describe("prefillProfileSchema · signatory_title", () => {
   it("aceita signatory_title", () => {
     const r = prefillProfileSchema.safeParse({

@@ -40,6 +40,9 @@ export function isValidABA(input: string): boolean {
 export function isValidEIN(input: string): boolean {
   return /^\d{2}-?\d{7}$/.test((input ?? "").trim());
 }
+export function isValidSSNorITIN(input: string): boolean {
+  return /^\d{3}-?\d{2}-?\d{4}$/.test((input ?? "").trim());
+}
 export function isValidCEP(input: string): boolean {
   return /^\d{5}-?\d{3}$/.test((input ?? "").trim());
 }
@@ -84,6 +87,7 @@ export const partnerProfileSchema = z
       if (v.country === "BR" && v.person_type === "individual" && !isValidCPF(v.tax_id)) add("tax_id", "CPF inválido");
       if (v.country === "BR" && v.person_type === "company" && !isValidCNPJ(v.tax_id)) add("tax_id", "CNPJ inválido");
       if (v.country === "US" && v.person_type === "company" && !isValidEIN(v.tax_id)) add("tax_id", "EIN inválido (XX-XXXXXXX)");
+      if (v.country === "US" && v.person_type === "individual" && !isValidSSNorITIN(v.tax_id)) add("tax_id", "SSN/ITIN inválido (XXX-XX-XXXX)");
     }
     if (v.address_postal_code) {
       if (v.country === "BR" && !isValidCEP(v.address_postal_code)) add("address_postal_code", "CEP inválido");
