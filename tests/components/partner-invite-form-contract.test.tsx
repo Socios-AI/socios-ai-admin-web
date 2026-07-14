@@ -16,4 +16,14 @@ describe("PartnerInviteForm · contrato", () => {
     render(<PartnerInviteForm initialRole="representante" />);
     expect(screen.queryByText(/Dados do contrato/i)).not.toBeInTheDocument();
   });
+
+  it("licenciado: campos obrigatórios do contrato marcados como required (trava F3)", () => {
+    render(<PartnerInviteForm initialRole="licenciado" />);
+    for (const label of [/^CPF \*/i, /^CEP \*/i, /Logradouro \*/i, /Cidade \*/i, /^UF \*/i]) {
+      const el = screen.getByLabelText(label);
+      expect(el).toBeRequired();
+    }
+    // Opcionais seguem sem required.
+    expect(screen.getByLabelText(/Complemento/i)).not.toBeRequired();
+  });
 });

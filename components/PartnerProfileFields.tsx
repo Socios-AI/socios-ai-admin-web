@@ -57,25 +57,32 @@ const label = "block text-sm font-medium mb-1";
 export function PartnerProfileFields({
   value,
   onChange,
+  requireContractFields = false,
 }: {
   value: ProfileValue;
   onChange: (patch: Partial<ProfileValue>) => void;
+  // Trava F3: no convite de licenciado, os campos obrigatórios do contrato
+  // (documento, endereço, representante legal PJ) ganham required + asterisco.
+  requireContractFields?: boolean;
 }) {
   const [notice, setNotice] = useState<string | null>(null);
   const isBR = value.country === "BR";
   const isPJ = value.person_type === "company";
+  const req = requireContractFields;
+  const mark = (labelText: string, required: boolean) => (required ? `${labelText} *` : labelText);
 
   // Helper de renderização (NÃO é um componente): retorna JSX cru de <input> pra
   // evitar remount/perda de foco a cada tecla. Chamar como {renderField(...)}.
-  const renderField = (name: keyof ProfileValue, labelText: string, type = "text") => (
+  const renderField = (name: keyof ProfileValue, labelText: string, type = "text", required = false) => (
     <div>
-      <label htmlFor={name} className={label}>{labelText}</label>
+      <label htmlFor={name} className={label}>{mark(labelText, required)}</label>
       <input
         id={name}
         type={type}
         value={value[name] as string}
         onChange={(e) => onChange({ [name]: e.target.value } as Partial<ProfileValue>)}
         className={input}
+        required={required}
       />
     </div>
   );
@@ -140,26 +147,26 @@ export function PartnerProfileFields({
       <div className="grid grid-cols-2 gap-4">
         {!isPJ && isBR && (
           <div>
-            <label htmlFor="tax_id" className={label}>CPF</label>
-            <input id="tax_id" value={value.tax_id} onChange={(e) => onChange({ tax_id: e.target.value })} className={input} />
+            <label htmlFor="tax_id" className={label}>{mark("CPF", req)}</label>
+            <input id="tax_id" value={value.tax_id} onChange={(e) => onChange({ tax_id: e.target.value })} className={input} required={req} />
           </div>
         )}
         {!isPJ && !isBR && (
           <div>
-            <label htmlFor="tax_id" className={label}>SSN / ITIN</label>
-            <input id="tax_id" value={value.tax_id} onChange={(e) => onChange({ tax_id: e.target.value })} className={input} />
+            <label htmlFor="tax_id" className={label}>{mark("SSN / ITIN", req)}</label>
+            <input id="tax_id" value={value.tax_id} onChange={(e) => onChange({ tax_id: e.target.value })} className={input} required={req} />
           </div>
         )}
         {isPJ && isBR && (
           <div>
-            <label htmlFor="tax_id" className={label}>CNPJ</label>
-            <input id="tax_id" value={value.tax_id} onBlur={onCnpjBlur} onChange={(e) => onChange({ tax_id: e.target.value })} className={input} />
+            <label htmlFor="tax_id" className={label}>{mark("CNPJ", req)}</label>
+            <input id="tax_id" value={value.tax_id} onBlur={onCnpjBlur} onChange={(e) => onChange({ tax_id: e.target.value })} className={input} required={req} />
           </div>
         )}
         {isPJ && !isBR && (
           <div>
-            <label htmlFor="tax_id" className={label}>EIN</label>
-            <input id="tax_id" value={value.tax_id} onChange={(e) => onChange({ tax_id: e.target.value })} className={input} placeholder="XX-XXXXXXX" />
+            <label htmlFor="tax_id" className={label}>{mark("EIN", req)}</label>
+            <input id="tax_id" value={value.tax_id} onChange={(e) => onChange({ tax_id: e.target.value })} className={input} placeholder="XX-XXXXXXX" required={req} />
           </div>
         )}
         {!isPJ && renderField("birth_date", "Data de nascimento", "date")}
@@ -167,10 +174,10 @@ export function PartnerProfileFields({
 
       {isPJ && (
         <div className="grid grid-cols-2 gap-4">
-          {renderField("company_legal_name", isBR ? "Razão social" : "Legal entity name")}
+          {renderField("company_legal_name", isBR ? "Razão social" : "Legal entity name", "text", req)}
           {renderField("company_trade_name", isBR ? "Nome fantasia" : "DBA / trade name")}
           {!isBR && renderField("company_entity_type", "Entity type (LLC, C-Corp...)")}
-          {isBR && renderField("legal_rep_name", "Responsável legal")}
+          {renderField("legal_rep_name", isBR ? "Responsável legal" : "Legal representative", "text", req)}
           {isBR && renderField("legal_rep_tax_id", "CPF do responsável")}
           {renderField("signatory_title", "Cargo de quem assina (ex.: Sócio Administrador)")}
         </div>
@@ -188,15 +195,15 @@ export function PartnerProfileFields({
       {/* Endereço */}
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label htmlFor="address_postal_code" className={label}>{isBR ? "CEP" : "ZIP"}</label>
-          <input id="address_postal_code" value={value.address_postal_code} onBlur={onCepBlur} onChange={(e) => onChange({ address_postal_code: e.target.value })} className={input} />
+          <label htmlFor="address_postal_code" className={label}>{mark(isBR ? "CEP" : "ZIP", req)}</label>
+          <input id="address_postal_code" value={value.address_postal_code} onBlur={onCepBlur} onChange={(e) => onChange({ address_postal_code: e.target.value })} className={input} required={req} />
         </div>
-        {renderField("address_line1", isBR ? "Logradouro" : "Street address")}
+        {renderField("address_line1", isBR ? "Logradouro" : "Street address", "text", req)}
         {isBR && renderField("address_number", "Número")}
         {renderField("address_complement", isBR ? "Complemento" : "Apt / Suite")}
         {isBR && renderField("address_district", "Bairro")}
-        {renderField("address_city", isBR ? "Cidade" : "City")}
-        {renderField("address_state", isBR ? "UF" : "State")}
+        {renderField("address_city", isBR ? "Cidade" : "City", "text", req)}
+        {renderField("address_state", isBR ? "UF" : "State", "text", req)}
       </div>
 
       {/* Payout */}
