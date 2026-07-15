@@ -106,6 +106,33 @@ export type UpdateAppInput = z.infer<typeof updateAppSchema>;
 export type ToggleAppFlagInput = z.infer<typeof toggleAppFlagSchema>;
 
 // =============================================================
+// ORBIT: sales/marketing materials catalog (arsenal do parceiro)
+// =============================================================
+
+const assetTypeSchema = z.enum(["pdf", "video", "banner", "pitch_deck", "other"]);
+
+export const createSalesMaterialSchema = z.object({
+  title: z.string().trim().min(2, "Título muito curto").max(200, "Título muito longo"),
+  description: z.string().trim().max(1000, "Descrição muito longa").optional().nullable(),
+  asset_url: httpsUrlSchema,
+  asset_type: assetTypeSchema,
+  app_slug: appSlugSchema.optional().nullable(),
+});
+
+export const updateSalesMaterialSchema = z.object({
+  id: z.string().uuid("ID inválido"),
+  title: z.string().trim().min(2, "Título muito curto").max(200, "Título muito longo"),
+  description: z.string().trim().max(1000, "Descrição muito longa").optional().nullable(),
+  asset_url: httpsUrlSchema,
+  asset_type: assetTypeSchema,
+  app_slug: appSlugSchema.optional().nullable(),
+  is_active: z.boolean(),
+});
+
+export type CreateSalesMaterialInput = z.infer<typeof createSalesMaterialSchema>;
+export type UpdateSalesMaterialInput = z.infer<typeof updateSalesMaterialSchema>;
+
+// =============================================================
 // Plan G.3: plan catalog management
 // =============================================================
 
@@ -302,6 +329,15 @@ export const terminatePartnerSchema = z.object({
   partnerId: partnerIdSchema,
   reason: reasonSchema,
 });
+
+// ORBIT item 2 · marcos manuais do checklist de onboarding.
+export const setOnboardingMilestoneSchema = z.object({
+  partnerId: partnerIdSchema,
+  milestone: z.enum(["welcome_kit", "whatsapp_group", "first_meeting"]),
+  done: z.boolean(),
+});
+
+export type SetOnboardingMilestoneInput = z.infer<typeof setOnboardingMilestoneSchema>;
 
 export const updatePartnerCommissionSchema = z.object({
   partnerId: partnerIdSchema,

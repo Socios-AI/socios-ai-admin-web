@@ -10,6 +10,7 @@ import { AttributeUserDialog } from "@/components/AttributeUserDialog";
 import { AuditList } from "@/components/AuditList";
 import { RequestCompletionButton } from "@/components/RequestCompletionButton";
 import { MarkEntryFeePaidButton } from "@/components/MarkEntryFeePaidButton";
+import { OnboardingChecklist } from "@/components/OnboardingChecklist";
 import { PartnerEditDialog } from "@/components/PartnerEditDialog";
 import { EdgeRateDialog } from "@/components/EdgeRateDialog";
 import { LedgerTable } from "@/components/LedgerTable";
@@ -18,6 +19,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getCallerJwt } from "@/lib/auth";
 import {
   getPartner,
+  getPartnerFirstSaleAt,
   getPartnerProfile,
   listPartners,
   listPartnerSubtree,
@@ -98,6 +100,9 @@ export default async function PartnerDetailPage({
 
   // Extrato deste parceiro (comissões em que ele é beneficiário)
   const partnerLedger = await listCommissionLedger({ callerJwt: jwt, beneficiaryPartnerId: id });
+
+  // ORBIT item 2 · marco "1ª venda" derivado de commission_events.
+  const firstSaleAt = await getPartnerFirstSaleAt({ callerJwt: jwt, partnerId: id });
 
   const profiles = await resolveProfilesByIds({
     callerJwt: jwt,
@@ -187,6 +192,17 @@ export default async function PartnerDetailPage({
               <MarkEntryFeePaidButton partnerId={partner.id} />
             ) : null}
           </div>
+
+          {/* ORBIT item 2 · checklist de onboarding (acompanhamento, não bloqueia) */}
+          <OnboardingChecklist
+            partnerId={partner.id}
+            contractSignedAt={partner.contract_signed_at}
+            licensePaidAt={partner.license_paid_at}
+            welcomeKitShippedAt={partner.welcome_kit_shipped_at}
+            whatsappGroupJoinedAt={partner.whatsapp_group_joined_at}
+            firstMeetingAt={partner.first_meeting_at}
+            firstSaleAt={firstSaleAt}
+          />
 
           {/* Dados da plataforma */}
           <Card>

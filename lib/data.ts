@@ -958,6 +958,10 @@ export type PartnerRow = {
   activated_at: string | null;
   suspended_at: string | null;
   termination_reason: string | null;
+  // ORBIT item 2 · marcos manuais do checklist de onboarding (null = não atingido).
+  welcome_kit_shipped_at: string | null;
+  whatsapp_group_joined_at: string | null;
+  first_meeting_at: string | null;
   // Postgres numeric columns are serialized as strings by the JS driver.
   entry_fee_amount: string | null;
   entry_fee_paid_at: string | null;
@@ -1034,6 +1038,26 @@ export async function getPartner(args: {
     .maybeSingle();
   if (error) throw new Error(`getPartner failed: ${error.message}`);
   return (data ?? null) as PartnerRow | null;
+}
+
+// ORBIT item 2 · marco "1ª venda" derivado (sem coluna): o parceiro é o nó
+// vendedor/atribuído (selling_node_id) do primeiro commission_event. Exclui a
+// própria entry_fee (naquela, selling_node_id = o upline do parceiro, não ele).
+// Retorna null quando ainda não gerou receita (hoje: commission_events vazia).
+export async function getPartnerFirstSaleAt(args: {
+  callerJwt: string;
+  partnerId: string;
+}): Promise<string | null> {
+  const sb = getCallerClient({ callerJwt: args.callerJwt });
+  const { data, error } = await sb
+    .from("commission_events")
+    .select("occurred_at")
+    .eq("selling_node_id", args.partnerId)
+    .order("occurred_at", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw new Error(`getPartnerFirstSaleAt failed: ${error.message}`);
+  return (data?.occurred_at as string | null) ?? null;
 }
 
 export async function listPartnerInvitations(args: {
@@ -1388,4 +1412,65 @@ export async function listSubscriptionsForAttribution(args: {
       attributionRule: (r.attribution_rule as string | null) ?? null,
     };
   });
+}
+
+// =============================================================
+// ORBIT: sales/marketing materials catalog
+// =============================================================
+
+export type SalesMaterialAssetType = "pdf" | "video" | "banner" | "pitch_deck" | "other";
+
+export type SalesMaterialRow = {
+  id: string;
+  title: string;
+  description: string | null;
+  asset_url: string;
+  asset_type: SalesMaterialAssetType;
+  app_slug: string | null;
+  is_active: boolean;
+  created_at: string;
+};
+
+const SALES_MATERIAL_COLUMNS =
+  "id, title, description, asset_url, asset_type, app_slug, is_active, created_at";
+
+function mapSalesMaterial(row: Record<string, unknown>): SalesMaterialRow {
+  return {
+    id: row.id as string,
+    title: row.title as string,
+    description: (row.description as string | null) ?? null,
+    asset_url: row.asset_url as string,
+    asset_type: row.asset_type as SalesMaterialAssetType,
+    app_slug: (row.app_slug as string | null) ?? null,
+    is_active: row.is_active as boolean,
+    created_at: row.created_at as string,
+  };
+}
+
+// Super_admin enxerga todas as linhas (inclusive inativas) via RLS
+// `sales_materials_select_super_admin`.
+export async function listSalesMaterialsAdmin(args: {
+  callerJwt: string;
+}): Promise<SalesMaterialRow[]> {
+  const sb = getCallerClient({ callerJwt: args.callerJwt });
+  const { data, error } = await sb
+    .from("sales_materials")
+    .select(SALES_MATERIAL_COLUMNS)
+    .order("created_at", { ascending: false });
+  if (error) throw new Error(`listSalesMaterialsAdmin failed: ${error.message}`);
+  return (data ?? []).map(mapSalesMaterial);
+}
+
+export async function getSalesMaterial(args: {
+  callerJwt: string;
+  id: string;
+}): Promise<SalesMaterialRow | null> {
+  const sb = getCallerClient({ callerJwt: args.callerJwt });
+  const { data, error } = await sb
+    .from("sales_materials")
+    .select(SALES_MATERIAL_COLUMNS)
+    .eq("id", args.id)
+    .maybeSingle();
+  if (error) throw new Error(`getSalesMaterial failed: ${error.message}`);
+  return data ? mapSalesMaterial(data) : null;
 }

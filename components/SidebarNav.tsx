@@ -9,6 +9,7 @@ import {
   AppWindow,
   Tag,
   Package,
+  Library,
   FileText,
   Handshake,
   Megaphone,
@@ -62,6 +63,7 @@ const GROUPS: Group[] = [
       { href: "/apps", label: "Apps", Icon: AppWindow },
       { href: "/plans", label: "Planos", Icon: Tag },
       { href: "/products", label: "Produtos & Taxas", Icon: Package },
+      { href: "/materials", label: "Materiais", Icon: Library },
     ],
   },
   {
